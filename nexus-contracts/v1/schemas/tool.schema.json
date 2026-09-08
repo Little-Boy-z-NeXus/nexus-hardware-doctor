@@ -1,0 +1,66 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:nexus:contracts:v1:tool",
+  "title": "NeXus Tool Call v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "tool_call_id",
+    "trace_id",
+    "device_id",
+    "tool_name",
+    "arguments",
+    "requested_by",
+    "requested_at",
+    "requires_verification"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "tool_call_id": { "type": "string", "minLength": 1 },
+    "trace_id": { "type": "string", "minLength": 1 },
+    "device_id": { "type": "string", "pattern": "^nexus-[a-z0-9-]+$" },
+    "tool_name": {
+      "type": "string",
+      "enum": [
+        "get_hardware_graph",
+        "get_telemetry",
+        "read_gpio",
+        "enable_driver",
+        "set_pwm",
+        "run_motor_test"
+      ]
+    },
+    "arguments": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "pin_id": { "type": "string", "minLength": 1 },
+        "enabled": { "type": "boolean" },
+        "pwm_percent": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "duration_ms": { "type": "integer", "minimum": 100, "maximum": 10000 }
+      }
+    },
+    "requested_by": { "type": "string", "enum": ["user", "nemotron", "orchestrator"] },
+    "requested_at": { "type": "string", "format": "date-time" },
+    "requires_verification": { "type": "boolean" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "tool_name": { "const": "read_gpio" } } },
+      "then": { "properties": { "arguments": { "required": ["pin_id"] } } }
+    },
+    {
+      "if": { "properties": { "tool_name": { "const": "enable_driver" } } },
+      "then": { "properties": { "arguments": { "required": ["enabled"] } } }
+    },
+    {
+      "if": { "properties": { "tool_name": { "const": "set_pwm" } } },
+      "then": { "properties": { "arguments": { "required": ["pwm_percent"] } } }
+    },
+    {
+      "if": { "properties": { "tool_name": { "const": "run_motor_test" } } },
+      "then": { "properties": { "arguments": { "required": ["duration_ms"] } } }
+    }
+  ]
+}

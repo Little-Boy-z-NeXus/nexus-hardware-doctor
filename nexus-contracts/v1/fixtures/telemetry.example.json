@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0.0",
+  "device_id": "nexus-demo-esp32",
+  "hardware_model_id": "nexus-motor-rig-v1",
+  "sample_id": "nexus-demo-esp32-1042",
+  "recorded_at": "2026-09-08T10:00:01Z",
+  "sequence": 1042,
+  "measurements": {
+    "bus_voltage_v": 11.96,
+    "current_ma": 840.0,
+    "power_mw": 10046.4,
+    "pwm_percent": 62,
+    "driver_enabled": true,
+    "motor_rpm": null
+  },
+  "quality": {
+    "signal_quality_percent": 99.8,
+    "source": "device"
+  }
+}

@@ -4,7 +4,6 @@ from fastapi import FastAPI
 
 from nexus_backend import __version__
 
-
 app = FastAPI(title="nexus-backend", version=__version__)
 
 

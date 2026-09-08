@@ -1,0 +1,103 @@
+{
+  "schema_version": "1.0.0",
+  "hardware_model_id": "nexus-motor-rig-v1",
+  "device_id": "nexus-demo-esp32",
+  "name": "NeXus ESP32 motor demo rig",
+  "components": [
+    {
+      "component_id": "esp32",
+      "component_type": "controller",
+      "model": "ESP32 DevKit V1",
+      "pins": [
+        { "pin_id": "gpio_21", "label": "SDA", "mode": "i2c" },
+        { "pin_id": "gpio_22", "label": "SCL", "mode": "i2c" },
+        { "pin_id": "gpio_25", "label": "ENA", "mode": "pwm" },
+        { "pin_id": "gpio_26", "label": "IN1", "mode": "output" },
+        { "pin_id": "gpio_27", "label": "IN2", "mode": "output" }
+      ],
+      "capabilities": ["sample_telemetry", "control_motor"]
+    },
+    {
+      "component_id": "ina219",
+      "component_type": "sensor",
+      "model": "INA219",
+      "pins": [
+        { "pin_id": "sda", "label": "SDA", "mode": "i2c" },
+        { "pin_id": "scl", "label": "SCL", "mode": "i2c" }
+      ],
+      "capabilities": ["measure_voltage", "measure_current"]
+    },
+    {
+      "component_id": "l298n",
+      "component_type": "driver",
+      "model": "L298N",
+      "pins": [
+        { "pin_id": "ena", "label": "ENA", "mode": "pwm" },
+        { "pin_id": "in1", "label": "IN1", "mode": "input" },
+        { "pin_id": "in2", "label": "IN2", "mode": "input" },
+        { "pin_id": "out1", "label": "OUT1", "mode": "output" },
+        { "pin_id": "out2", "label": "OUT2", "mode": "output" }
+      ],
+      "capabilities": ["enable_driver", "set_pwm"]
+    },
+    {
+      "component_id": "dc_motor",
+      "component_type": "actuator",
+      "model": "Generic 12V brushed DC motor",
+      "pins": [
+        { "pin_id": "motor_plus", "label": "+", "mode": "power" },
+        { "pin_id": "motor_minus", "label": "-", "mode": "ground" }
+      ],
+      "capabilities": ["rotate"]
+    }
+  ],
+  "connections": [
+    {
+      "connection_id": "esp32_to_ina219_sda",
+      "from_component_id": "esp32",
+      "from_pin": "gpio_21",
+      "to_component_id": "ina219",
+      "to_pin": "sda",
+      "signal_type": "i2c"
+    },
+    {
+      "connection_id": "esp32_to_ina219_scl",
+      "from_component_id": "esp32",
+      "from_pin": "gpio_22",
+      "to_component_id": "ina219",
+      "to_pin": "scl",
+      "signal_type": "i2c"
+    },
+    {
+      "connection_id": "esp32_to_l298n_pwm",
+      "from_component_id": "esp32",
+      "from_pin": "gpio_25",
+      "to_component_id": "l298n",
+      "to_pin": "ena",
+      "signal_type": "pwm"
+    },
+    {
+      "connection_id": "l298n_to_motor_positive",
+      "from_component_id": "l298n",
+      "from_pin": "out1",
+      "to_component_id": "dc_motor",
+      "to_pin": "motor_plus",
+      "signal_type": "power"
+    },
+    {
+      "connection_id": "l298n_to_motor_negative",
+      "from_component_id": "l298n",
+      "from_pin": "out2",
+      "to_component_id": "dc_motor",
+      "to_pin": "motor_minus",
+      "signal_type": "ground"
+    }
+  ],
+  "safety_limits": {
+    "max_pwm_percent": 80,
+    "min_bus_voltage_v": 9.5,
+    "max_current_ma": 1500,
+    "max_motor_test_duration_ms": 3000
+  },
+  "updated_at": "2026-09-08T10:00:00Z"
+}

@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:nexus:contracts:v1:event",
+  "title": "NeXus Lifecycle Event v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "event_id",
+    "trace_id",
+    "device_id",
+    "event_type",
+    "occurred_at",
+    "source",
+    "severity",
+    "summary",
+    "payload",
+    "related_tool_call_id"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "event_id": { "type": "string", "minLength": 1 },
+    "trace_id": { "type": "string", "minLength": 1 },
+    "device_id": { "type": "string", "pattern": "^nexus-[a-z0-9-]+$" },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "telemetry.received",
+        "diagnosis.proposed",
+        "action.approved",
+        "action.rejected",
+        "action.executed",
+        "verification.passed",
+        "verification.failed"
+      ]
+    },
+    "occurred_at": { "type": "string", "format": "date-time" },
+    "source": {
+      "type": "string",
+      "enum": ["firmware", "backend", "nemotron", "orchestrator", "safety_policy", "tool", "verify"]
+    },
+    "severity": { "type": "string", "enum": ["info", "warning", "error"] },
+    "summary": { "type": "string", "minLength": 1, "maxLength": 280 },
+    "payload": { "type": "object" },
+    "related_tool_call_id": {
+      "oneOf": [{ "type": "string", "minLength": 1 }, { "type": "null" }]
+    }
+  }
+}

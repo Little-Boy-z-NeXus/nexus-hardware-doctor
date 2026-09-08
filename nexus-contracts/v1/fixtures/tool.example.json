@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0.0",
+  "tool_call_id": "tool-01k4nexus001",
+  "trace_id": "trace-01k4nexus001",
+  "device_id": "nexus-demo-esp32",
+  "tool_name": "run_motor_test",
+  "arguments": {
+    "duration_ms": 1500,
+    "pwm_percent": 40
+  },
+  "requested_by": "orchestrator",
+  "requested_at": "2026-09-08T10:00:03Z",
+  "requires_verification": true
+}

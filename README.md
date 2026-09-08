@@ -20,8 +20,9 @@ nexus-hardware-doctor/
 ├── firmware/   ESP32 telemetry and approved device actions
 ├── backend/    hardware model, Nemotron orchestration, policy, and APIs
 ├── frontend/   health dashboard, chat, telemetry, and action timeline
+├── nexus-contracts/ frozen v1 schemas, fixtures, and migration notes
 ├── docs/       architecture, ownership, workflow, and MVP decisions
-└── scripts/    dependency-free repository validation used by CI
+└── scripts/    repository and contract validation used by CI
 ```
 
 Every project root and future split repository must use a lowercase `nexus-<name>` name. Package names follow the same prefix where the ecosystem permits it.
@@ -47,6 +48,8 @@ Detailed boundaries and handoff rules are in [docs/ownership.md](docs/ownership.
    ```bash
    python scripts/validate_repo.py
    ```
+
+The frozen cross-stack interface is documented in [nexus-contracts/v1](nexus-contracts/v1/README.md) and [docs/architecture.md](docs/architecture.md). After installing backend development dependencies, validate it with `python scripts/validate_contracts.py`.
 
 Component-specific setup lives in each component README:
 

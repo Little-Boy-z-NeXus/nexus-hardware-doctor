@@ -9,9 +9,11 @@
 ## Verification
 
 - [ ] `python scripts/validate_repo.py` passes
+- [ ] `python scripts/validate_contracts.py` passes
 - [ ] Relevant component checks pass
 - [ ] Acceptance criteria from the backlog are demonstrated
 - [ ] No credentials, private telemetry, or unredacted model logs are committed
+- [ ] Contract changes include a migration note under `nexus-contracts/migrations/`
 
 ## Safety and demo impact
 

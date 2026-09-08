@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:nexus:contracts:v1:telemetry",
+  "title": "NeXus Telemetry v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "device_id",
+    "hardware_model_id",
+    "sample_id",
+    "recorded_at",
+    "sequence",
+    "measurements",
+    "quality"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "device_id": { "type": "string", "pattern": "^nexus-[a-z0-9-]+$" },
+    "hardware_model_id": { "type": "string", "pattern": "^nexus-[a-z0-9-]+$" },
+    "sample_id": { "type": "string", "minLength": 1 },
+    "recorded_at": {
+      "oneOf": [
+        { "type": "string", "format": "date-time" },
+        { "type": "null" }
+      ]
+    },
+    "sequence": { "type": "integer", "minimum": 0 },
+    "measurements": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bus_voltage_v",
+        "current_ma",
+        "power_mw",
+        "pwm_percent",
+        "driver_enabled",
+        "motor_rpm"
+      ],
+      "properties": {
+        "bus_voltage_v": { "type": "number", "minimum": 0 },
+        "current_ma": { "type": "number" },
+        "power_mw": { "type": "number" },
+        "pwm_percent": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "driver_enabled": { "type": "boolean" },
+        "motor_rpm": {
+          "oneOf": [{ "type": "number", "minimum": 0 }, { "type": "null" }]
+        }
+      }
+    },
+    "quality": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["signal_quality_percent", "source"],
+      "properties": {
+        "signal_quality_percent": { "type": "number", "minimum": 0, "maximum": 100 },
+        "source": { "type": "string", "enum": ["device", "simulator", "replay"] }
+      }
+    }
+  }
+}

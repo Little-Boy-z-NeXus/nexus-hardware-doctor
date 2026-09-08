@@ -1,0 +1,105 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:nexus:contracts:v1:hardware-model",
+  "title": "NeXus Hardware Model v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "hardware_model_id",
+    "device_id",
+    "name",
+    "components",
+    "connections",
+    "safety_limits",
+    "updated_at"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "hardware_model_id": { "type": "string", "pattern": "^nexus-[a-z0-9-]+$" },
+    "device_id": { "type": "string", "pattern": "^nexus-[a-z0-9-]+$" },
+    "name": { "type": "string", "minLength": 1 },
+    "components": {
+      "type": "array",
+      "minItems": 4,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["component_id", "component_type", "model", "pins", "capabilities"],
+        "properties": {
+          "component_id": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+          "component_type": {
+            "type": "string",
+            "enum": ["controller", "sensor", "driver", "actuator", "power"]
+          },
+          "model": { "type": "string", "minLength": 1 },
+          "pins": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["pin_id", "label", "mode"],
+              "properties": {
+                "pin_id": { "type": "string", "minLength": 1 },
+                "label": { "type": "string", "minLength": 1 },
+                "mode": {
+                  "type": "string",
+                  "enum": ["input", "output", "i2c", "pwm", "power", "ground"]
+                }
+              }
+            }
+          },
+          "capabilities": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 },
+            "uniqueItems": true
+          }
+        }
+      }
+    },
+    "connections": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "connection_id",
+          "from_component_id",
+          "from_pin",
+          "to_component_id",
+          "to_pin",
+          "signal_type"
+        ],
+        "properties": {
+          "connection_id": { "type": "string", "pattern": "^[a-z0-9_]+$" },
+          "from_component_id": { "type": "string" },
+          "from_pin": { "type": "string" },
+          "to_component_id": { "type": "string" },
+          "to_pin": { "type": "string" },
+          "signal_type": {
+            "type": "string",
+            "enum": ["i2c", "digital", "pwm", "power", "ground"]
+          }
+        }
+      }
+    },
+    "safety_limits": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "max_pwm_percent",
+        "min_bus_voltage_v",
+        "max_current_ma",
+        "max_motor_test_duration_ms"
+      ],
+      "properties": {
+        "max_pwm_percent": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "min_bus_voltage_v": { "type": "number", "minimum": 0 },
+        "max_current_ma": { "type": "number", "exclusiveMinimum": 0 },
+        "max_motor_test_duration_ms": { "type": "integer", "minimum": 100, "maximum": 10000 }
+      }
+    },
+    "updated_at": { "type": "string", "format": "date-time" }
+  }
+}
