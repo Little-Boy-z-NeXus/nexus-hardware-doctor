@@ -32,8 +32,10 @@ REQUIRED_FILES = (
     ".github/ISSUE_TEMPLATE/feature_request.yml",
     "firmware/platformio.ini",
     "firmware/src/main.cpp",
+    "firmware/README.md",
     "backend/pyproject.toml",
     "backend/src/nexus_backend/app.py",
+    "backend/README.md",
     "frontend/package.json",
     "frontend/package-lock.json",
     "frontend/.env.example",
@@ -44,11 +46,14 @@ REQUIRED_FILES = (
     "frontend/src/pages/HardwareGraphPage.tsx",
     "frontend/src/pages/AIDoctorPage.tsx",
     "frontend/src/vite-env.d.ts",
+    "frontend/README.md",
     "firmware/include/nexus_contract_v1.h",
     "backend/src/nexus_backend/contracts.py",
     "backend/tests/test_contracts.py",
     "frontend/src/contracts/v1.ts",
     "nexus-contracts/v1/README.md",
+    "nexus-contracts/README.md",
+    "nexus-contracts/migrations/README.md",
     "nexus-contracts/v1/schemas/hardware-model.schema.json",
     "nexus-contracts/v1/schemas/telemetry.schema.json",
     "nexus-contracts/v1/schemas/tool.schema.json",
@@ -59,15 +64,57 @@ REQUIRED_FILES = (
     "nexus-contracts/v1/fixtures/event.example.json",
     "nexus-contracts/migrations/0001-freeze-v1.md",
     "scripts/validate_contracts.py",
+    "scripts/README.md",
+    "docs/README.md",
     "docs/architecture.md",
     "docs/ownership.md",
     "docs/mvp-scope.md",
 )
 
+README_FILES = (
+    "README.md",
+    "firmware/README.md",
+    "backend/README.md",
+    "frontend/README.md",
+    "nexus-contracts/README.md",
+    "nexus-contracts/v1/README.md",
+    "nexus-contracts/migrations/README.md",
+    "docs/README.md",
+    "scripts/README.md",
+)
+
+MARKDOWN_LINK = re.compile(r"(?<!!)\[[^\]]+\]\(([^)]+)\)")
+
 
 def require(condition: bool, message: str, errors: list[str]) -> None:
     if not condition:
         errors.append(message)
+
+
+def validate_readme_links(errors: list[str]) -> None:
+    for relative in README_FILES:
+        readme_path = ROOT / relative
+        if not readme_path.is_file():
+            continue
+
+        for raw_target in MARKDOWN_LINK.findall(
+            readme_path.read_text(encoding="utf-8")
+        ):
+            target = raw_target.strip().strip("<>")
+            if (
+                not target
+                or target.startswith(("#", "mailto:"))
+                or "://" in target
+            ):
+                continue
+
+            file_target = target.split("#", maxsplit=1)[0]
+            resolved = (readme_path.parent / file_target).resolve()
+            require(
+                resolved.is_relative_to(ROOT) and resolved.exists(),
+                f"Broken README link in {relative}: {target}",
+                errors,
+            )
 
 
 def main() -> int:
@@ -127,6 +174,8 @@ def main() -> int:
             f"Forbidden local secret file present: {path.name}",
             errors,
         )
+
+    validate_readme_links(errors)
 
     if errors:
         print("NeXus repository validation failed:")

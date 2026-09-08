@@ -1,0 +1,97 @@
+# NeXus validation scripts
+
+These scripts provide fast, deterministic checks for repository structure and frozen interface contracts. Run them from the repository root.
+
+## Scripts
+
+| Script | Dependencies | Checks |
+| --- | --- | --- |
+| [`validate_repo.py`](validate_repo.py) | Python 3.11 standard library | Required folders/files, naming, root license, backlog link, package prefixes, secret-file exclusions, README links |
+| [`validate_contracts.py`](validate_contracts.py) | Backend development dependencies | Four JSON Schemas, four fixtures, cross-fixture references, shared stack fields, migration-note rule |
+
+Both scripts return exit code `0` on success and a non-zero exit code with actionable messages on failure. GitHub Actions relies on those exit codes.
+
+## Prepare the environment
+
+### Windows PowerShell
+
+```powershell
+py -3.11 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -e ".\backend[dev]"
+```
+
+### macOS or Linux
+
+```bash
+python3.11 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e "./backend[dev]"
+```
+
+`validate_repo.py` can run before dependency installation. `validate_contracts.py` needs the `jsonschema` package installed by `backend[dev]`.
+
+## Validate repository structure
+
+```bash
+python scripts/validate_repo.py
+```
+
+Expected output begins with:
+
+```text
+NeXus repository foundation: PASS
+```
+
+If it fails, restore the named required file or fix the exact naming/link/secret issue. Do not weaken the validator just to make CI green.
+
+## Validate interface contracts
+
+```bash
+python scripts/validate_contracts.py
+```
+
+Expected output:
+
+```text
+NeXus contracts: PASS
+Contract version: 1.0.0
+Schemas validated: 4
+Fixtures validated: 4
+Stack mirrors checked: 3
+```
+
+CI also passes a Git base SHA:
+
+```bash
+python scripts/validate_contracts.py --base-ref <git-commit-sha>
+```
+
+When files under `nexus-contracts/v1/schemas/` changed after that SHA, the same commit range must contain a numbered migration note under `nexus-contracts/migrations/`.
+
+## Run the complete software check
+
+```bash
+python scripts/validate_repo.py
+python scripts/validate_contracts.py
+ruff check backend scripts
+python -m pytest backend/tests -q
+npm --prefix frontend run check
+```
+
+Firmware compilation is separate because it requires PlatformIO:
+
+```bash
+pio run --project-dir firmware
+```
+
+## Adding or changing a validator
+
+- Keep failure messages actionable and deterministic.
+- Avoid network access and credentials during validation.
+- Resolve paths from the repository root, not the caller's current directory.
+- Add a positive test fixture and, when useful, a failure-path test.
+- Update this README and the root README when commands or dependencies change.
+- Run the script on Windows and through GitHub Actions before merging.
+
+Do not put generated reports, private telemetry, keys, or raw model logs under `scripts/`.

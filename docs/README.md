@@ -1,0 +1,46 @@
+# NeXus documentation
+
+This directory records the decisions required to build and demonstrate the hackathon MVP. Code and contracts are authoritative for runtime behavior; these documents explain scope, ownership, architecture, and operating constraints.
+
+## Recommended reading order
+
+1. [`mvp-scope.md`](mvp-scope.md) — the user, problem, three golden paths, and explicit exclusions.
+2. [`architecture.md`](architecture.md) — runtime flow, Auto Heal sequence, service boundaries, and contract versioning.
+3. [`ownership.md`](ownership.md) — responsibilities for Hiếu, Hoàng, Nguyễn, and Nguyên.
+4. [`security.md`](security.md) — secret handling, redaction, model/tool boundaries, and incident basics.
+5. [`backlog.md`](backlog.md) — link to the live Google Sheet and local working rules.
+
+## Document index
+
+| Document | Use it when | Primary owner |
+| --- | --- | --- |
+| [`mvp-scope.md`](mvp-scope.md) | Deciding whether a feature belongs in the hackathon MVP | Hiếu |
+| [`architecture.md`](architecture.md) | Changing a service boundary, data flow, tool, or schema | Hiếu + Hoàng |
+| [`ownership.md`](ownership.md) | Assigning work or choosing a reviewer | Hiếu |
+| [`security.md`](security.md) | Handling keys, telemetry, logs, prompts, or device commands | Hoàng + Hiếu |
+| [`backlog.md`](backlog.md) | Finding the live plan or mapping a commit to a task ID | Entire team |
+
+## Source-of-truth rules
+
+- Live task status and dates: the [Google Sheet backlog](https://docs.google.com/spreadsheets/d/1EOCmOg-qVQ_2OJV1DkeH9ULjkR7oT8kNMNGyrTKTUFs/edit).
+- Runtime payload definitions: [`nexus-contracts`](../nexus-contracts/README.md).
+- Current executable behavior: firmware, backend, and frontend source code.
+- Scope decision: [`mvp-scope.md`](mvp-scope.md).
+- Contribution process: root [`CONTRIBUTING.md`](../CONTRIBUTING.md).
+
+If a document conflicts with a frozen schema, the schema wins until a migration is approved. If a local backlog note conflicts with the Google Sheet, the Google Sheet wins.
+
+## Updating documentation
+
+1. Link the change to one backlog ID.
+2. Update the smallest authoritative document instead of copying the same rule into several files.
+3. Use exact file names, contract keys, commands, ports, and hardware pins.
+4. Label planned behavior as planned; do not describe incomplete integrations as available.
+5. Update relative links when files move.
+6. Run `python scripts/validate_repo.py` from the repository root.
+
+Architecture or schema changes must update diagrams and migration notes in the same pull request. Hardware baseline results should be added only after the physical test in U05/N01; this documentation does not claim that test has run.
+
+## Adding a new document
+
+Use lowercase kebab-case, for example `nexus-demo-runbook.md` when a NeXus-specific name is appropriate. Add the new file to this index and identify its owner and authority level.

@@ -2,28 +2,187 @@
 
 NeXus is an AI doctor for physical hardware. The hackathon MVP turns one ESP32 motor rig into a software-readable system that can prevent unsafe configurations, diagnose failures from telemetry, and safely heal software-controllable faults.
 
-## MVP status
+This repository targets the [Nebius x NVIDIA Global AI Hackathon](https://nebiusglobalaihackathon.devpost.com/) and intentionally supports one topology: ESP32 DevKit V1, INA219, L298N, one 6–12 V DC motor, and a 12 V supply.
 
-This repository is the shared foundation for the Nebius x NVIDIA Global AI Hackathon build. The scope is intentionally limited to one hardware topology:
+## Current build status
 
-- ESP32 DevKit V1
-- INA219 voltage/current sensor
-- L298N motor driver
-- One 6–12 V DC motor and a 12 V supply
+| Area | What works now | Next integration |
+| --- | --- | --- |
+| Frontend | Three responsive routes, environment config, lint and production build | Replace display fixtures with the typed API client |
+| Backend | FastAPI health endpoint and typed contract models | Add telemetry ingest, Nemotron adapter and orchestration |
+| Firmware | Safe PWM clamp and telemetry v1 serial output | Add authenticated command transport and real rig calibration |
+| Contracts | Four frozen JSON Schemas, fixtures and migration enforcement | Change only through a reviewed migration note or v2 |
 
-The three required demo paths are `Prevent`, `Manual Diagnose`, and `Auto Heal`. Anything that does not make one of those paths more reliable is deferred until after the hackathon.
+The three demo paths are `Prevent`, `Manual Diagnose`, and `Auto Heal`. Features that do not make one of those paths more reliable are out of scope until after the hackathon.
+
+## Prerequisites
+
+Install only the tools needed for the component you are working on:
+
+| Tool | Version | Required for |
+| --- | --- | --- |
+| Git | 2.40+ | Everyone |
+| Python | 3.11 | Backend, repository checks, contract checks |
+| Node.js | 22 LTS | Frontend |
+| PlatformIO CLI | Current stable | Firmware build/upload only |
+| USB data cable and ESP32 driver | Board-dependent | Physical firmware upload only |
+
+Confirm the main tools:
+
+```bash
+git --version
+python --version
+node --version
+npm --version
+```
+
+## Clone and validate the repository
+
+```bash
+git clone https://github.com/Little-Boy-z-NeXus/nexus-hardware-doctor.git
+cd nexus-hardware-doctor
+python scripts/validate_repo.py
+```
+
+The repository is private during the build phase, so GitHub may ask you to authenticate. Do not place a token in the clone URL or commit it to a file.
+
+## Quick start: backend
+
+Run these commands from the repository root.
+
+### Windows PowerShell
+
+```powershell
+py -3.11 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -e ".\backend[dev]"
+Copy-Item .env.example .env
+uvicorn nexus_backend.app:app --reload
+```
+
+If PowerShell blocks environment activation, run `Set-ExecutionPolicy -Scope Process Bypass` in that terminal and activate again. This changes policy only for the current process.
+
+### macOS or Linux
+
+```bash
+python3.11 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e "./backend[dev]"
+cp .env.example .env
+uvicorn nexus_backend.app:app --reload
+```
+
+Open:
+
+- API health: <http://127.0.0.1:8000/health>
+- Interactive API docs: <http://127.0.0.1:8000/docs>
+
+The current backend exposes the health endpoint and contract models. Nemotron and device orchestration are later backlog items; the README does not assume they already exist.
+
+## Quick start: frontend
+
+Open a second terminal at the repository root:
+
+### Windows PowerShell
+
+```powershell
+npm --prefix frontend ci
+Copy-Item frontend\.env.example frontend\.env.local
+npm --prefix frontend run dev
+```
+
+### macOS or Linux
+
+```bash
+npm --prefix frontend ci
+cp frontend/.env.example frontend/.env.local
+npm --prefix frontend run dev
+```
+
+Open <http://127.0.0.1:5173>. Available routes:
+
+- `/dashboard`
+- `/hardware`
+- `/doctor`
+
+The UI currently uses presentation data. Typed real/mock data switching belongs to backlog item G02.
+
+## Quick start: firmware
+
+PlatformIO is optional unless you are working with the ESP32:
+
+```bash
+python -m pip install platformio
+pio device list
+pio run --project-dir firmware
+```
+
+Connect the board with a USB data cable, identify its port, then upload and monitor.
+
+Windows example:
+
+```powershell
+pio run --project-dir firmware --target upload --upload-port COM4
+pio device monitor --port COM4 --baud 115200
+```
+
+macOS/Linux example:
+
+```bash
+pio run --project-dir firmware --target upload --upload-port /dev/ttyUSB0
+pio device monitor --port /dev/ttyUSB0 --baud 115200
+```
+
+Replace the example port with the value returned by `pio device list`. Read [firmware/README.md](firmware/README.md) before powering the motor circuit.
+
+## Run all software quality checks
+
+Install backend development dependencies and frontend dependencies first, then run from the repository root:
+
+```bash
+python scripts/validate_repo.py
+python scripts/validate_contracts.py
+ruff check backend scripts
+python -m pytest backend/tests -q
+npm --prefix frontend run check
+```
+
+These are the same core checks enforced by GitHub Actions. Hardware upload is deliberately separate because CI has no physical ESP32.
+
+## Environment variables
+
+Copy templates locally; never edit the templates with real credentials.
+
+- Backend/device template: [`.env.example`](.env.example) → `.env`
+- Frontend template: [`frontend/.env.example`](frontend/.env.example) → `frontend/.env.local`
+
+Important rules:
+
+- Never expose `NEXUS_NEBIUS_API_KEY` through a `VITE_` variable.
+- Never commit `.env`, `.env.local`, Wi-Fi credentials, device tokens, or raw private logs.
+- The frontend API default is `http://localhost:8000`; override it with `VITE_API_BASE_URL` only when required.
 
 ## Repository layout
 
 ```text
 nexus-hardware-doctor/
-├── firmware/   ESP32 telemetry and approved device actions
-├── backend/    hardware model, Nemotron orchestration, policy, and APIs
-├── frontend/   health dashboard, chat, telemetry, and action timeline
-├── nexus-contracts/ frozen v1 schemas, fixtures, and migration notes
-├── docs/       architecture, ownership, workflow, and MVP decisions
-└── scripts/    repository and contract validation used by CI
+├── firmware/          ESP32 telemetry and approved device actions
+├── backend/           FastAPI, contracts, reasoning, policy and APIs
+├── frontend/          Dashboard, Hardware Graph and AI Doctor UI
+├── nexus-contracts/   Frozen schemas, fixtures and migration notes
+├── docs/              Architecture, scope, ownership and security decisions
+├── scripts/           Repository and contract validators
+└── .github/           CI and contribution templates
 ```
+
+Read the component guide before changing an area:
+
+- [Firmware guide](firmware/README.md)
+- [Backend guide](backend/README.md)
+- [Frontend guide](frontend/README.md)
+- [Contract guide](nexus-contracts/README.md)
+- [Documentation index](docs/README.md)
+- [Validation scripts](scripts/README.md)
 
 Every project root and future split repository must use a lowercase `nexus-<name>` name. Package names follow the same prefix where the ecosystem permits it.
 
@@ -34,52 +193,35 @@ Every project root and future split repository must use a lowercase `nexus-<name
 | Product scope, integration, release | Hiếu | Hoàng |
 | AI reasoning, backend, Nebius integration | Hoàng | Hiếu |
 | Firmware, telemetry, automated test rig | Nguyễn | Hoàng |
-| Frontend and scoped implementation tasks | Nguyên | Hiếu |
+| Frontend and scoped implementation | Nguyên | Hiếu |
 
-Detailed boundaries and handoff rules are in [docs/ownership.md](docs/ownership.md).
+See [docs/ownership.md](docs/ownership.md) for handoff rules.
 
-## Start here
+## Branch and pull-request workflow
 
-1. Clone the repository and create a branch from `main`.
-2. Copy `.env.example` to `.env`; never commit credentials.
-3. Read [docs/mvp-scope.md](docs/mvp-scope.md) and pick an item from the [shared backlog](docs/backlog.md).
-4. Run the foundation check before opening a pull request:
+1. Pull the latest `main`.
+2. Create `feat/<issue>-short-name`, `fix/<issue>-short-name`, `docs/<issue>-short-name`, or `chore/<issue>-short-name`.
+3. Make the smallest change that satisfies one backlog item.
+4. Run the relevant checks locally.
+5. Open a pull request, link the backlog ID, and request the area's review partner.
+6. Keep `main` demoable and never merge with a failing CI run.
 
-   ```bash
-   python scripts/validate_repo.py
-   ```
+Schema v1 changes require a new note under `nexus-contracts/migrations/` in the same change. See [CONTRIBUTING.md](CONTRIBUTING.md) for the complete agreement.
 
-The frozen cross-stack interface is documented in [nexus-contracts/v1](nexus-contracts/v1/README.md) and [docs/architecture.md](docs/architecture.md). After installing backend development dependencies, validate it with `python scripts/validate_contracts.py`.
+## Common setup problems
 
-Component-specific setup lives in each component README:
-
-- [Firmware](firmware/README.md)
-- [Backend](backend/README.md)
-- [Frontend](frontend/README.md)
-
-## Working agreement
-
-- `main` must stay demoable.
-- Use `feat/<issue>-short-name`, `fix/<issue>-short-name`, `docs/<issue>-short-name`, or `chore/<issue>-short-name`.
-- Open a focused pull request and request the review partner for the affected area.
-- Never commit API keys, Wi-Fi credentials, device tokens, or raw private logs.
-- A change is done only when its acceptance test and relevant documentation pass.
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for the complete branch and pull-request convention.
-
-## Hackathon delivery checklist
-
-- A real NVIDIA model call runs through Nebius Token Factory or Nebius AI Cloud.
-- The agent returns structured diagnostic JSON and the runtime stores a redacted evidence log.
-- Safety policy blocks tools outside the allowlist and PWM values above the configured limit.
-- All three demo paths run on the same hardware without code changes between scenes.
-- The public repository has this README and the root license visible before submission.
-- The public demo video is no longer than three minutes and shows operating hardware for at least one minute.
+- `python` is not 3.11: use `py -3.11` on Windows or install Python 3.11 explicitly.
+- `npm ci` rejects the lockfile: use Node 22 and do not hand-edit `package-lock.json`.
+- Port 5173 or 8000 is busy: stop the existing process or pass a different supported port.
+- ESP32 is not listed: use a USB data cable, install the board's USB-UART driver, and reconnect it.
+- Firmware upload cannot open the port: close every serial monitor before uploading.
+- Contract validation fails: do not patch a consumer independently; fix the canonical contract/fixture or add a versioned migration.
 
 ## Project links
 
 - [MVP scope and team backlog](https://docs.google.com/spreadsheets/d/1EOCmOg-qVQ_2OJV1DkeH9ULjkR7oT8kNMNGyrTKTUFs/edit?gid=9060801#gid=9060801)
 - [Hackathon page](https://nebiusglobalaihackathon.devpost.com/)
+- [Latest CI runs](https://github.com/Little-Boy-z-NeXus/nexus-hardware-doctor/actions)
 
 ## License
 
