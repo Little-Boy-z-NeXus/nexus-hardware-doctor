@@ -1,22 +1,20 @@
-const components = ["ESP32", "INA219", "L298N", "DC motor"];
+import { Navigate, Route, Routes } from "react-router-dom";
+
+import { AppShell } from "./components/AppShell";
+import { AIDoctorPage } from "./pages/AIDoctorPage";
+import { DashboardPage } from "./pages/DashboardPage";
+import { HardwareGraphPage } from "./pages/HardwareGraphPage";
 
 export function App() {
   return (
-    <main>
-      <header>
-        <p className="eyebrow">NeXus Hardware Doctor</p>
-        <h1>Hardware health: waiting for telemetry</h1>
-        <p>The UI shell is ready for the Prevent, Manual Diagnose, and Auto Heal paths.</p>
-      </header>
-
-      <section aria-labelledby="rig-title">
-        <h2 id="rig-title">MVP rig</h2>
-        <ul>
-          {components.map((component) => (
-            <li key={component}>{component}</li>
-          ))}
-        </ul>
-      </section>
-    </main>
+    <Routes>
+      <Route element={<AppShell />}>
+        <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route path="dashboard" element={<DashboardPage />} />
+        <Route path="hardware" element={<HardwareGraphPage />} />
+        <Route path="doctor" element={<AIDoctorPage />} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      </Route>
+    </Routes>
   );
 }
