@@ -18,6 +18,7 @@ build/
 node_modules/
 .vite/
 coverage/
+*.tsbuildinfo
 
 # PlatformIO
 .pio/
