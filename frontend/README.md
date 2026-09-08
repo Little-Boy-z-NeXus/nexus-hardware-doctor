@@ -88,8 +88,10 @@ Run these inside `frontend`, or prefix them with `npm --prefix frontend` from th
 | --- | --- |
 | `npm run dev` | Start the local Vite development server |
 | `npm run lint` | Run ESLint over TypeScript and React code |
+| `npm run test` | Run all Vitest unit tests once |
+| `npm run test:watch` | Re-run affected unit tests while developing |
 | `npm run build` | Type-check and create the production bundle in `dist/` |
-| `npm run check` | Run lint followed by the production build |
+| `npm run check` | Run lint, unit tests, and the production build |
 | `npm run preview` | Serve the built `dist/` bundle locally |
 
 ## Quality check
@@ -98,7 +100,16 @@ Run these inside `frontend`, or prefix them with `npm --prefix frontend` from th
 npm run check
 ```
 
-Expected result: ESLint exits without errors and Vite creates `dist/index.html` plus hashed assets. `dist/` and `node_modules/` are generated locally and must not be committed.
+Expected result: ESLint exits without errors, nine unit tests pass, and Vite creates `dist/index.html` plus hashed assets. `dist/` and `node_modules/` are generated locally and must not be committed.
+
+Run only the unit tests or keep them in watch mode:
+
+```bash
+npm run test
+npm run test:watch
+```
+
+Route tests use Testing Library with an in-memory router; configuration tests exercise URL normalization without contacting a live backend. Protocol-level availability and latency belong to [`../nexus-k6-tests`](../nexus-k6-tests/README.md).
 
 Test the production bundle:
 
@@ -116,12 +127,15 @@ frontend/
 ├── index.html
 ├── package.json
 ├── tsconfig.json
+├── vitest.config.ts
 └── src/
     ├── components/    Shared application shell and page header
     ├── config/        Validated/defaulted environment access
     ├── contracts/     TypeScript mirrors of contract v1
     ├── pages/         Dashboard, Hardware Graph and AI Doctor routes
+    ├── test/          Shared Vitest setup
     ├── App.tsx        Route definitions
+    ├── App.test.tsx   Route and navigation unit tests
     ├── main.tsx       Browser entry point
     └── styles.css     Responsive MVP design system and page styles
 ```

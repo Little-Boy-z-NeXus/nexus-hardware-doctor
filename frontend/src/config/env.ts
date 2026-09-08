@@ -1,5 +1,5 @@
-function normalizeBaseUrl(value: string | undefined) {
-  return (value ?? "http://localhost:8000").replace(/\/$/, "");
+export function normalizeBaseUrl(value: string | undefined) {
+  return (value ?? "http://localhost:8000").replace(/\/+$/, "");
 }
 
 export const env = {

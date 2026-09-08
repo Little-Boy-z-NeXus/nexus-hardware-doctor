@@ -145,9 +145,18 @@ python scripts/validate_contracts.py
 ruff check backend scripts
 python -m pytest backend/tests -q
 npm --prefix frontend run check
+k6 run nexus-k6-tests/smoke.js
 ```
 
-These are the same core checks enforced by GitHub Actions. Hardware upload is deliberately separate because CI has no physical ESP32.
+The k6 command requires both local applications to be running. These are the same core checks enforced by GitHub Actions. Hardware upload and the longer k6 baseline are deliberately separate because CI has no physical ESP32 and should remain fast.
+
+Run the small manual load profile before a demo or release:
+
+```bash
+k6 run nexus-k6-tests/load.js
+```
+
+See [nexus-k6-tests/README.md](nexus-k6-tests/README.md) for installation, environment overrides, workload, and pass thresholds.
 
 ## Environment variables
 
@@ -170,6 +179,7 @@ nexus-hardware-doctor/
 ├── backend/           FastAPI, contracts, reasoning, policy and APIs
 ├── frontend/          Dashboard, Hardware Graph and AI Doctor UI
 ├── nexus-contracts/   Frozen schemas, fixtures and migration notes
+├── nexus-k6-tests/    CI smoke test and manual MVP load baseline
 ├── docs/              Architecture, scope, ownership and security decisions
 ├── scripts/           Repository and contract validators
 └── .github/           CI and contribution templates
@@ -181,6 +191,7 @@ Read the component guide before changing an area:
 - [Backend guide](backend/README.md)
 - [Frontend guide](frontend/README.md)
 - [Contract guide](nexus-contracts/README.md)
+- [k6 performance test guide](nexus-k6-tests/README.md)
 - [Documentation index](docs/README.md)
 - [Validation scripts](scripts/README.md)
 

@@ -16,6 +16,7 @@ REQUIRED_DIRECTORIES = (
     "nexus-contracts/v1/schemas",
     "nexus-contracts/v1/fixtures",
     "nexus-contracts/migrations",
+    "nexus-k6-tests",
     ".github/ISSUE_TEMPLATE",
     ".github/workflows",
 )
@@ -46,6 +47,10 @@ REQUIRED_FILES = (
     "frontend/src/pages/HardwareGraphPage.tsx",
     "frontend/src/pages/AIDoctorPage.tsx",
     "frontend/src/vite-env.d.ts",
+    "frontend/src/App.test.tsx",
+    "frontend/src/config/env.test.ts",
+    "frontend/src/test/setup.ts",
+    "frontend/vitest.config.ts",
     "frontend/README.md",
     "firmware/include/nexus_contract_v1.h",
     "backend/src/nexus_backend/contracts.py",
@@ -65,6 +70,9 @@ REQUIRED_FILES = (
     "nexus-contracts/migrations/0001-freeze-v1.md",
     "scripts/validate_contracts.py",
     "scripts/README.md",
+    "nexus-k6-tests/README.md",
+    "nexus-k6-tests/smoke.js",
+    "nexus-k6-tests/load.js",
     "docs/README.md",
     "docs/architecture.md",
     "docs/ownership.md",
@@ -81,6 +89,7 @@ README_FILES = (
     "nexus-contracts/migrations/README.md",
     "docs/README.md",
     "scripts/README.md",
+    "nexus-k6-tests/README.md",
 )
 
 MARKDOWN_LINK = re.compile(r"(?<!!)\[[^\]]+\]\(([^)]+)\)")
@@ -101,11 +110,7 @@ def validate_readme_links(errors: list[str]) -> None:
             readme_path.read_text(encoding="utf-8")
         ):
             target = raw_target.strip().strip("<>")
-            if (
-                not target
-                or target.startswith(("#", "mailto:"))
-                or "://" in target
-            ):
+            if not target or target.startswith(("#", "mailto:")) or "://" in target:
                 continue
 
             file_target = target.split("#", maxsplit=1)[0]

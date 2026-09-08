@@ -113,12 +113,13 @@ python -m pytest backend/tests -q
 python scripts/validate_contracts.py
 ```
 
-Expected result: five tests pass, four schemas and four fixtures validate, and all three stack mirrors contain the shared telemetry fields.
+Expected result: ten tests pass, including success and rejected-contract paths; four schemas and four fixtures validate; and all three stack mirrors contain the shared telemetry fields.
 
 Run one test file while developing:
 
 ```bash
 python -m pytest backend/tests/test_contracts.py -q
+python -m pytest backend/tests/test_contract_validation.py -q
 python -m pytest backend/tests/test_health.py -q
 ```
 
@@ -133,7 +134,8 @@ backend/
 │   └── contracts.py    Typed v1 contract mirrors
 └── tests/
     ├── test_health.py
-    └── test_contracts.py
+    ├── test_contracts.py
+    └── test_contract_validation.py
 ```
 
 Canonical JSON Schemas live in [`nexus-contracts/v1`](../nexus-contracts/v1/README.md). Python models mirror them but do not replace them.

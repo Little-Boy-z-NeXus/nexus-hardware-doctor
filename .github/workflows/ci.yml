@@ -27,7 +27,7 @@ jobs:
         run: python scripts/validate_repo.py
 
   backend:
-    name: Backend smoke test
+    name: Backend unit tests
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -56,7 +56,7 @@ jobs:
         run: pytest backend/tests -q
 
   frontend:
-    name: Frontend production build
+    name: Frontend unit tests and build
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
@@ -78,6 +78,77 @@ jobs:
         run: npm run lint
         working-directory: frontend
 
+      - name: Run frontend unit tests
+        run: npm run test
+        working-directory: frontend
+
       - name: Build frontend
         run: npm run build
         working-directory: frontend
+
+  mvp-smoke:
+    name: k6 MVP smoke test
+    needs: [backend, frontend]
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Set up k6
+        uses: grafana/setup-k6-action@v1
+
+      - name: Install applications
+        run: |
+          pip install -e ./backend
+          npm ci --prefix frontend
+
+      - name: Start backend and frontend
+        shell: bash
+        run: |
+          uvicorn nexus_backend.app:app --host 127.0.0.1 --port 8000 > /tmp/nexus-backend.log 2>&1 &
+          echo $! > /tmp/nexus-backend.pid
+          npm --prefix frontend run dev > /tmp/nexus-frontend.log 2>&1 &
+          echo $! > /tmp/nexus-frontend.pid
+
+      - name: Wait for applications
+        shell: bash
+        run: |
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:8000/health > /dev/null \
+              && curl --fail --silent http://127.0.0.1:5173/dashboard > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/nexus-backend.log
+          cat /tmp/nexus-frontend.log
+          exit 1
+
+      - name: Run k6 smoke test
+        run: k6 run nexus-k6-tests/smoke.js
+
+      - name: Print service logs on failure
+        if: failure()
+        run: |
+          cat /tmp/nexus-backend.log || true
+          cat /tmp/nexus-frontend.log || true
+
+      - name: Stop applications
+        if: always()
+        shell: bash
+        run: |
+          kill "$(cat /tmp/nexus-backend.pid)" 2>/dev/null || true
+          kill "$(cat /tmp/nexus-frontend.pid)" 2>/dev/null || true
