@@ -77,6 +77,22 @@
       "signal_type": "pwm"
     },
     {
+      "connection_id": "esp32_to_l298n_in1",
+      "from_component_id": "esp32",
+      "from_pin": "gpio_26",
+      "to_component_id": "l298n",
+      "to_pin": "in1",
+      "signal_type": "digital"
+    },
+    {
+      "connection_id": "esp32_to_l298n_in2",
+      "from_component_id": "esp32",
+      "from_pin": "gpio_27",
+      "to_component_id": "l298n",
+      "to_pin": "in2",
+      "signal_type": "digital"
+    },
+    {
       "connection_id": "l298n_to_motor_positive",
       "from_component_id": "l298n",
       "from_pin": "out1",
