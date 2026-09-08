@@ -1,0 +1,38 @@
+name: Bug report
+description: Report a reproducible problem in a scoped MVP path.
+title: "fix: "
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - firmware
+        - backend
+        - frontend
+        - docs or CI
+    validations:
+      required: true
+  - type: dropdown
+    id: path
+    attributes:
+      label: Demo path
+      options:
+        - Prevent
+        - Manual Diagnose
+        - Auto Heal
+        - Shared foundation
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected and actual behavior
+      description: Include exact reproduction steps and redact credentials or private logs.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Add safe logs, screenshots, measurements, or a video link.

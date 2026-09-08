@@ -1,0 +1,43 @@
+name: MVP task
+description: Propose work that directly supports one locked MVP path.
+title: "feat: "
+body:
+  - type: input
+    id: backlog
+    attributes:
+      label: Backlog ID
+      placeholder: H02
+    validations:
+      required: true
+  - type: dropdown
+    id: path
+    attributes:
+      label: Supported path
+      options:
+        - Prevent
+        - Manual Diagnose
+        - Auto Heal
+        - Shared foundation
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Required outcome
+      description: Describe observable behavior, not an implementation wishlist.
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance test
+      description: State the pass or fail condition that can be demonstrated.
+    validations:
+      required: true
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope check
+      options:
+        - label: This work is inside the locked MVP scope.
+          required: true

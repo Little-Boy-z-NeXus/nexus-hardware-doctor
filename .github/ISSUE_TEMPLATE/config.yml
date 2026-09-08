@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: NeXus MVP backlog
+    url: https://docs.google.com/spreadsheets/d/1EOCmOg-qVQ_2OJV1DkeH9ULjkR7oT8kNMNGyrTKTUFs/edit?gid=9060801#gid=9060801
+    about: Check scope, ownership, dependencies, and acceptance criteria before filing work.
