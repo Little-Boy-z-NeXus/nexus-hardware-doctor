@@ -22,6 +22,8 @@ Verified on 2026-09-10. H02 and H03 share the device registration, canonical val
 
 ![H02 browser receiving source-labeled simulated telemetry](h02-monitor.png)
 
+Screenshot captured with the original example topology in commit `9b6c665`, before the upstream GOOUUU ESP32-S3/JGB37 update. All 123 backend tests were rerun successfully against the updated fixture; the screenshot documents the earlier browser check.
+
 This is generated software data, not physical measurements. No model call or physical motor action is claimed. The React API client/dashboard remain G02/G04 work. The API is for local use and binds to loopback; network authentication is later integration work.
 
 Run the demonstration using the [backend API guide](../backend-api.md). Follow the repository's review process before merging.
