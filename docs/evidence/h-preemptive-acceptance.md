@@ -26,6 +26,8 @@ Checked 10 September 2026. This report covers software prepared before live-mode
 
 The simulator generates all data in these screenshots. No physical motor operation or real Nemotron response is represented.
 
+These browser captures use the original example topology from commit `05720f4`. After integrating the upstream GOOUUU ESP32-S3/JGB37 example, all 282 backend tests and the rebuilt container's packaged evaluation passed again; the screenshots document the earlier browser checks.
+
 ## Reproduce
 
 Use [H08 runbook](../h08-runbook.md) for clean startup and [H07 evaluation guide](../h07-evaluation.md) for scoring. The generated local report is `artifacts/h07-evaluation.json`; it explicitly records `h07_complete: false` and lists the untested physical/live gates.
