@@ -2,8 +2,6 @@ import { Activity, Bot, Boxes, CircleUserRound, Gauge, Menu, X } from "lucide-re
 import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 
-import { useHardwareMonitor } from "../realtime/HardwareMonitorContext";
-
 const navigation = [
   { to: "/dashboard", label: "Dashboard", icon: Gauge },
   { to: "/hardware", label: "Hardware Graph", icon: Boxes },
@@ -12,13 +10,6 @@ const navigation = [
 
 export function AppShell() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const { snapshot, streamStatus } = useHardwareMonitor();
-  const isLive = streamStatus === "live" && snapshot.connection.status === "connected";
-  const connectionLabel = isLive
-    ? `${snapshot.connection.port ?? "USB"} · Realtime`
-    : streamStatus === "live"
-      ? "Đang tìm ESP32"
-      : "Đang nối backend";
 
   return (
     <div className="app-shell">
@@ -43,8 +34,8 @@ export function AppShell() {
         <div className="sidebar__footer">
           <div className="demo-device">
             <span className="demo-device__icon"><Activity size={18} /></span>
-            <span><strong>Demo rig</strong><small>{connectionLabel}</small></span>
-            <span className={`online-dot${isLive ? "" : " online-dot--offline"}`} aria-label={isLive ? "Online" : "Offline"} />
+            <span><strong>Demo rig</strong><small>ESP32-S3 · Online</small></span>
+            <span className="online-dot" aria-label="Online" />
           </div>
           <p>MVP workspace · Build 0.1</p>
         </div>
@@ -55,7 +46,7 @@ export function AppShell() {
       <div className="app-content">
         <header className="topbar">
           <button className="icon-button mobile-menu" type="button" aria-label="Open navigation" onClick={() => setMenuOpen(true)}><Menu size={21} /></button>
-          <div className="topbar__status"><span className={`online-dot${isLive ? "" : " online-dot--offline"}`} aria-hidden="true" />{connectionLabel}</div>
+          <div className="topbar__status"><span className="online-dot" aria-hidden="true" />Live telemetry</div>
           <div className="topbar__actions">
             <span className="demo-badge">LIVE DEMO</span>
             <button className="profile-button" type="button" aria-label="Open team profile"><CircleUserRound size={23} /><span>Little Boyz</span></button>

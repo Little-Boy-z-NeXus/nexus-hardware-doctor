@@ -10,8 +10,6 @@ Available now:
 - L298N channel A enable and direction output
 - local `NEXUS_MAX_PWM_PERCENT` clamp
 - one JSON telemetry sample per second
-- explicit boot/INA219 readiness and failure log lines
-- invalid sensor values are withheld instead of emitting non-standard `nan` JSON
 - field names shared with backend and frontend contract v1
 
 Command transport is not implemented yet. The device starts with the driver disabled and does not accept serial or MQTT actions in the current foundation.
@@ -60,7 +58,7 @@ The machine-readable topology is [`nexus-contracts/v1/fixtures/hardware-model.ex
 
 ## Install PlatformIO
 
-On Windows, double-click `nexus-upload-firmware.cmd` to upload through built-in USB-JTAG. Then close every Serial Monitor and double-click `nexus-start-app.cmd`; the backend owns the COM port and sends the same firmware log to the Hardware Graph UI. Use `nexus-run-firmware.cmd` only for isolated CLI debugging while the app is stopped.
+On Windows, double-click `nexus-run-firmware.cmd` in the repository root to build, upload through built-in USB-JTAG, detect the board's COM port, and open Serial Monitor automatically. Use `nexus-upload-firmware.cmd` or `nexus-monitor-firmware.cmd` when only one action is needed.
 
 Python 3.11 is recommended.
 
@@ -159,8 +157,6 @@ At 115200 baud, the device emits one compact JSON object per line:
 ```
 
 `recorded_at` remains `null` until a later transport task synchronizes device time. The backend may stamp receipt time but must not rename the field. `motor_rpm` is also `null` until the firmware encoder task reads GPIO16/GPIO17 and converts pulses to RPM.
-
-The firmware also emits readable status lines. `[NEXUS][ERROR][INA219_I2C_NO_ACK]` means the sensor did not acknowledge during startup; `[NEXUS][ERROR][INA219_INVALID_READING]` means a later read was not finite. The firmware retries INA219 every five seconds, while the backend converts these codes into a Vietnamese explanation and repair step in the UI.
 
 ## Firmware contract files
 

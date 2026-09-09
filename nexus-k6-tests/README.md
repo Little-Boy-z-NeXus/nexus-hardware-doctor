@@ -1,13 +1,13 @@
 # nexus-k6-tests
 
-This folder contains protocol-level performance checks for the NeXus MVP. The scripts never issue hardware control commands; they read backend health/live snapshots, verify the WebSocket handshake, and request frontend routes.
+This folder contains protocol-level performance checks for the NeXus MVP. The scripts never issue hardware control commands; they only read the backend health endpoint and frontend routes.
 
 ## Test profiles
 
 | Script | Purpose | Default workload | Intended use |
 | --- | --- | --- | --- |
-| `smoke.js` | Verify health, live snapshot, initial WebSocket message, frontend routes and latency | 1 virtual user, 1 iteration | Local checks and every CI run |
-| `load.js` | Read health, live hardware state and dashboard under a small demo load | Ramp from 0 to 5 virtual users over 25 seconds | Manual run before demos or releases |
+| `smoke.js` | Verify availability, response contract and basic latency | 1 virtual user, 1 iteration | Local checks and every CI run |
+| `load.js` | Establish a small hackathon demo baseline | Ramp from 0 to 5 virtual users over 25 seconds | Manual run before demos or releases |
 
 ## Prerequisites
 
