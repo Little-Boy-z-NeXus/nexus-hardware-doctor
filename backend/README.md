@@ -22,6 +22,8 @@ Those capabilities are separate backlog items. Do not mock them inside the produ
 
 ## Prerequisites
 
+On Windows, no terminal commands are required: double-click `nexus-start-backend.cmd` in the repository root. The launcher creates or repairs the backend environment automatically. Use `nexus-start-app.cmd` to start both backend and frontend.
+
 - Python 3.11
 - Git
 - A cloned `nexus-hardware-doctor` repository

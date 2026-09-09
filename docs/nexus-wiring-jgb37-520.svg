@@ -1,0 +1,175 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000">
+  <defs>
+    <style>
+      .title { font: 700 42px 'Segoe UI', Arial, sans-serif; fill: #102a43; }
+      .subtitle { font: 600 23px 'Segoe UI', Arial, sans-serif; fill: #486581; }
+      .block-title { font: 700 25px 'Segoe UI', Arial, sans-serif; fill: #102a43; }
+      .pin { font: 700 18px 'Segoe UI', Arial, sans-serif; fill: #102a43; }
+      .label { font: 600 18px 'Segoe UI', Arial, sans-serif; fill: #243b53; }
+      .small { font: 500 15px 'Segoe UI', Arial, sans-serif; fill: #334e68; }
+      .note { font: 700 17px 'Segoe UI', Arial, sans-serif; fill: #7c2d12; }
+      .wire { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    </style>
+    <marker id="arrow-red" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L12,6 L0,12 Z" fill="#dc2626"/></marker>
+    <marker id="arrow-blue" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L12,6 L0,12 Z" fill="#2563eb"/></marker>
+    <marker id="arrow-green" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L12,6 L0,12 Z" fill="#16a34a"/></marker>
+    <marker id="arrow-yellow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L12,6 L0,12 Z" fill="#facc15" stroke="#a16207" stroke-width="1"/></marker>
+    <marker id="arrow-purple" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L12,6 L0,12 Z" fill="#9333ea"/></marker>
+    <marker id="arrow-orange" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L12,6 L0,12 Z" fill="#ea580c"/></marker>
+    <marker id="arrow-white" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L12,6 L0,12 Z" fill="#ffffff" stroke="#64748b" stroke-width="1.5"/></marker>
+    <marker id="arrow-black" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L12,6 L0,12 Z" fill="#111827"/></marker>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="5" stdDeviation="7" flood-color="#102a43" flood-opacity="0.13"/></filter>
+  </defs>
+
+  <rect width="1600" height="1000" fill="#f8fafc"/>
+  <text x="800" y="58" text-anchor="middle" class="title">NeXus MVP — SƠ ĐỒ ĐẤU DÂY AN TOÀN</text>
+  <text x="800" y="94" text-anchor="middle" class="subtitle">GOOUUU ESP32-S3-N16R8 + INA219 + L298N + JGB37-520</text>
+
+  <!-- Top component blocks -->
+  <g filter="url(#shadow)">
+    <rect x="45" y="145" width="245" height="250" rx="20" fill="#fff1f2" stroke="#fb7185" stroke-width="3"/>
+    <rect x="385" y="125" width="290" height="300" rx="20" fill="#eff6ff" stroke="#60a5fa" stroke-width="3"/>
+    <rect x="780" y="125" width="335" height="300" rx="20" fill="#f0fdf4" stroke="#4ade80" stroke-width="3"/>
+    <rect x="1210" y="125" width="345" height="400" rx="20" fill="#fffbeb" stroke="#fbbf24" stroke-width="3"/>
+    <rect x="435" y="610" width="730" height="260" rx="22" fill="#f5f3ff" stroke="#a78bfa" stroke-width="3"/>
+  </g>
+
+  <text x="167" y="190" text-anchor="middle" class="block-title">NGUỒN DC 12V</text>
+  <text x="167" y="221" text-anchor="middle" class="small">Adapter ổn áp, tối thiểu 2 A</text>
+  <circle cx="105" cy="285" r="17" fill="#dc2626"/><text x="105" y="292" text-anchor="middle" font-size="25" font-weight="700" fill="white">+</text>
+  <text x="135" y="291" class="pin">+12V</text>
+  <circle cx="105" cy="345" r="17" fill="#111827"/><text x="105" y="351" text-anchor="middle" font-size="22" font-weight="700" fill="white">−</text>
+  <text x="135" y="351" class="pin">0V / GND</text>
+
+  <text x="530" y="166" text-anchor="middle" class="block-title">INA219</text>
+  <text x="530" y="194" text-anchor="middle" class="small">Đo dòng high-side</text>
+  <g class="pin">
+    <circle cx="415" cy="260" r="13" fill="#dc2626"/><text x="415" y="231" text-anchor="middle">VIN+</text>
+    <circle cx="645" cy="260" r="13" fill="#dc2626"/><text x="645" y="231" text-anchor="middle">VIN−</text>
+    <circle cx="430" cy="380" r="13" fill="#9333ea"/><text x="430" y="354" text-anchor="middle">VCC</text>
+    <circle cx="485" cy="380" r="13" fill="#111827"/><text x="485" y="354" text-anchor="middle">GND</text>
+    <circle cx="560" cy="380" r="13" fill="#2563eb"/><text x="560" y="354" text-anchor="middle">SDA</text>
+    <circle cx="625" cy="380" r="13" fill="#2563eb"/><text x="625" y="354" text-anchor="middle">SCL</text>
+  </g>
+
+  <text x="947" y="166" text-anchor="middle" class="block-title">L298N — KÊNH A</text>
+  <text x="947" y="194" text-anchor="middle" class="small">Tháo jumper ENA để điều khiển PWM</text>
+  <g class="pin">
+    <circle cx="810" cy="260" r="13" fill="#dc2626"/><text x="810" y="231" text-anchor="middle">+12V / VS</text>
+    <circle cx="870" cy="380" r="13" fill="#111827"/><text x="870" y="354" text-anchor="middle">GND</text>
+    <circle cx="930" cy="380" r="13" fill="#2563eb"/><text x="930" y="354" text-anchor="middle">ENA</text>
+    <circle cx="990" cy="380" r="13" fill="#2563eb"/><text x="990" y="354" text-anchor="middle">IN1</text>
+    <circle cx="1050" cy="380" r="13" fill="#2563eb"/><text x="1050" y="354" text-anchor="middle">IN2</text>
+    <circle cx="1080" cy="260" r="13" fill="#dc2626"/><text x="1080" y="231" text-anchor="middle">OUT1</text>
+    <circle cx="1080" cy="320" r="13" fill="#ffffff" stroke="#64748b" stroke-width="3"/><text x="1080" y="299" text-anchor="middle">OUT2</text>
+  </g>
+
+  <text x="1382" y="166" text-anchor="middle" class="block-title">JGB37-520</text>
+  <text x="1382" y="194" text-anchor="middle" class="small">Motor 12V + encoder Hall A/B</text>
+  <rect x="1303" y="220" width="158" height="75" rx="35" fill="#cbd5e1" stroke="#64748b" stroke-width="3"/>
+  <line x1="1461" y1="258" x2="1502" y2="258" stroke="#64748b" stroke-width="14"/>
+  <g class="pin">
+    <circle cx="1238" cy="260" r="13" fill="#dc2626"/><text x="1262" y="266">M+</text>
+    <circle cx="1238" cy="320" r="13" fill="#ffffff" stroke="#64748b" stroke-width="3"/><text x="1262" y="326">M−</text>
+    <text x="1400" y="336" text-anchor="middle" class="small">Giắc 6 dây — nhìn từ phía dây</text>
+    <rect x="1290" y="346" width="220" height="38" rx="7" fill="#e2e8f0" stroke="#64748b" stroke-width="2"/>
+    <rect x="1301" y="354" width="24" height="22" rx="3" fill="#dc2626"/>
+    <rect x="1336" y="354" width="24" height="22" rx="3" fill="#111827"/>
+    <rect x="1371" y="354" width="24" height="22" rx="3" fill="#facc15"/>
+    <rect x="1406" y="354" width="24" height="22" rx="3" fill="#16a34a"/>
+    <rect x="1441" y="354" width="24" height="22" rx="3" fill="#2563eb"/>
+    <rect x="1476" y="354" width="24" height="22" rx="3" fill="#ffffff" stroke="#94a3b8" stroke-width="1"/>
+    <text x="1400" y="406" text-anchor="middle" class="small">ĐỎ · ĐEN · VÀNG · XANH LÁ · XANH DƯƠNG · TRẮNG</text>
+    <text x="1400" y="430" text-anchor="middle" font-family="'Segoe UI', Arial, sans-serif" font-size="12" fill="#334e68">M+ · GND encoder · A · B · VCC 3.3V · M−</text>
+    <circle cx="1260" cy="490" r="13" fill="#2563eb"/><text x="1260" y="462" text-anchor="middle">VCC 3.3V</text>
+    <circle cx="1340" cy="490" r="13" fill="#111827"/><text x="1340" y="462" text-anchor="middle">GND</text>
+    <circle cx="1430" cy="490" r="13" fill="#facc15" stroke="#a16207" stroke-width="2"/><text x="1430" y="462" text-anchor="middle">A</text>
+    <circle cx="1500" cy="490" r="13" fill="#16a34a"/><text x="1500" y="462" text-anchor="middle">B</text>
+  </g>
+
+  <!-- Exactly one sequential 12V path -->
+  <path d="M105 285 H330 V260 H402" class="wire" stroke="#dc2626" stroke-width="8" marker-end="url(#arrow-red)"/>
+  <text x="260" y="250" text-anchor="middle" class="note">+12V → VIN+</text>
+  <path d="M658 260 H797" class="wire" stroke="#dc2626" stroke-width="8" marker-end="url(#arrow-red)"/>
+  <text x="720" y="290" text-anchor="middle" class="note">VIN− → VS</text>
+
+  <!-- Motor power only between L298N OUT1/OUT2 and M+/M- -->
+  <path d="M1093 260 H1200 V260 H1225" class="wire" stroke="#dc2626" stroke-width="7" marker-end="url(#arrow-red)"/>
+  <path d="M1093 320 H1180 V320 H1225" class="wire" stroke="#64748b" stroke-width="10"/>
+  <path d="M1093 320 H1180 V320 H1225" class="wire" stroke="#ffffff" stroke-width="6" marker-end="url(#arrow-white)"/>
+
+  <!-- ESP32 block and pins -->
+  <text x="800" y="655" text-anchor="middle" class="block-title">GOOUUU ESP32-S3-N16R8 — NGUỒN RIÊNG QUA USB</text>
+  <rect x="470" y="690" width="150" height="70" rx="12" fill="#dbeafe" stroke="#2563eb" stroke-width="2"/>
+  <text x="545" y="719" text-anchor="middle" class="pin">USB NATIVE</text>
+  <text x="545" y="744" text-anchor="middle" class="small">303A:1001 / CDC</text>
+  <line x1="395" y1="725" x2="470" y2="725" stroke="#2563eb" stroke-width="12"/>
+
+  <g class="pin">
+    <circle cx="670" cy="700" r="13" fill="#9333ea"/><text x="670" y="735" text-anchor="middle">3V3</text>
+    <circle cx="735" cy="700" r="13" fill="#111827"/><text x="735" y="735" text-anchor="middle">GND</text>
+    <circle cx="815" cy="700" r="13" fill="#2563eb"/><text x="815" y="735" text-anchor="middle">GPIO1</text>
+    <circle cx="895" cy="700" r="13" fill="#2563eb"/><text x="895" y="735" text-anchor="middle">GPIO2</text>
+    <circle cx="975" cy="700" r="13" fill="#2563eb"/><text x="975" y="735" text-anchor="middle">GPIO12</text>
+    <circle cx="1055" cy="700" r="13" fill="#2563eb"/><text x="1055" y="735" text-anchor="middle">GPIO13</text>
+    <circle cx="1135" cy="700" r="13" fill="#2563eb"/><text x="1135" y="735" text-anchor="middle">GPIO14</text>
+    <circle cx="1015" cy="820" r="13" fill="#facc15" stroke="#a16207" stroke-width="2"/><text x="1015" y="850" text-anchor="middle">GPIO16</text>
+    <circle cx="1100" cy="820" r="13" fill="#16a34a"/><text x="1100" y="850" text-anchor="middle">GPIO17</text>
+  </g>
+
+  <!-- I2C: paths separated and traceable -->
+  <path d="M815 687 V570 H560 V393" class="wire" stroke="#2563eb" stroke-width="5" marker-end="url(#arrow-blue)"/>
+  <text x="690" y="555" class="small">GPIO1 → SDA</text>
+  <path d="M895 687 V540 H625 V393" class="wire" stroke="#2563eb" stroke-width="5" marker-end="url(#arrow-blue)"/>
+  <text x="700" y="525" class="small">GPIO2 → SCL</text>
+
+  <!-- L298N channel A control -->
+  <path d="M975 687 V500 H930 V393" class="wire" stroke="#2563eb" stroke-width="5" marker-end="url(#arrow-blue)"/>
+  <path d="M1055 687 V480 H990 V393" class="wire" stroke="#2563eb" stroke-width="5" marker-end="url(#arrow-blue)"/>
+  <path d="M1135 687 V460 H1050 V393" class="wire" stroke="#2563eb" stroke-width="5" marker-end="url(#arrow-blue)"/>
+  <text x="947" y="445" text-anchor="middle" class="small">GPIO12 → ENA (PWM)</text>
+  <text x="947" y="468" text-anchor="middle" class="small">GPIO13 → IN1 · GPIO14 → IN2</text>
+
+  <!-- 3.3V branches: stay above GND bus and never touch 12V -->
+  <circle cx="670" cy="665" r="7" fill="#9333ea"/>
+  <path d="M670 687 V665 H350 V455 H430 V393" class="wire" stroke="#9333ea" stroke-width="5" marker-end="url(#arrow-purple)"/>
+  <path d="M670 665 H1185 V555 H1260 V503" class="wire" stroke="#2563eb" stroke-width="5" marker-end="url(#arrow-blue)"/>
+  <text x="390" y="449" class="small" fill="#7e22ce">3V3 → INA219 VCC</text>
+  <text x="1190" y="548" class="small" fill="#1d4ed8">3V3 → Encoder VCC (xanh dương)</text>
+
+  <!-- Encoder A/B: route on far right, no crossings with GND -->
+  <path d="M1015 807 V785 H1430 V503" class="wire" stroke="#facc15" stroke-width="7" marker-end="url(#arrow-yellow)"/>
+  <path d="M1100 807 V760 H1500 V503" class="wire" stroke="#16a34a" stroke-width="5" marker-end="url(#arrow-green)"/>
+  <text x="1225" y="750" class="small">A vàng→GPIO16 · B xanh lá→GPIO17</text>
+
+  <!-- Common GND bus is below all signal wiring -->
+  <line x1="85" y1="925" x2="1520" y2="925" stroke="#111827" stroke-width="9" stroke-linecap="round"/>
+  <text x="190" y="910" class="pin">GND CHUNG</text>
+  <path d="M105 362 V925" class="wire" stroke="#111827" stroke-width="5" marker-end="url(#arrow-black)"/>
+  <path d="M485 393 V900 H485 V925" class="wire" stroke="#111827" stroke-width="5" marker-end="url(#arrow-black)"/>
+  <path d="M870 393 V585 H1220 V925" class="wire" stroke="#111827" stroke-width="5" marker-end="url(#arrow-black)"/>
+  <path d="M735 713 V925" class="wire" stroke="#111827" stroke-width="5" marker-end="url(#arrow-black)"/>
+  <path d="M1340 503 V590 H1370 V925" class="wire" stroke="#111827" stroke-width="5" marker-end="url(#arrow-black)"/>
+  <circle cx="105" cy="925" r="8" fill="#111827"/><circle cx="485" cy="925" r="8" fill="#111827"/><circle cx="735" cy="925" r="8" fill="#111827"/><circle cx="1220" cy="925" r="8" fill="#111827"/><circle cx="1370" cy="925" r="8" fill="#111827"/>
+
+  <!-- Safety note -->
+  <rect x="50" y="480" width="285" height="120" rx="14" fill="#fff7ed" stroke="#f97316" stroke-width="3"/>
+  <text x="192" y="515" text-anchor="middle" class="note">⚠ NGẮT 12V KHI ĐẤU DÂY</text>
+  <text x="192" y="545" text-anchor="middle" class="note">KHÔNG NỐI 12V VÀO ESP32</text>
+  <text x="192" y="568" text-anchor="middle" class="small">OUT1 ↔ M+ (đỏ)</text>
+  <text x="192" y="588" text-anchor="middle" class="small">OUT2 ↔ M− (trắng)</text>
+
+  <text x="800" y="900" text-anchor="middle" class="small">S3: không dùng camera/SD · Giắc: Đỏ → Đen → Vàng → Xanh lá → Xanh dương → Trắng</text>
+
+  <!-- Legend -->
+  <g transform="translate(260,965)">
+    <line x1="0" y1="0" x2="45" y2="0" stroke="#dc2626" stroke-width="8"/><text x="55" y="6" class="small">12V</text>
+    <line x1="120" y1="0" x2="165" y2="0" stroke="#9333ea" stroke-width="8"/><text x="175" y="6" class="small">3.3V</text>
+    <line x1="250" y1="0" x2="295" y2="0" stroke="#111827" stroke-width="8"/><text x="305" y="6" class="small">GND</text>
+    <line x1="385" y1="0" x2="430" y2="0" stroke="#2563eb" stroke-width="8"/><text x="440" y="6" class="small">I²C / điều khiển</text>
+    <line x1="600" y1="0" x2="620" y2="0" stroke="#facc15" stroke-width="8"/><line x1="625" y1="0" x2="645" y2="0" stroke="#16a34a" stroke-width="8"/><text x="655" y="6" class="small">Encoder A / B</text>
+    <line x1="825" y1="0" x2="845" y2="0" stroke="#dc2626" stroke-width="8"/>
+    <line x1="850" y1="0" x2="870" y2="0" stroke="#64748b" stroke-width="10"/><line x1="850" y1="0" x2="870" y2="0" stroke="#ffffff" stroke-width="6"/>
+    <text x="880" y="6" class="small">Motor M+ / M−</text>
+  </g>
+</svg>

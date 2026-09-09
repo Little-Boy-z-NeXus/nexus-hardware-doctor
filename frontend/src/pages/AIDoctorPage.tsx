@@ -13,7 +13,7 @@ export function AIDoctorPage() {
         <article className="card chat-panel">
           <div className="chat-panel__header"><span className="ai-avatar"><Bot size={21} /></span><div><strong>NeXus Doctor</strong><small><i className="online-dot" /> Online · watching demo rig</small></div></div>
           <div className="chat-feed">
-            <div className="message message--ai"><span className="message__avatar"><Bot size={17} /></span><div><p>I’m connected to the ESP32 motor rig. What are you seeing or hearing?</p><time>Just now</time></div></div>
+            <div className="message message--ai"><span className="message__avatar"><Bot size={17} /></span><div><p>I’m connected to the ESP32-S3 motor rig. What are you seeing or hearing?</p><time>Just now</time></div></div>
             <div className="message message--user"><div><p>The motor briefly slowed down. Is something wrong?</p><time>Just now</time></div><span className="message__avatar"><UserRound size={17} /></span></div>
             <div className="message message--ai"><span className="message__avatar"><Sparkles size={17} /></span><div><p>I found one short current spike 18 minutes ago, but voltage stayed stable and the motor recovered in 420 ms. The rig is safe now.</p><div className="message__evidence"><CheckCircle2 size={15} /><span><strong>Evidence checked</strong> INA219 current · Motor RPM · L298N PWM</span></div><time>Just now</time></div></div>
           </div>

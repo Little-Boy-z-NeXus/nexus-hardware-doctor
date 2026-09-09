@@ -1,19 +1,21 @@
 {
   "schema_version": "1.0.0",
-  "hardware_model_id": "nexus-motor-rig-v1",
+  "hardware_model_id": "nexus-s3-l298n-motor-rig-v1",
   "device_id": "nexus-demo-esp32",
-  "name": "NeXus ESP32 motor demo rig",
+  "name": "NeXus GOOUUU ESP32-S3-N16R8 L298N motor demo rig",
   "components": [
     {
       "component_id": "esp32",
       "component_type": "controller",
-      "model": "ESP32 DevKit V1",
+      "model": "GOOUUU Tech ESP32-S3-WROOM-1-N16R8",
       "pins": [
-        { "pin_id": "gpio_21", "label": "SDA", "mode": "i2c" },
-        { "pin_id": "gpio_22", "label": "SCL", "mode": "i2c" },
-        { "pin_id": "gpio_25", "label": "ENA", "mode": "pwm" },
-        { "pin_id": "gpio_26", "label": "IN1", "mode": "output" },
-        { "pin_id": "gpio_27", "label": "IN2", "mode": "output" }
+        { "pin_id": "gpio_1", "label": "SDA", "mode": "i2c" },
+        { "pin_id": "gpio_2", "label": "SCL", "mode": "i2c" },
+        { "pin_id": "gpio_12", "label": "ENA", "mode": "pwm" },
+        { "pin_id": "gpio_13", "label": "IN1", "mode": "output" },
+        { "pin_id": "gpio_14", "label": "IN2", "mode": "output" },
+        { "pin_id": "gpio_16", "label": "Encoder A", "mode": "input" },
+        { "pin_id": "gpio_17", "label": "Encoder B", "mode": "input" }
       ],
       "capabilities": ["sample_telemetry", "control_motor"]
     },
@@ -43,19 +45,21 @@
     {
       "component_id": "dc_motor",
       "component_type": "actuator",
-      "model": "Generic 12V brushed DC motor",
+      "model": "JGB37-520 12V brushed DC gearmotor with Hall encoder",
       "pins": [
         { "pin_id": "motor_plus", "label": "+", "mode": "power" },
-        { "pin_id": "motor_minus", "label": "-", "mode": "ground" }
+        { "pin_id": "motor_minus", "label": "-", "mode": "ground" },
+        { "pin_id": "encoder_a", "label": "Encoder A", "mode": "output" },
+        { "pin_id": "encoder_b", "label": "Encoder B", "mode": "output" }
       ],
-      "capabilities": ["rotate"]
+      "capabilities": ["rotate", "measure_rpm"]
     }
   ],
   "connections": [
     {
       "connection_id": "esp32_to_ina219_sda",
       "from_component_id": "esp32",
-      "from_pin": "gpio_21",
+      "from_pin": "gpio_1",
       "to_component_id": "ina219",
       "to_pin": "sda",
       "signal_type": "i2c"
@@ -63,7 +67,7 @@
     {
       "connection_id": "esp32_to_ina219_scl",
       "from_component_id": "esp32",
-      "from_pin": "gpio_22",
+      "from_pin": "gpio_2",
       "to_component_id": "ina219",
       "to_pin": "scl",
       "signal_type": "i2c"
@@ -71,7 +75,7 @@
     {
       "connection_id": "esp32_to_l298n_pwm",
       "from_component_id": "esp32",
-      "from_pin": "gpio_25",
+      "from_pin": "gpio_12",
       "to_component_id": "l298n",
       "to_pin": "ena",
       "signal_type": "pwm"
@@ -79,7 +83,7 @@
     {
       "connection_id": "esp32_to_l298n_in1",
       "from_component_id": "esp32",
-      "from_pin": "gpio_26",
+      "from_pin": "gpio_13",
       "to_component_id": "l298n",
       "to_pin": "in1",
       "signal_type": "digital"
@@ -87,7 +91,7 @@
     {
       "connection_id": "esp32_to_l298n_in2",
       "from_component_id": "esp32",
-      "from_pin": "gpio_27",
+      "from_pin": "gpio_14",
       "to_component_id": "l298n",
       "to_pin": "in2",
       "signal_type": "digital"
@@ -107,6 +111,22 @@
       "to_component_id": "dc_motor",
       "to_pin": "motor_minus",
       "signal_type": "ground"
+    },
+    {
+      "connection_id": "motor_encoder_a_to_esp32",
+      "from_component_id": "dc_motor",
+      "from_pin": "encoder_a",
+      "to_component_id": "esp32",
+      "to_pin": "gpio_16",
+      "signal_type": "digital"
+    },
+    {
+      "connection_id": "motor_encoder_b_to_esp32",
+      "from_component_id": "dc_motor",
+      "from_pin": "encoder_b",
+      "to_component_id": "esp32",
+      "to_pin": "gpio_17",
+      "signal_type": "digital"
     }
   ],
   "safety_limits": {
@@ -115,5 +135,5 @@
     "max_current_ma": 1500,
     "max_motor_test_duration_ms": 3000
   },
-  "updated_at": "2026-09-08T10:00:00Z"
+  "updated_at": "2026-09-09T10:00:00Z"
 }
