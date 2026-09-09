@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0.0",
   "device_id": "nexus-demo-esp32",
-  "hardware_model_id": "nexus-motor-rig-v1",
+  "hardware_model_id": "nexus-s3-l298n-motor-rig-v1",
   "sample_id": "nexus-demo-esp32-1042",
   "recorded_at": "2026-09-08T10:00:01Z",
   "sequence": 1042,
