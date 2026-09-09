@@ -8,15 +8,18 @@ Available now:
 
 - FastAPI application and `/health` endpoint
 - strict Python mirrors of all four v1 contracts
+- GOOUUU ESP32-S3 serial auto-detection and reconnect
+- strict telemetry ingest with non-finite value rejection
+- `/api/v1/live` snapshot plus `/api/v1/live/ws` realtime stream
+- deterministic Vietnamese diagnostics for the fixed INA219/L298N/motor rig
 - JSON Schema and fixture validation
 - automated tests and Ruff linting
 
 Not implemented yet:
 
-- telemetry ingest and persistence
+- long-term telemetry persistence
 - Nebius/Nemotron runtime calls
 - diagnosis orchestration and tool execution
-- WebSocket stream for the frontend
 
 Those capabilities are separate backlog items. Do not mock them inside the production adapter without marking the data source.
 
@@ -86,8 +89,14 @@ Expected payload:
 Browser links:
 
 - Health: <http://127.0.0.1:8000/health>
+- Live snapshot: <http://127.0.0.1:8000/api/v1/live>
+- Latest valid telemetry: <http://127.0.0.1:8000/api/v1/telemetry>
+- Recent serial log: <http://127.0.0.1:8000/api/v1/logs>
+- Active diagnostics: <http://127.0.0.1:8000/api/v1/diagnostics>
 - Swagger UI: <http://127.0.0.1:8000/docs>
 - OpenAPI JSON: <http://127.0.0.1:8000/openapi.json>
+
+The browser subscribes to `ws://127.0.0.1:8000/api/v1/live/ws`. The first message is a complete snapshot; subsequent messages replace it, which makes reconnect deterministic.
 
 ## Environment configuration
 
@@ -101,6 +110,8 @@ The root [`.env.example`](../.env.example) is the canonical backend/device templ
 | `NEXUS_NVIDIA_MODEL` | Later | Selected NVIDIA/Nemotron model ID |
 | `NEXUS_MQTT_URL` | Later | Device transport broker |
 | `NEXUS_DEVICE_ID` | Yes | Device identity matching contract v1 |
+| `NEXUS_SERIAL_ENABLED` | Yes | Set `false` only for a software-only run |
+| `NEXUS_SERIAL_PORT` | No | Leave blank to auto-detect `303A:1001`; set `COM8` only to force one port |
 | `NEXUS_MAX_PWM_PERCENT` | Yes | Backend safety ceiling; firmware clamps independently too |
 
 FastAPI does not load the future integration variables yet. Keeping the template stable lets later tasks add adapters without renaming configuration.
@@ -115,7 +126,7 @@ python -m pytest backend/tests -q
 python scripts/validate_contracts.py
 ```
 
-Expected result: ten tests pass, including success and rejected-contract paths; four schemas and four fixtures validate; and all three stack mirrors contain the shared telemetry fields.
+Expected result: seventeen tests pass, including serial parser/diagnostic paths; four schemas and four fixtures validate; and all three stack mirrors contain the shared telemetry fields.
 
 Run one test file while developing:
 
@@ -133,11 +144,13 @@ backend/
 ├── src/nexus_backend/
 │   ├── __init__.py
 │   ├── app.py          FastAPI entry point
-│   └── contracts.py    Typed v1 contract mirrors
+│   ├── contracts.py    Typed v1 contract mirrors
+│   └── serial_bridge.py COM reader, ring buffer and deterministic diagnostics
 └── tests/
     ├── test_health.py
     ├── test_contracts.py
-    └── test_contract_validation.py
+    ├── test_contract_validation.py
+    └── test_serial_bridge.py
 ```
 
 Canonical JSON Schemas live in [`nexus-contracts/v1`](../nexus-contracts/v1/README.md). Python models mirror them but do not replace them.
@@ -156,4 +169,6 @@ Canonical JSON Schemas live in [`nexus-contracts/v1`](../nexus-contracts/v1/READ
 - `ModuleNotFoundError: nexus_backend`: activate the correct virtual environment and reinstall with `python -m pip install -e ".\backend[dev]"` on Windows or `-e "./backend[dev]"` on Unix.
 - Port 8000 is busy: run `uvicorn nexus_backend.app:app --reload --port 8001` and update `VITE_API_BASE_URL` for the frontend.
 - Contract validation fails: compare the payload with the matching fixture; do not loosen the backend model alone.
+- COM port is busy: close PlatformIO/Arduino Serial Monitor. The backend and a CLI monitor cannot read the same Windows COM port simultaneously.
+- Board is connected but no data arrives: press RESET, confirm baud 115200, and upload the current NeXus firmware.
 - Nebius key appears in a log: revoke it, remove the log from shared artifacts, and follow [docs/security.md](../docs/security.md).

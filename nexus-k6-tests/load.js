@@ -27,6 +27,7 @@ export const options = {
     checks: ["rate>0.99"],
     http_req_failed: ["rate<0.01"],
     "http_req_duration{target:api-health}": ["p(95)<300"],
+    "http_req_duration{target:api-live}": ["p(95)<500"],
     "http_req_duration{target:frontend}": ["p(95)<750"],
   },
 };
@@ -37,6 +38,13 @@ export default function () {
   });
   check(health, {
     "health remains available": (response) => response.status === 200,
+  });
+
+  const live = http.get(`${apiBaseUrl}/api/v1/live`, {
+    tags: { target: "api-live" },
+  });
+  check(live, {
+    "live hardware snapshot remains available": (response) => response.status === 200,
   });
 
   const dashboard = http.get(`${webBaseUrl}/dashboard`, {
