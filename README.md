@@ -9,7 +9,7 @@ This repository targets the [Nebius x NVIDIA Global AI Hackathon](https://nebius
 | Area | What works now | Next integration |
 | --- | --- | --- |
 | Frontend | Three responsive routes, environment config, lint and production build | Replace display fixtures with the typed API client |
-| Backend | FastAPI health endpoint and typed contract models | Add telemetry ingest, Nemotron adapter and orchestration |
+| Backend | Persistent device sessions, validated telemetry, WebSocket monitor, hardware loader and bounded context | Add Nemotron adapter and diagnosis orchestration |
 | Firmware | Safe PWM clamp and telemetry v1 serial output | Add authenticated command transport and real rig calibration |
 | Contracts | Four frozen JSON Schemas, fixtures and migration enforcement | Change only through a reviewed migration note or v2 |
 
@@ -77,7 +77,15 @@ Open:
 - API health: <http://127.0.0.1:8000/health>
 - Interactive API docs: <http://127.0.0.1:8000/docs>
 
-The current backend exposes the health endpoint and contract models. Nemotron and device orchestration are later backlog items; the README does not assume they already exist.
+The backend exposes device registration, telemetry/history, WebSocket streaming, diagnosis session records, audit events, hardware models and bounded context. SQLite retains configuration and data across restarts. See the [backend API guide](docs/backend-api.md).
+
+To exercise H02 and H03 without a board, keep the backend running and open another activated terminal:
+
+```bash
+python -m nexus_backend.mock_device --count 60
+```
+
+Open <http://127.0.0.1:8000/monitor> while the simulator runs. It displays source-labeled telemetry from the actual backend stream. The existing React dashboard remains a presentation scaffold until G02/G04. Nemotron diagnosis and physical device actions remain separate backlog items.
 
 ## Quick start: frontend
 

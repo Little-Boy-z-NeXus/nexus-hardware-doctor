@@ -1,0 +1,89 @@
+# H02/H03 backend API
+
+The local backend provides durable device configuration, telemetry, diagnosis session records and audit events. The hardware loader validates the frozen v1 document and prepares bounded context for a later model adapter. It does not call Nemotron, execute device commands or infer physical safety from missing electrical metadata.
+
+## Run the software demonstration
+
+From the repository root, with the backend installed in an activated environment:
+
+```bash
+uvicorn nexus_backend.app:app --host 127.0.0.1 --port 8000
+```
+
+In another activated terminal:
+
+```bash
+python -m nexus_backend.mock_device --count 60 --interval 1
+```
+
+Open <http://127.0.0.1:8000/monitor>. The browser receives actual WebSocket messages carrying explicitly simulated measurements. It shows source, connection state, stale data, voltage, current, PWM and driver state. A simulation is not evidence of motor movement or hardware health. Reconnect restores the latest persisted sample, then streams new samples. To demonstrate multiple devices, rerun the simulator with `--device-id nexus-second`.
+
+The producer stops after the requested sample count. Restarting it generates new sample IDs, so resetting its sequence to zero does not collide with earlier runs. `--fixtures PATH` accepts a directory containing the canonical example filenames. `--base-url` changes the backend origin.
+
+## Configuration and persistence
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `NEXUS_DB_PATH` | `artifacts/nexus.sqlite3` | SQLite path, relative to the server working directory |
+| `NEXUS_CORS_ORIGINS` | `http://localhost:5173,http://127.0.0.1:5173` | Comma-separated browser origins allowed to call the API |
+
+Set variables in the launching environment, or pass `--env-file` to Uvicorn for a separately managed file. The application does not automatically load `.env`. Keep the same database path after restarting. SQLite stores device configuration, hardware documents, telemetry, associated audit events and session records. Runtime artifacts are ignored by Git. Queries return bounded windows; this MVP does not implement automatic retention/deletion.
+
+This is a local development API with no authentication. Bind it to loopback as shown above. Device IDs isolate records logically; they are not authorization credentials. Network deployment and authenticated device transport are separate tasks.
+
+## HTTP endpoints
+
+Interactive documentation: <http://127.0.0.1:8000/docs>. Machine-readable definition: `/openapi.json`.
+
+| Method | Path | Behavior |
+| --- | --- | --- |
+| GET | `/health` | Process health |
+| POST | `/api/devices` | Register `{hardware_model, display_name, source}` |
+| GET | `/api/devices` | List registered devices (maximum 1000) |
+| GET | `/api/devices/{device_id}` | Read one device's configuration |
+| GET | `/api/devices/{device_id}/hardware-model` | Read its validated v1 hardware document |
+| POST | `/api/devices/{device_id}/telemetry` | Ingest a canonical v1 sample; persist an audit event atomically |
+| GET | `/api/devices/{device_id}/telemetry` | Read the newest sample by receive order |
+| GET | `/api/devices/{device_id}/telemetry/history?limit=20` | Latest 1–200 samples, oldest to newest by receive order |
+| POST | `/api/devices/{device_id}/sessions` | Store `{symptom}` and generate session/trace IDs; status stays `created` |
+| GET | `/api/devices/{device_id}/sessions?limit=50` | Latest 1–100 session records |
+| GET | `/api/devices/{device_id}/sessions/{session_id}` | Read a session only under its owning device |
+| GET | `/api/devices/{device_id}/events?limit=100` | Latest 1–200 telemetry audit events |
+| POST | `/api/devices/{device_id}/context` | Build context from `{symptom, max_samples: 10}` (1–20 samples) |
+
+Registration `source` is `device`, `simulator` or `replay`. Telemetry must match the registered device, hardware-model ID and source. A repeated identical registration is accepted; a different configuration for an existing ID returns 409. Explicit configuration updates are not implemented.
+
+New telemetry returns 201 with `{sample, event_id, inserted: true}`. An identical retry of a device/sample ID returns 200 and the original audit event with `inserted: false`; a different payload using that ID returns 409. Canonical data is validated before storage without string/number coercion. Invalid contracts return 422 with bounded `{path, message}` details; `path` is a JSON Pointer, with an empty string denoting the document root. Unknown devices/sessions and unavailable latest telemetry return 404. Histories for registered devices with no data return empty arrays.
+
+## WebSocket protocol
+
+Connect to `ws://127.0.0.1:8000/api/devices/{device_id}/telemetry/stream`. The server first sends the latest stored sample if present, then every new sample in persisted receive order:
+
+```json
+{"type": "telemetry", "sample": {"schema_version": "1.0.0", "...": "full v1 sample"}}
+```
+
+The abbreviated object above describes the envelope; `sample` is the complete canonical document in actual messages. An idle connection receives `{"type":"heartbeat"}` every 15 seconds. Heartbeats do not indicate that measurements are fresh. Unknown devices and disallowed browser origins are rejected with policy code 1008. The monitor uses the same origin; configured frontend origins are also allowed.
+
+The stream polls durable receive cursors every 250 ms, reading up to 100 samples per batch. Device sequence or clock resets do not reorder received data. Reconnecting delivers the latest snapshot rather than replaying every sample missed while offline; the history endpoint provides a bounded recent window.
+
+## Hardware validation and context
+
+The loader checks the canonical schema, formats, finite numeric values, unique component/pin/connection IDs, wiring endpoints and nonblank metadata. Context contains the symptom, declared topology and safety limits, declared sensors, implemented read operations, recent matching samples, source labels and missing-metadata warnings.
+
+Only `get_hardware_graph` and `get_telemetry` are advertised as available backend read operations. Firmware capabilities in a hardware document do not imply that a runnable command adapter exists. Context performs no model call. Text from symptoms and declared hardware remains data for any future model prompt.
+
+The frozen v1 schema has no per-pin electrical ratings or maximum bus voltage, and its example has no explicit supply component. Context reports these gaps rather than inventing ratings. A null device timestamp remains unknown. Histories preserve receipt order even when device clocks move backward or sequence counters reset; no age or boot identity is inferred from those counters.
+
+Canonical schemas and fixtures are included in the backend wheel directly from `nexus-contracts/v1`, with no independently maintained schema copy. H02/H03 do not modify frozen schemas.
+
+## Verification
+
+```bash
+pytest backend/tests -q
+ruff check backend scripts
+python scripts/validate_repo.py
+python scripts/validate_contracts.py
+```
+
+Tests cover database reopen, two-device isolation, idempotent ingest, atomic audit writes, raw contract rejection, WebSocket ordering and reconnect, bounded context, missing metadata and simulator payloads. The monitor provides the browser check without requiring the G02 React client work.
