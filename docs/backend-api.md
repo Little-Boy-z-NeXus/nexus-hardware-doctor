@@ -2,6 +2,8 @@
 
 The local backend provides durable device configuration, telemetry, diagnosis session records and audit events. The hardware loader validates the frozen v1 document and prepares bounded context for a later model adapter. It does not call Nemotron, execute device commands or infer physical safety from missing electrical metadata.
 
+The H02/H03 endpoints described below retain that behavior. Additional preemptive H endpoints now support bounded diagnosis: `GET /api/diagnosis/capabilities`, `POST /api/devices/{device_id}/diagnoses` with `{symptom, mode: "mock" | "live", max_steps: 1..8}`, and `GET /api/devices/{device_id}/sessions/{session_id}/events`. The POST returns the persisted session plus `result`; expected provider/tool failures are saved with a non-success status. Mock mode requires a registered simulator. Live mode requires explicit environment enablement and configuration, and only reads context. Neither mode controls physical hardware. See the [runbook](h08-runbook.md); `/doctor-lab` demonstrates these endpoints without completing the React frontend backlog.
+
 ## Run the software demonstration
 
 From the repository root, with the backend installed in an activated environment:

@@ -9,7 +9,7 @@ This repository targets the [Nebius x NVIDIA Global AI Hackathon](https://nebius
 | Area | What works now | Next integration |
 | --- | --- | --- |
 | Frontend | Three responsive routes, environment config, lint and production build | Replace display fixtures with the typed API client |
-| Backend | Persistent device sessions, validated telemetry, WebSocket monitor, hardware loader and bounded context | Add Nemotron adapter and diagnosis orchestration |
+| Backend | Persistent sessions/telemetry, hardware context, configurable Nebius client, simulated diagnosis/policy/evaluation and Docker runbook | Verify live model calls and integrate the real command adapter |
 | Firmware | Safe PWM clamp and telemetry v1 serial output | Add authenticated command transport and real rig calibration |
 | Contracts | Four frozen JSON Schemas, fixtures and migration enforcement | Change only through a reviewed migration note or v2 |
 
@@ -86,6 +86,10 @@ python -m nexus_backend.mock_device --count 60
 ```
 
 Open <http://127.0.0.1:8000/monitor> while the simulator runs. It displays source-labeled telemetry from the actual backend stream. The existing React dashboard remains a presentation scaffold until G02/G04. Nemotron diagnosis and physical device actions remain separate backlog items.
+
+The [diagnosis lab](http://127.0.0.1:8000/doctor-lab) runs the preemptive H01/H04–H08 software. Simulation requires no model key. Live mode requires configured Nebius access and explicit enablement; its tools are read-only. Real model/physical acceptance has not been claimed. See the [H resource checklist](docs/h-resource-checklist.md), [model guide](docs/h01-h04.md), [orchestration/policy guide](docs/h05-h06.md), [evaluation guide](docs/h07-evaluation.md), and [Docker runbook](docs/h08-runbook.md).
+
+Run all synthetic diagnosis checks with `python -m nexus_backend.evaluation --output artifacts/h07-evaluation.json`. This scores the deterministic mock planner, not Nemotron or real hardware. `docker compose up --build -d` provides an isolated backend with persistent data and no model access enabled by default.
 
 ## Quick start: frontend
 

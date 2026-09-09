@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import asyncio
 import os
+import time
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime
 from importlib.resources import files
 from pathlib import Path
 from typing import Annotated, Literal
+from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, Query, Request, Response, WebSocket
 from fastapi.exceptions import RequestValidationError
@@ -19,6 +22,7 @@ from starlette.websockets import WebSocketDisconnect
 from nexus_backend import __version__
 from nexus_backend.context import build_context
 from nexus_backend.hardware import load_hardware_model
+from nexus_backend.runtime import RunLimiter, configure_logging, log_run
 from nexus_backend.store import SQLiteStore, StoreConflict, StoreNotFound
 from nexus_backend.validation import ContractValidationError, validate_contract
 
@@ -58,15 +62,22 @@ class ContextRequest(NewSession):
     max_samples: int = Field(default=10, ge=1, le=20, strict=True)
 
 
+class DiagnosisRequest(NewSession):
+    mode: Literal["mock", "live"] = "mock"
+    max_steps: int = Field(default=6, ge=1, le=8, strict=True)
+
+
 def create_app(db_path: str | Path | None = None) -> FastAPI:
     """Create an isolated application; open the database only during lifespan."""
 
     @asynccontextmanager
     async def lifespan(application: FastAPI):
+        configure_logging()
         database = db_path if db_path is not None else os.getenv(
             "NEXUS_DB_PATH", "artifacts/nexus.sqlite3"
         )
         application.state.store = SQLiteStore(database)
+        application.state.run_limiter = RunLimiter()
         try:
             yield
         finally:
@@ -115,6 +126,87 @@ def create_app(db_path: str | Path | None = None) -> FastAPI:
     @application.get("/monitor", response_class=HTMLResponse, include_in_schema=False)
     def monitor() -> str:
         return files("nexus_backend").joinpath("static/monitor.html").read_text("utf-8")
+
+    @application.get("/doctor-lab", response_class=HTMLResponse, include_in_schema=False)
+    def doctor_lab() -> str:
+        return files("nexus_backend").joinpath("static/doctor-lab.html").read_text("utf-8")
+
+    @application.get("/api/diagnosis/capabilities", tags=["Diagnosis"])
+    def diagnosis_capabilities() -> dict:
+        return {
+            "mock_available": True,
+            "live_enabled": os.getenv("NEXUS_ENABLE_LIVE_MODEL", "false").lower() == "true",
+            "live_configured": all(os.getenv(key, "").strip() for key in (
+                "NEXUS_NEBIUS_BASE_URL", "NEXUS_NEBIUS_API_KEY", "NEXUS_NVIDIA_MODEL",
+            )),
+            "physical_commands_enabled": False,
+        }
+
+    @application.post("/api/devices/{device_id}/diagnoses", tags=["Diagnosis"])
+    async def diagnose(device_id: str, body: DiagnosisRequest, request: Request) -> dict:
+        from nexus_backend.diagnosis import MockPlanner, NebiusPlanner
+        from nexus_backend.orchestrator import run_diagnosis
+        from nexus_backend.provider import ProviderError
+
+        store = request.app.state.store
+        device = store.get_device(device_id)
+        if body.mode == "mock" and device["source"] != "simulator":
+            raise HTTPException(409, "Simulation requires a device registered as simulator")
+        if body.mode == "live":
+            capability = diagnosis_capabilities()
+            if not capability["live_enabled"] or not capability["live_configured"]:
+                raise HTTPException(503, "Live model access is not enabled and configured")
+            try:
+                planner = NebiusPlanner.from_env()
+            except (ValueError, RuntimeError, ProviderError):
+                raise HTTPException(503, "Live model configuration is invalid") from None
+        else:
+            planner = MockPlanner()
+        context = build_context(store.get_hardware_model(device_id),
+                                store.telemetry_history(device_id, 10), body.symptom)
+        denied = request.app.state.run_limiter.acquire()
+        if denied:
+            raise HTTPException(429 if denied == "rate_limited" else 503,
+                                "Diagnosis request limit reached; retry shortly",
+                                headers={"Retry-After": "60" if denied == "rate_limited" else "5"})
+        started = time.monotonic()
+        session = None
+        try:
+            session = store.create_session(device_id, body.symptom)
+            try:
+                result = await asyncio.wait_for(run_diagnosis(
+                    context, planner, mode="mock" if body.mode == "mock" else "real",
+                    max_steps=body.max_steps,
+                    timeout_seconds=25, trace_id=session["trace_id"],
+                ), timeout=30)
+            except Exception:  # noqa: BLE001 - contain external provider failures without payload leaks
+                # Provider exceptions can contain request URLs/bodies. Return and log no raw error.
+                result = {
+                    "trace_id": session["trace_id"], "mode": body.mode,
+                    "status": "error", "plan": None, "steps": 0, "observations": [],
+                    "events": [{
+                        "schema_version": "1.0.0", "event_id": str(uuid4()),
+                        "trace_id": session["trace_id"], "device_id": device_id,
+                        "event_type": "diagnosis.proposed",
+                        "occurred_at": datetime.now(UTC).isoformat(), "source": "backend",
+                        "severity": "error", "summary": "Diagnosis failed; retry is available",
+                        "payload": {"stage": "failed", "mode": body.mode},
+                        "related_tool_call_id": None,
+                    }],
+                    "user_message": "Diagnosis is unavailable. Check configuration and retry.",
+                }
+            result["mode"] = body.mode
+            result["physical_commands_enabled"] = False
+            finished = store.finish_diagnosis(device_id, session["session_id"], result)
+            log_run(trace_id=session["trace_id"], mode=body.mode, status=result["status"],
+                    steps=result.get("steps", 0), elapsed_ms=int((time.monotonic()-started)*1000))
+            return finished
+        finally:
+            request.app.state.run_limiter.release()
+
+    @application.get("/api/devices/{device_id}/sessions/{session_id}/events", tags=["Diagnosis"])
+    def diagnosis_events(device_id: str, session_id: str, request: Request) -> list[dict]:
+        return request.app.state.store.diagnosis_events(device_id, session_id)
 
     @application.post("/api/devices", status_code=201, tags=["Devices"])
     def register(body: RegisterDevice, request: Request) -> dict:

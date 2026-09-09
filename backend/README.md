@@ -13,13 +13,22 @@ Available now:
 - a simulated device producer and a browser telemetry monitor at `/monitor`
 - strict Python contract mirrors, automated tests and Ruff linting
 
-Not implemented yet:
+Prepared for H01/H04–H08:
 
-- Nebius/Nemotron runtime calls
-- diagnosis orchestration and tool execution
+- a strict, configurable async Nebius/Nemotron client and a separately labelled mock planner
+- bounded read/plan/policy/execute/verify orchestration with an isolated simulator
+- persistent diagnosis outcomes/events and a browser lab at `/doctor-lab`
+- synthetic evaluation, container packaging and a reproducible runbook
+
+Still awaiting live acceptance/integration:
+
+- successful real Nebius/Nemotron runtime proof
+- actual device command transport and verified physical actions
 - the React real/mock API client (G02)
 
 Those capabilities are separate backlog items. Simulated/replayed samples carry an explicit source and do not prove physical hardware behavior. See the [H02/H03 API guide](../docs/backend-api.md) for endpoint semantics, limitations and acceptance checks.
+
+See [H resources and completion gates](../docs/h-resource-checklist.md) for the remaining inputs and [H08 runbook](../docs/h08-runbook.md) for installation, live opt-in and controlled failures. This preemptive software does not mark H01/H04–H08 complete.
 
 ## Prerequisites
 

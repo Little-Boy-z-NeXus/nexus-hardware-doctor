@@ -42,7 +42,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install backend
-        run: pip install -e "./backend[dev]"
+        run: pip install -c backend/constraints.txt -e "./backend[dev]"
 
       - name: Validate frozen interface contracts
         env:
@@ -54,6 +54,21 @@ jobs:
 
       - name: Run backend tests
         run: pytest backend/tests -q
+
+      - name: Run explicitly simulated diagnosis regression
+        run: python -m nexus_backend.evaluation --output /tmp/nexus-evaluation.json
+
+  packaging:
+    name: Backend container and simulated regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+      - name: Build installed backend image
+        run: docker build -t nexus-backend:ci .
+      - name: Verify packaged prompts, cases and simulated flow
+        run: docker run --rm nexus-backend:ci python -m nexus_backend.evaluation --output /tmp/nexus-evaluation.json
 
   frontend:
     name: Frontend unit tests and build

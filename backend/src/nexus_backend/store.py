@@ -89,6 +89,15 @@ class SQLiteStore:
                 );
                 CREATE INDEX IF NOT EXISTS sessions_device_order
                     ON sessions(device_id, insertion_id);
+                CREATE TABLE IF NOT EXISTS diagnosis_events (
+                    insertion_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    event_id TEXT NOT NULL UNIQUE,
+                    device_id TEXT NOT NULL REFERENCES devices(device_id),
+                    session_id TEXT NOT NULL REFERENCES sessions(session_id),
+                    payload_json TEXT NOT NULL
+                );
+                CREATE INDEX IF NOT EXISTS diagnosis_events_device_order
+                    ON diagnosis_events(device_id, insertion_id);
                 """
             )
 
@@ -289,6 +298,49 @@ class SQLiteStore:
         """Alias for callers that use the shorter session lookup name."""
         return self.get_session(device_id, session_id)
 
+    def finish_diagnosis(self, device_id: str, session_id: str, result: dict) -> dict:
+        """Persist one bounded run and its canonical events atomically under its device."""
+        from .validation import validate_contract
+
+        if not isinstance(result, dict) or not isinstance(result.get("events"), list):
+            raise StoreConflict("A diagnosis result with events is required")
+        if len(result["events"]) > 500:
+            raise StoreConflict("Too many diagnosis events")
+        events = [validate_contract("event", event) for event in result["events"]]
+        with self._lock, self._connection:
+            self._connection.execute("BEGIN IMMEDIATE")
+            session = self.get_session(device_id, session_id)
+            if session["status"] != "created":
+                raise StoreConflict("Diagnosis session already has a result")
+            if result.get("trace_id") != session["trace_id"]:
+                raise StoreConflict("Diagnosis trace does not match the session")
+            if any(event["device_id"] != device_id or event["trace_id"] != session["trace_id"]
+                   for event in events):
+                raise StoreConflict("Diagnosis event belongs to another device or trace")
+            if len({event["event_id"] for event in events}) != len(events):
+                raise StoreConflict("Duplicate diagnosis event IDs")
+            session.update(status=result["status"], completed_at=_timestamp(), result=result)
+            self._connection.execute(
+                "UPDATE sessions SET payload_json = ? WHERE device_id = ? AND session_id = ?",
+                (_json(session), device_id, session_id),
+            )
+            for event in events:
+                self._connection.execute(
+                    "INSERT INTO diagnosis_events (event_id, device_id, session_id, payload_json) "
+                    "VALUES (?, ?, ?, ?)",
+                    (event["event_id"], device_id, session_id, _json(event)),
+                )
+            return json.loads(_json(session))
+
+    def diagnosis_events(self, device_id: str, session_id: str) -> list[dict]:
+        with self._lock:
+            self.get_session(device_id, session_id)
+            rows = self._connection.execute(
+                "SELECT payload_json FROM diagnosis_events WHERE device_id = ? "
+                "AND session_id = ? ORDER BY insertion_id LIMIT 500", (device_id, session_id),
+            ).fetchall()
+            return [json.loads(row["payload_json"]) for row in rows]
+
     def list_sessions(self, device_id: str, limit: int = 50) -> list[dict]:
         limit = _limit(limit)
         with self._lock:
@@ -309,4 +361,14 @@ class SQLiteStore:
                    ORDER BY insertion_id DESC LIMIT ?""",
                 (device_id, limit),
             ).fetchall()
-            return [json.loads(row["payload_json"]) for row in reversed(rows)]
+            telemetry_events = [json.loads(row["payload_json"]) for row in reversed(rows)]
+            diagnosis_rows = self._connection.execute(
+                "SELECT payload_json FROM diagnosis_events WHERE device_id = ? "
+                "ORDER BY insertion_id DESC LIMIT ?", (device_id, limit),
+            ).fetchall()
+            if not diagnosis_rows:
+                return telemetry_events
+            combined = telemetry_events + [
+                json.loads(row["payload_json"]) for row in reversed(diagnosis_rows)
+            ]
+            return sorted(combined, key=lambda event: event["occurred_at"])[-limit:]

@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>NeXus · Diagnosis lab</title>
+  <style>
+    :root{font-family:system-ui,sans-serif;color:#20343d;background:#f3f6f6;color-scheme:light}
+    *{box-sizing:border-box}main{max-width:900px;margin:auto;padding:32px 20px}
+    h1{font-size:36px;letter-spacing:-.03em}p,li{line-height:1.6}
+    form,article{border:1px solid #d7e2e2;background:white;padding:24px;border-radius:14px;margin:20px 0}
+    label{display:block;font-weight:600;margin:16px 0 6px}
+    input,select,textarea,button{font:inherit;padding:12px;border:1px solid #8ba6a2;border-radius:7px}
+    select,textarea{width:100%}button{margin-top:16px;background:#176c61;color:white;cursor:pointer}
+    button:disabled{opacity:.5;cursor:wait}:focus-visible{outline:3px solid #317dc1;outline-offset:2px}
+    .notice{background:#eaf4f0;padding:16px;border-radius:10px}#error{color:#9b2626}
+    ol{padding-left:24px}li{margin-bottom:12px;overflow-wrap:anywhere}small{color:#53676f}
+    a{color:#176c61}textarea{resize:vertical}
+  </style>
+</head>
+<body><main>
+  <small>NEXUS / BACKEND DEMONSTRATION</small><h1>Diagnosis lab</h1>
+  <p class="notice">Simulation uses generated readings and tools. Live model mode uses your configured provider with read-only tools. Neither mode controls physical hardware.</p>
+  <p><a href="/monitor">Telemetry monitor</a> · <a href="/docs">API guide</a></p>
+  <form id="diagnose">
+    <label for="device">Device</label><select id="device" required><option value="">Loading devices…</option></select>
+    <label for="mode">Mode</label><select id="mode"><option value="mock">Simulation — no model API calls</option><option value="live">Live model — requires configured access</option></select>
+    <label for="symptom">What are you observing?</label><textarea id="symptom" required maxlength="2000" rows="3">The motor is not turning.</textarea>
+    <button id="run" type="submit">Run diagnosis</button>
+    <p id="status" role="status" aria-live="polite">Loading configuration…</p><p id="error" role="alert"></p>
+  </form>
+  <article id="result" hidden><h2 id="outcome"></h2><p id="message"></p><h3>Hypotheses</h3><ol id="hypotheses"></ol><h3>Events</h3><ol id="events"></ol><small id="trace"></small></article>
+</main>
+<script>
+  const $ = id => document.getElementById(id);
+  async function request(path, options = {}) {
+    const response = await fetch(path, {...options, signal: AbortSignal.timeout(40000)});
+    const data = await response.json();
+    if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : 'Request could not be completed.');
+    return data;
+  }
+  async function load() {
+    try {
+      const [devices, capability] = await Promise.all([request('/api/devices'), request('/api/diagnosis/capabilities')]);
+      $('device').replaceChildren();
+      for (const device of devices) {
+        const option = document.createElement('option'); option.value = device.device_id;
+        option.textContent = `${device.display_name} (${device.source})`; $('device').append(option);
+      }
+      $('status').textContent = devices.length ? (capability.live_enabled && capability.live_configured ? 'Simulation and live model are available.' : 'Simulation is available. Live model access is not configured/enabled.') : 'Run the simulator, then reload this page.';
+      $('run').disabled = !devices.length;
+    } catch { $('error').textContent = 'Unable to load devices. Check the backend, then reload.'; }
+  }
+  $('diagnose').addEventListener('submit', async event => {
+    event.preventDefault(); $('run').disabled = true; $('result').hidden = true;
+    $('error').textContent = ''; $('status').textContent = 'Diagnosis running…';
+    try {
+      const session = await request(`/api/devices/${encodeURIComponent($('device').value)}/diagnoses`, {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({mode:$('mode').value, symptom:$('symptom').value})
+      });
+      const result = session.result; const plan = result.plan || {};
+      const states = {diagnosed:'Diagnosis ready', needs_manual:'Manual inspection needed',
+        insufficient_evidence:'More evidence needed', blocked:'Action blocked',
+        planner_failed:'Model unavailable', timeout:'Time limit reached', error:'Run unavailable',
+        invalid_plan:'Response could not be validated', max_steps:'Step limit reached',
+        loop_detected:'Repeated action stopped'};
+      $('outcome').textContent = `${result.mode === 'mock' ? 'Simulation' : 'Live model'}: ${states[result.status] || result.status}`;
+      $('message').textContent = result.user_message || result.summary || plan.user_message || 'No diagnosis is available.';
+      $('hypotheses').replaceChildren(); $('events').replaceChildren();
+      for (const hypothesis of plan.hypotheses || []) {
+        const li = document.createElement('li'); li.textContent = `${hypothesis.label} — ${Math.round(hypothesis.confidence*100)}%`; $('hypotheses').append(li);
+      }
+      for (const entry of result.events || []) {
+        const li = document.createElement('li'); li.textContent = `${entry.occurred_at} · ${entry.event_type}: ${entry.summary}`; $('events').append(li);
+      }
+      $('trace').textContent = `Trace: ${session.trace_id}`;
+      $('result').hidden = false; $('status').textContent = 'Run saved. You can retry.';
+    } catch (error) {
+      $('status').textContent = 'Run could not finish. Retry when ready.';
+      $('error').textContent = error.name === 'TimeoutError' ? 'The request timed out. Retry shortly.' : error.message;
+    } finally { $('run').disabled = false; }
+  });
+  load();
+</script></body></html>

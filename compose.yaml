@@ -1,0 +1,16 @@
+services:
+  backend:
+    build: .
+    ports:
+      - "127.0.0.1:8000:8000"
+    environment:
+      NEXUS_DB_PATH: /data/nexus.sqlite3
+      NEXUS_ENABLE_LIVE_MODEL: ${NEXUS_ENABLE_LIVE_MODEL:-false}
+      NEXUS_NEBIUS_BASE_URL: ${NEXUS_NEBIUS_BASE_URL:-}
+      NEXUS_NEBIUS_API_KEY: ${NEXUS_NEBIUS_API_KEY:-}
+      NEXUS_NVIDIA_MODEL: ${NEXUS_NVIDIA_MODEL:-}
+    volumes:
+      - nexus-data:/data
+    restart: unless-stopped
+volumes:
+  nexus-data:
