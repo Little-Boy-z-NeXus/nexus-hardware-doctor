@@ -20,7 +20,7 @@ H-only handoff, 10 September 2026. The [shared sheet](https://docs.google.com/sp
 | **H07 — Evaluation** | Ten labelled synthetic cases, runner/report, repeated simulated scenario checks | N05 physical fault profiles/ground truth or access to produce them; H04–H06 complete | ≥10 cases, top-2 ≥8/10, five consecutive golden-path passes and real reproducibility |
 | **H08 — Release** | Docker/Compose, dependency constraints, installed resources, lab/API, persistent results, rate/concurrency limits, structured logs and outage handling | H01–H07 acceptance; model configuration in clean validation environment | Fresh startup from runbook, controlled model-outage demo and no exposed secrets |
 
-These six tasks remain **in progress** until their live/physical prerequisites pass. Their prepared software can be submitted for review now. Simulation results are neither Nemotron accuracy evidence nor proof of real motor movement. The implementation has no physical command execution path.
+These six tasks remain **in progress** until their live/physical prerequisites pass. Their prepared software is pushed and submitted in [PR #2](https://github.com/Little-Boy-z-NeXus/nexus-hardware-doctor/pull/2), with [software acceptance evidence](evidence/h-preemptive-acceptance.md). Simulation results are neither Nemotron accuracy evidence nor proof of real motor movement. The implementation has no physical command execution path.
 
 ## Checklist A — working model access → H01, then H04
 
@@ -33,11 +33,12 @@ I finish the live adapter/diagnosis checks and submit their evidence. No board i
 
 ## Checklist B — verified rig and adapter → H05/H06
 
-- [ ] Actual BOM/model numbers for ESP32, sensor, driver, motor and supply.
+- [ ] Confirm the actual BOM matches the current GOOUUU ESP32-S3-N16R8, INA219, L298N and JGB37-520 Hall-encoder motor example; identify the supply and any substitutions.
 - [ ] Labelled wiring diagram/photos and pin map, including motor outputs and grounds.
 - [ ] Verified supply/component/pin ratings; PWM range, current ceiling, test duration and measured baseline. Example fixture values are not approved physical limits.
 - [ ] Identified USB data port or documented gateway/device ID; connection secrets stored securely if applicable.
 - [ ] An operator to handle power/wiring and observe motion, or teammate-run logs/video from the supplied procedure.
+- [ ] If using the existing Hall encoder for verification: encoder supply/output ratings, pulse/gearing specifications, and access to implement/calibrate RPM measurement.
 - [ ] N02/N03 evidence: correlated ACK/result/error, duplicates, timeout, invalid-command rejection and fresh before/after telemetry.
 
 With Checklist A and H04 complete, I finish H05/H06 integration. If the adapter is unfinished, I can build it when rig/testing access is available; you do not need to supply finished code. Unknown electrical limits keep affected physical actions blocked.
@@ -63,7 +64,7 @@ I finish release validation and submit H08. The task permits the reproducible Do
 
 - Frozen v1 has no per-pin electrical ratings or maximum bus voltage, and its example omits a separate supply. Real-write validation needs verified facts.
 - N03 wording differs from the frozen six-tool allowlist and `tool_call_id`. Use a compatible mapping or reviewed migration before real integration; the preemptive implementation does not silently extend frozen schemas.
-- Physical motor motion needs observation/video or an agreed sensing change; no extra sensor purchase is assumed.
+- The current hardware declares a Hall encoder, but firmware still emits `motor_rpm: null`; pulse counting and RPM conversion are not implemented. Physical motor motion needs observation/video until that existing encoder is implemented and calibrated. No extra sensor purchase is assumed.
 - The diagnosis lab validates H-backend behavior. It does not complete any G/frontend task.
 
 ## Submission route

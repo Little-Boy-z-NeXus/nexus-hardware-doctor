@@ -16,6 +16,7 @@ Checked 10 September 2026. This report covers software prepared before live-mode
 - Browser live mode with missing configuration displayed a controlled, retryable error and made no model call.
 - Container logs emitted the configured JSON run summary without request/provider content.
 - Independent reviews found and resolved live-mode mapping, default logging configuration, configuration-only observation handling, safe failure rendering and JSON-escaped credential echoes.
+- Integrated upstream GOOUUU ESP32-S3/JGB37 hardware changes and reran all 282 tests. Duplicate-ID tests still assert exact error locations, deriving appended indices from the current fixture. The runbook covers preserving older demo registrations after the topology change.
 
 ## Browser evidence
 

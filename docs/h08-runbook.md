@@ -15,6 +15,16 @@ While the simulator is producing samples, open <http://127.0.0.1:8000/monitor> o
 
 The container runs as user `nexus`, publishes only on host loopback, has a health check, and retains its SQLite database in the `nexus-data` volume. `docker compose down` stops the service without deleting that volume. No hardware USB device, physical adapter or public ingress is configured.
 
+### Upgrading an existing demo database
+
+The current GOOUUU ESP32-S3/JGB37 example changes the hardware model and wiring while retaining the example device ID. A database containing the earlier example correctly rejects its replacement with HTTP 409: device configuration is immutable. Preserve that history and register the updated simulator under a distinct ID:
+
+```bash
+docker compose exec backend python -m nexus_backend.mock_device --device-id nexus-demo-esp32-s3 --count 60
+```
+
+Use that ID in the lab. A fresh database needs no override. Agree on real-device identity/configuration migration with the firmware integration owner before connecting changed hardware; do not delete history to bypass the conflict.
+
 ## Regression and clean environment
 
 ```bash
