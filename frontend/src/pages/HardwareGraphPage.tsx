@@ -3,7 +3,7 @@ import { Activity, ArrowRight, Box, Cpu, Gauge, RotateCcw, Zap } from "lucide-re
 import { PageHeader } from "../components/PageHeader";
 
 const nodes = [
-  { name: "ESP32", type: "Controller", detail: "240 MHz · Online", icon: Cpu, tone: "blue" },
+  { name: "ESP32-S3", type: "Controller", detail: "N16R8 · Online", icon: Cpu, tone: "blue" },
   { name: "INA219", type: "Power sensor", detail: "12 V · 0.84 A", icon: Activity, tone: "teal" },
   { name: "L298N", type: "Motor driver", detail: "PWM 62%", icon: Zap, tone: "violet" },
   { name: "DC Motor", type: "Actuator", detail: "1,420 RPM", icon: RotateCcw, tone: "orange" },
@@ -34,7 +34,7 @@ export function HardwareGraphPage() {
         <article className="card panel">
           <div className="panel__header"><div><p className="eyebrow">Selected node</p><h2>DC Motor</h2></div><span className="status-pill status-pill--healthy">Healthy</span></div>
           <dl className="detail-list">
-            <div><dt>Model</dt><dd>Generic 12 V brushed DC</dd></div>
+            <div><dt>Model</dt><dd>JGB37-520 12 V with encoder</dd></div>
             <div><dt>Speed</dt><dd>1,420 RPM</dd></div>
             <div><dt>Expected current</dt><dd>0.65–1.10 A</dd></div>
             <div><dt>Control source</dt><dd>L298N · Channel A</dd></div>

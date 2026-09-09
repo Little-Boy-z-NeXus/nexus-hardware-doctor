@@ -16,6 +16,8 @@ The visible readings and conversation are presentation data for G01. Real/mock A
 
 ## Prerequisites
 
+On Windows, no terminal commands are required: double-click `nexus-start-frontend.cmd` in the repository root. The launcher installs missing packages automatically. Use `nexus-start-app.cmd` to start both frontend and backend and open the dashboard.
+
 - Node.js 22 LTS
 - npm included with Node.js
 - A cloned `nexus-hardware-doctor` repository

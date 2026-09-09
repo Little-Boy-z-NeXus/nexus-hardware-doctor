@@ -1,12 +1,17 @@
 #include <Arduino.h>
 #include <Adafruit_INA219.h>
+#include <Wire.h>
 
 #include "nexus_contract_v1.h"
 
 namespace {
-constexpr uint8_t kMotorEnablePin = 25;
-constexpr uint8_t kMotorIn1Pin = 26;
-constexpr uint8_t kMotorIn2Pin = 27;
+constexpr uint8_t kInaSdaPin = 1;
+constexpr uint8_t kInaSclPin = 2;
+constexpr uint8_t kMotorEnablePin = 12;
+constexpr uint8_t kMotorIn1Pin = 13;
+constexpr uint8_t kMotorIn2Pin = 14;
+constexpr uint8_t kEncoderAPin = 16;
+constexpr uint8_t kEncoderBPin = 17;
 constexpr uint8_t kMaxPwmPercent = NEXUS_MAX_PWM_PERCENT;
 
 Adafruit_INA219 currentSensor;
@@ -55,6 +60,9 @@ void setup() {
   pinMode(kMotorEnablePin, OUTPUT);
   pinMode(kMotorIn1Pin, OUTPUT);
   pinMode(kMotorIn2Pin, OUTPUT);
+  pinMode(kEncoderAPin, INPUT);
+  pinMode(kEncoderBPin, INPUT);
+  Wire.begin(kInaSdaPin, kInaSclPin);
   currentSensor.begin();
   applySafeMotorState(0, false);
 }

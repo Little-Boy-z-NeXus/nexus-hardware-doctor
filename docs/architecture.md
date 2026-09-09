@@ -6,7 +6,7 @@ Contract version: `1.0.0` — frozen on 2026-09-08.
 
 ```mermaid
 flowchart LR
-    HW["Hardware<br/>ESP32 · INA219 · L298N · Motor"]
+    HW["Hardware<br/>ESP32-S3 · INA219 · L298N · Motor"]
     TEL["Telemetry<br/>schema v1"]
     API["Backend<br/>ingest · deterministic checks"]
     LLM["Nemotron on Nebius<br/>hypotheses · explanation"]

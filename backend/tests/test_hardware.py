@@ -50,15 +50,15 @@ def test_raw_contract_drift_is_rejected(mutate, path):
 @pytest.mark.parametrize("mutate,path", [
     (
         lambda m: m["components"].append(deepcopy(m["components"][0])),
-        "/components/4/component_id",
+        "/components/{component_index}/component_id",
     ),
     (
         lambda m: m["components"][0]["pins"].append(deepcopy(m["components"][0]["pins"][0])),
-        "/components/0/pins/5/pin_id",
+        "/components/0/pins/{pin_index}/pin_id",
     ),
     (
         lambda m: m["connections"].append(deepcopy(m["connections"][0])),
-        "/connections/7/connection_id",
+        "/connections/{connection_index}/connection_id",
     ),
     (lambda m: m["connections"][0].update(from_component_id="missing"),
      "/connections/0/from_component_id"),
@@ -74,6 +74,11 @@ def test_raw_contract_drift_is_rejected(mutate, path):
 ])
 def test_semantic_graph_errors_are_actionable(mutate, path):
     model = fixture()
+    path = path.format(
+        component_index=len(model["components"]),
+        pin_index=len(model["components"][0]["pins"]),
+        connection_index=len(model["connections"]),
+    )
     mutate(model)
     with pytest.raises(ContractValidationError) as caught:
         load_hardware_model(model)

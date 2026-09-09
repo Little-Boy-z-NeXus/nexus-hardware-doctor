@@ -15,7 +15,7 @@ Each schema has one valid fixture:
 
 | Fixture | Demonstrates |
 | --- | --- |
-| [`hardware-model.example.json`](fixtures/hardware-model.example.json) | ESP32, INA219, L298N and motor graph including GPIO25/26/27 control lines |
+| [`hardware-model.example.json`](fixtures/hardware-model.example.json) | GOOUUU ESP32-S3-N16R8, INA219, L298N and JGB37-520 graph with the frozen S3 pin map |
 | [`telemetry.example.json`](fixtures/telemetry.example.json) | One healthy power sample with a nullable RPM value |
 | [`tool.example.json`](fixtures/tool.example.json) | A bounded motor test requested by the orchestrator |
 | [`event.example.json`](fixtures/event.example.json) | A verification result linked by `trace_id` and `tool_call_id` |

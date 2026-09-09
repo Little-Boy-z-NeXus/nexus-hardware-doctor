@@ -6,9 +6,10 @@ This directory records the decisions required to build and demonstrate the hacka
 
 1. [`mvp-scope.md`](mvp-scope.md) — the user, problem, three golden paths, and explicit exclusions.
 2. [`architecture.md`](architecture.md) — runtime flow, Auto Heal sequence, service boundaries, and contract versioning.
-3. [`ownership.md`](ownership.md) — responsibilities for Hiếu, Hoàng, Nguyễn, and Nguyên.
-4. [`security.md`](security.md) — secret handling, redaction, model/tool boundaries, and incident basics.
-5. [`backlog.md`](backlog.md) — link to the live Google Sheet and local working rules.
+3. [`nexus-wiring-jgb37-520.svg`](nexus-wiring-jgb37-520.svg) — exact GOOUUU ESP32-S3-N16R8, INA219, L298N and encoder wiring.
+4. [`ownership.md`](ownership.md) — responsibilities for Hiếu, Hoàng, Nguyễn, and Nguyên.
+5. [`security.md`](security.md) — secret handling, redaction, model/tool boundaries, and incident basics.
+6. [`backlog.md`](backlog.md) — link to the live Google Sheet and local working rules.
 
 ## Document index
 
@@ -16,6 +17,7 @@ This directory records the decisions required to build and demonstrate the hacka
 | --- | --- | --- |
 | [`mvp-scope.md`](mvp-scope.md) | Deciding whether a feature belongs in the hackathon MVP | Hiếu |
 | [`architecture.md`](architecture.md) | Changing a service boundary, data flow, tool, or schema | Hiếu + Hoàng |
+| [`nexus-wiring-jgb37-520.svg`](nexus-wiring-jgb37-520.svg) | Building or checking the physical ESP32-S3/L298N motor rig | Hiếu + Nguyễn |
 | [`ownership.md`](ownership.md) | Assigning work or choosing a reviewer | Hiếu |
 | [`security.md`](security.md) | Handling keys, telemetry, logs, prompts, or device commands | Hoàng + Hiếu |
 | [`backlog.md`](backlog.md) | Finding the live plan or mapping a commit to a task ID | Entire team |

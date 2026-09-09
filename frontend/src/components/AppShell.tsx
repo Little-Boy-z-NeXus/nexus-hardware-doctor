@@ -34,7 +34,7 @@ export function AppShell() {
         <div className="sidebar__footer">
           <div className="demo-device">
             <span className="demo-device__icon"><Activity size={18} /></span>
-            <span><strong>Demo rig</strong><small>ESP32 · Online</small></span>
+            <span><strong>Demo rig</strong><small>ESP32-S3 · Online</small></span>
             <span className="online-dot" aria-label="Online" />
           </div>
           <p>MVP workspace · Build 0.1</p>

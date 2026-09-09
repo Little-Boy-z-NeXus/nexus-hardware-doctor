@@ -2,7 +2,7 @@
 
 NeXus is an AI doctor for physical hardware. The hackathon MVP turns one ESP32 motor rig into a software-readable system that can prevent unsafe configurations, diagnose failures from telemetry, and safely heal software-controllable faults.
 
-This repository targets the [Nebius x NVIDIA Global AI Hackathon](https://nebiusglobalaihackathon.devpost.com/) and intentionally supports one topology: ESP32 DevKit V1, INA219, L298N, one 6–12 V DC motor, and a 12 V supply.
+This repository targets the [Nebius x NVIDIA Global AI Hackathon](https://nebiusglobalaihackathon.devpost.com/) and intentionally supports one topology: GOOUUU Tech ESP32-S3-N16R8, INA219, L298N, one JGB37-520 12 V DC gearmotor with encoder, and a 12 V supply.
 
 ## Current build status
 
@@ -35,6 +35,24 @@ python --version
 node --version
 npm --version
 ```
+
+## Windows: run by double-clicking
+
+No command typing is required after the prerequisite applications are installed. Open the repository folder in File Explorer and double-click the appropriate `nexus-*.cmd` file:
+
+| File | Action |
+| --- | --- |
+| `nexus-setup.cmd` | Install backend, frontend, and PlatformIO dependencies on the first run |
+| `nexus-start-app.cmd` | Start backend and frontend in separate windows, then open the dashboard |
+| `nexus-stop-app.cmd` | Stop only this repository's backend and frontend processes |
+| `nexus-start-backend.cmd` | Start only the API at `http://127.0.0.1:8000` |
+| `nexus-start-frontend.cmd` | Start only the UI at `http://127.0.0.1:5173` |
+| `nexus-upload-firmware.cmd` | Upload firmware through the GOOUUU ESP32-S3 built-in USB-JTAG interface |
+| `nexus-monitor-firmware.cmd` | Detect the ESP32-S3 COM port and open Serial Monitor |
+| `nexus-run-firmware.cmd` | Upload firmware and then automatically open Serial Monitor |
+| `nexus-check-project.cmd` | Run repository, backend, frontend, and firmware checks |
+
+For the first use, double-click `nexus-setup.cmd` once. Normal software development then requires only `nexus-start-app.cmd`. Close the two server windows to stop the application. Keep motor power disconnected while uploading firmware.
 
 ## Clone and validate the repository
 
@@ -134,8 +152,8 @@ Connect the board with a USB data cable, identify its port, then upload and moni
 Windows example:
 
 ```powershell
-pio run --project-dir firmware --target upload --upload-port COM4
-pio device monitor --port COM4 --baud 115200
+pio run --project-dir firmware --target upload
+pio device monitor --port COM8 --baud 115200
 ```
 
 macOS/Linux example:
@@ -145,7 +163,7 @@ pio run --project-dir firmware --target upload --upload-port /dev/ttyUSB0
 pio device monitor --port /dev/ttyUSB0 --baud 115200
 ```
 
-Replace the example port with the value returned by `pio device list`. Read [firmware/README.md](firmware/README.md) before powering the motor circuit.
+The upload uses built-in USB-JTAG and does not need a COM-port argument. Replace the monitor port with the value returned by `pio device list`; the Windows click launcher detects it automatically. Read [firmware/README.md](firmware/README.md) before powering the motor circuit.
 
 ## Run all software quality checks
 
