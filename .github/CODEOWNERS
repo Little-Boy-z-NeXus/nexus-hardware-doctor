@@ -1,0 +1,4 @@
+# Nguyên owns the MVP frontend. Hiếu remains the review partner defined in
+# docs/ownership.md and approves frontend pull requests before merge.
+/frontend/ @catoi135
+/nexus-start-frontend.cmd @catoi135

@@ -17,6 +17,7 @@
 
 ## Nguyên
 
+- GitHub owner: `@catoi135`.
 - Owns scoped frontend tasks, UI states, API wiring, and small well-defined implementation issues.
 - Escalates architecture changes to Hiếu or Hoàng before implementation.
 
