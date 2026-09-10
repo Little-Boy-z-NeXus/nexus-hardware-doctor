@@ -60,7 +60,7 @@ The machine-readable topology is [`nexus-contracts/v1/fixtures/hardware-model.ex
 
 ## Install PlatformIO
 
-On Windows, double-click `nexus-upload-firmware.cmd` to upload through built-in USB-JTAG. Then close every Serial Monitor and double-click `nexus-start-app.cmd`; the backend owns the COM port and sends the same firmware log to the Hardware Graph UI. Use `nexus-run-firmware.cmd` only for isolated CLI debugging while the app is stopped.
+On Windows, double-click `nexus-upload-firmware.cmd` to upload through built-in USB-JTAG. Then close every Serial Monitor and double-click `nexus-start-app.cmd`; the backend owns the COM port, saves `logs/hardware-live-*.ndjson`, and sends the same firmware log to the Hardware Graph UI. Use `nexus-run-firmware.cmd` only for isolated CLI debugging while the app is stopped; its monitor saves `logs/device-monitor-*.log`.
 
 Python 3.11 is recommended.
 
@@ -107,6 +107,8 @@ pio device monitor --port COM8 --baud 115200
 ```
 
 Press `Ctrl+C` to leave the serial monitor.
+
+The one-click `nexus-monitor-firmware.cmd` and `nexus-run-firmware.cmd` launchers add PlatformIO's `log2file` filter automatically. Each standalone session is stored as `logs/device-monitor-YYMMDD-HHMMSS.log` relative to the repository root. Keep the monitor open for the full baseline interval, then press `Ctrl+C` so the file is flushed and closed cleanly.
 
 ## Upload and monitor on macOS or Linux
 

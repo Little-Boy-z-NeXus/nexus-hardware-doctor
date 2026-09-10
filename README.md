@@ -8,9 +8,9 @@ This repository targets the [Nebius x NVIDIA Global AI Hackathon](https://nebius
 
 | Area | What works now | Next integration |
 | --- | --- | --- |
-| Frontend | Three responsive routes, environment config, lint and production build | Replace display fixtures with the typed API client |
-| Backend | FastAPI health endpoint and typed contract models | Add telemetry ingest, Nemotron adapter and orchestration |
-| Firmware | Safe PWM clamp and telemetry v1 serial output | Add authenticated command transport and real rig calibration |
+| Frontend | Realtime Dashboard/Hardware Graph, ESP32 live log, reconnect and human-readable fault cards | Connect AI Doctor to the same evidence stream |
+| Backend | FastAPI, serial auto-detection, telemetry validation, persistent session logs, WebSocket fan-out and MVP diagnostics | Add Nemotron adapter and orchestration |
+| Firmware | Safe PWM clamp, strict telemetry v1, INA219 startup/error logs | Add authenticated command transport and encoder calibration |
 | Contracts | Four frozen JSON Schemas, fixtures and migration enforcement | Change only through a reviewed migration note or v2 |
 
 The three demo paths are `Prevent`, `Manual Diagnose`, and `Auto Heal`. Features that do not make one of those paths more reliable are out of scope until after the hackathon.
@@ -43,16 +43,16 @@ No command typing is required after the prerequisite applications are installed.
 | File | Action |
 | --- | --- |
 | `nexus-setup.cmd` | Install backend, frontend, and PlatformIO dependencies on the first run |
-| `nexus-start-app.cmd` | Start backend and frontend in separate windows, then open the dashboard |
+| `nexus-start-app.cmd` | Start backend/frontend, connect ESP32 serial, then open the realtime Hardware Graph |
 | `nexus-stop-app.cmd` | Stop only this repository's backend and frontend processes |
 | `nexus-start-backend.cmd` | Start only the API at `http://127.0.0.1:8000` |
 | `nexus-start-frontend.cmd` | Start only the UI at `http://127.0.0.1:5173` |
 | `nexus-upload-firmware.cmd` | Upload firmware through the GOOUUU ESP32-S3 built-in USB-JTAG interface |
-| `nexus-monitor-firmware.cmd` | Detect the ESP32-S3 COM port and open Serial Monitor |
-| `nexus-run-firmware.cmd` | Upload firmware and then automatically open Serial Monitor |
+| `nexus-monitor-firmware.cmd` | Standalone Serial Monitor; saves each session under `logs/device-monitor-*.log` |
+| `nexus-run-firmware.cmd` | Upload firmware, open standalone Serial Monitor, and save the session under `logs/` |
 | `nexus-check-project.cmd` | Run repository, backend, frontend, and firmware checks |
 
-For the first use, double-click `nexus-setup.cmd` once. Normal software development then requires only `nexus-start-app.cmd`. Close the two server windows to stop the application. Keep motor power disconnected while uploading firmware.
+For the first use, double-click `nexus-setup.cmd` once. Normal operation then requires only `nexus-start-app.cmd`: the backend automatically finds the GOOUUU ESP32-S3 COM port, writes `logs/hardware-live-*.ndjson`, and streams the same log to Hardware Graph in realtime. Do not open PlatformIO Serial Monitor at the same time because only one process can own the COM port. Close the two server windows or use `nexus-stop-app.cmd` to stop the application. Keep motor power disconnected while uploading firmware.
 
 ## Clone and validate the repository
 
@@ -93,9 +93,11 @@ uvicorn nexus_backend.app:app --reload
 Open:
 
 - API health: <http://127.0.0.1:8000/health>
+- Live hardware snapshot: <http://127.0.0.1:8000/api/v1/live>
+- Latest valid telemetry: <http://127.0.0.1:8000/api/v1/telemetry>
 - Interactive API docs: <http://127.0.0.1:8000/docs>
 
-The current backend exposes the health endpoint and contract models. Nemotron and device orchestration are later backlog items; the README does not assume they already exist.
+The backend owns the serial port, rejects malformed/`nan` packets, persists timestamped NDJSON entries under `logs/`, and streams complete live snapshots over `/api/v1/live/ws`. Nemotron and device orchestration remain later backlog items.
 
 ## Quick start: frontend
 
@@ -123,7 +125,7 @@ Open <http://127.0.0.1:5173>. Available routes:
 - `/hardware`
 - `/doctor`
 
-The UI currently uses presentation data. Typed real/mock data switching belongs to backlog item G02.
+Dashboard and Hardware Graph use live API data and show `--` while no valid hardware packet exists; they do not invent presentation values. Open `/hardware` for the realtime terminal and fault-resolution guide.
 
 ## Quick start: firmware
 
@@ -187,7 +189,7 @@ Important rules:
 
 - Never expose `NEXUS_NEBIUS_API_KEY` through a `VITE_` variable.
 - Never commit `.env`, `.env.local`, Wi-Fi credentials, device tokens, or raw private logs.
-- The frontend API default is `http://localhost:8000`; override it with `VITE_API_BASE_URL` only when required.
+- The frontend API default is `http://127.0.0.1:8000`; override it with `VITE_API_BASE_URL` only when required.
 
 ## Repository layout
 
@@ -244,6 +246,7 @@ Schema v1 changes require a new note under `nexus-contracts/migrations/` in the 
 - Port 5173 or 8000 is busy: stop the existing process or pass a different supported port.
 - ESP32 is not listed: use a USB data cable, install the board's USB-UART driver, and reconnect it.
 - Firmware upload cannot open the port: close every serial monitor before uploading.
+- UI says the COM port is busy: close `pio device monitor`, Arduino Serial Monitor, or any other serial app; the backend retries automatically.
 - Contract validation fails: do not patch a consumer independently; fix the canonical contract/fixture or add a versioned migration.
 
 ## Project links
