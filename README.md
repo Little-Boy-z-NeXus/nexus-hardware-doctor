@@ -56,6 +56,12 @@ No command typing is required after the prerequisite applications are installed.
 
 For the first use, double-click `nexus-setup.cmd` once. Normal operation then requires only `nexus-start-app.cmd`: the backend automatically finds the GOOUUU ESP32-S3 COM port, writes `logs/hardware-live-*.ndjson`, and streams the same log to Hardware Graph in realtime. Do not open PlatformIO Serial Monitor at the same time because only one process can own the COM port. Close the two server windows or use `nexus-stop-app.cmd` to stop the application. Keep motor power disconnected while uploading firmware.
 
+For the U05 physical acceptance only, double-click `nexus-run-hardware-baseline.cmd` and
+remain beside the rig for the complete 30-minute test. It validates the 12 V/INA226/current
+path, stops on unsafe readings, writes local evidence, and restores normal safe firmware.
+Follow [`docs/hardware-baseline-u05.md`](docs/hardware-baseline-u05.md); never leave the motor
+running unattended.
+
 ## Clone and validate the repository
 
 ```bash
