@@ -48,8 +48,8 @@ No command typing is required after the prerequisite applications are installed.
 | `nexus-start-backend.cmd` | Start only the API at `http://127.0.0.1:8000` |
 | `nexus-start-frontend.cmd` | Start only the UI at `http://127.0.0.1:5173` |
 | `nexus-upload-firmware.cmd` | Upload firmware through the GOOUUU ESP32-S3 built-in USB-JTAG interface |
-| `nexus-monitor-firmware.cmd` | Detect the ESP32-S3 COM port and open Serial Monitor |
-| `nexus-run-firmware.cmd` | Upload firmware and then automatically open Serial Monitor |
+| `nexus-monitor-firmware.cmd` | Detect the ESP32-S3 COM port, open Serial Monitor, and save every session under `logs/` |
+| `nexus-run-firmware.cmd` | Upload firmware, open Serial Monitor, and save the session under `logs/` |
 | `nexus-check-project.cmd` | Run repository, backend, frontend, and firmware checks |
 
 For the first use, double-click `nexus-setup.cmd` once. Normal software development then requires only `nexus-start-app.cmd`. Close the two server windows to stop the application. Keep motor power disconnected while uploading firmware.

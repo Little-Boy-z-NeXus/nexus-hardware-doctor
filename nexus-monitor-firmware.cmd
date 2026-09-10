@@ -23,8 +23,12 @@ if not defined NEXUS_PORT (
   goto :failed
 )
 
+if not exist "%~dp0logs" mkdir "%~dp0logs"
+
 echo [NeXus] Monitoring %NEXUS_PORT% at 115200 baud. Press Ctrl+C or close this window to stop.
-pio device monitor --port %NEXUS_PORT% --baud 115200
+echo [NeXus] Serial output is saved automatically in:
+echo          %~dp0logs\device-monitor-YYMMDD-HHMMSS.log
+pio device monitor --port %NEXUS_PORT% --baud 115200 --filter log2file
 exit /b %errorlevel%
 
 :failed
