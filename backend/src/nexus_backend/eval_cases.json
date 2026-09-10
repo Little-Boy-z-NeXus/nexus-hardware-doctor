@@ -1,0 +1,97 @@
+{
+  "dataset_version": "h07-synthetic-v1",
+  "source": "simulator",
+  "description": "Hand-labelled synthetic measurement fixtures. Expected answers never enter planner input. No physical or live-model acceptance is implied.",
+  "cases": [
+    {
+      "case_id": "case_01",
+      "name": "Normal operating readings",
+      "symptom": "Check the health of the motor rig.",
+      "measurements": {"bus_voltage_v": 12.0, "current_ma": 800.0, "pwm_percent": 70, "driver_enabled": true},
+      "observations": [],
+      "expected_top2": ["normal"],
+      "require_no_write": true
+    },
+    {
+      "case_id": "case_02",
+      "name": "Voltage conflict in declared wiring",
+      "symptom": "Inspect the configuration before running the rig.",
+      "measurements": {"bus_voltage_v": 12.0, "current_ma": 0.0, "pwm_percent": 0, "driver_enabled": false},
+      "observations": [{"status": "succeeded", "tool_name": "get_hardware_graph", "data": {"source_voltage_v": 12.0, "pin_max_voltage_v": 3.6, "connection_id": "declared_power_to_gpio_34"}}],
+      "expected_top2": ["overvoltage"],
+      "require_no_write": true
+    },
+    {
+      "case_id": "case_03",
+      "name": "Motor supply absent",
+      "symptom": "The motor does not turn.",
+      "measurements": {"bus_voltage_v": 0.0, "current_ma": 0.0, "pwm_percent": 70, "driver_enabled": true},
+      "observations": [],
+      "expected_top2": ["power"],
+      "require_no_write": true
+    },
+    {
+      "case_id": "case_04",
+      "name": "PWM duty at zero",
+      "symptom": "The motor does not turn.",
+      "measurements": {"bus_voltage_v": 12.0, "current_ma": 0.0, "pwm_percent": 0, "driver_enabled": true},
+      "observations": [],
+      "expected_top2": ["pwm"],
+      "require_no_write": false
+    },
+    {
+      "case_id": "case_05",
+      "name": "Current calibration disagrees with simulated reference",
+      "symptom": "Check the health of the motor rig.",
+      "measurements": {"bus_voltage_v": 12.0, "current_ma": 1300.0, "pwm_percent": 70, "driver_enabled": true},
+      "observations": [{"status": "succeeded", "tool_name": "get_telemetry", "data": {"reference_current_ma": 800.0}}],
+      "expected_top2": ["calibration"],
+      "require_no_write": true
+    },
+    {
+      "case_id": "case_06",
+      "name": "Driver output absent with supply and controls present",
+      "symptom": "The motor does not turn.",
+      "measurements": {"bus_voltage_v": 12.0, "current_ma": 0.0, "pwm_percent": 70, "driver_enabled": true},
+      "observations": [{"status": "succeeded", "tool_name": "get_telemetry", "data": {"driver_output_voltage_v": 0.0}}],
+      "expected_top2": ["driver"],
+      "require_no_write": true
+    },
+    {
+      "case_id": "case_07",
+      "name": "Motor output connection open",
+      "symptom": "The motor does not turn.",
+      "measurements": {"bus_voltage_v": 12.0, "current_ma": 0.0, "pwm_percent": 70, "driver_enabled": true},
+      "observations": [{"status": "succeeded", "tool_name": "get_hardware_graph", "data": {"driver_output_voltage_v": 10.0, "motor_output_connected": false}}],
+      "expected_top2": ["wiring"],
+      "require_no_write": true
+    },
+    {
+      "case_id": "case_08",
+      "name": "Sensor fails to produce a sample",
+      "symptom": "Check the health of the motor rig.",
+      "measurements": null,
+      "observations": [{"status": "succeeded", "tool_name": "get_telemetry", "data": {"sensor_timed_out": true}}],
+      "expected_top2": ["sensor"],
+      "require_no_write": true
+    },
+    {
+      "case_id": "case_09",
+      "name": "Tool transport error",
+      "symptom": "The motor does not turn.",
+      "measurements": {"bus_voltage_v": 12.0, "current_ma": 0.0, "pwm_percent": 70, "driver_enabled": true},
+      "observations": [{"status": "failed", "tool_name": "get_telemetry", "data": {}, "error": "Simulated tool transport failure"}],
+      "expected_top2": ["tool_error"],
+      "require_no_write": true
+    },
+    {
+      "case_id": "case_10",
+      "name": "Driver enable is off",
+      "symptom": "The motor does not turn.",
+      "measurements": {"bus_voltage_v": 12.0, "current_ma": 0.0, "pwm_percent": 70, "driver_enabled": false},
+      "observations": [],
+      "expected_top2": ["driver"],
+      "require_no_write": false
+    }
+  ]
+}

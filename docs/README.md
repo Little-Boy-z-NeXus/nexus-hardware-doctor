@@ -23,6 +23,11 @@ This directory records the decisions required to build and demonstrate the hacka
 | [`hardware-baseline-u05.md`](hardware-baseline-u05.md) | Running and evidencing the U05 hardware/safety gate | Hiếu + Nguyễn |
 | [`security.md`](security.md) | Handling keys, telemetry, logs, prompts, or device commands | Hoàng + Hiếu |
 | [`backlog.md`](backlog.md) | Finding the live plan or mapping a commit to a task ID | Entire team |
+| [`h-resource-checklist.md`](h-resource-checklist.md) | Supplying resources to finish H tasks; remaining live acceptance gates | Hoàng |
+| [`h01-h04.md`](h01-h04.md) | Configuring and testing model integration/diagnosis | Hoàng |
+| [`h05-h06.md`](h05-h06.md) | Reviewing bounded orchestration and default-deny policy | Hoàng |
+| [`h07-evaluation.md`](h07-evaluation.md) | Running labelled synthetic evaluation and understanding its limits | Hoàng |
+| [`h08-runbook.md`](h08-runbook.md) | Starting an isolated backend and testing controlled failures | Hoàng |
 
 ## Source-of-truth rules
 

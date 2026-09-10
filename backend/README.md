@@ -6,23 +6,34 @@ The backend owns telemetry validation, the hardware graph, deterministic checks,
 
 Available now:
 
-- FastAPI application and `/health` endpoint
-- strict Python mirrors of all four v1 contracts
+- FastAPI device registration, telemetry ingest/history, WebSocket streaming and `/health`
+- persistent SQLite device configuration, diagnosis session records and telemetry audit logs
+- raw canonical validation plus semantic hardware graph checks
+- bounded, source-labeled context for the later model adapter
+- a simulated device producer and a browser telemetry monitor at `/monitor`
 - GOOUUU ESP32-S3 serial auto-detection and reconnect
-- strict telemetry ingest with non-finite value rejection
 - timestamped session logs under `logs/hardware-live-*.ndjson`
 - `/api/v1/live` snapshot plus `/api/v1/live/ws` realtime stream
 - deterministic Vietnamese diagnostics for the fixed INA226 R100/L298N/motor rig
-- JSON Schema and fixture validation
-- automated tests and Ruff linting
+- strict Python contract mirrors, JSON Schema/fixture validation, automated tests and Ruff linting
 
-Not implemented yet:
+Prepared for H01/H04–H08:
 
-- database/cloud telemetry retention
-- Nebius/Nemotron runtime calls
-- diagnosis orchestration and tool execution
+- a strict, configurable async Nebius/Nemotron client and a separately labelled mock planner
+- bounded read/plan/policy/execute/verify orchestration with an isolated simulator
+- persistent diagnosis outcomes/events and a browser lab at `/doctor-lab`
+- synthetic evaluation, container packaging and a reproducible runbook
 
-Those capabilities are separate backlog items. Do not mock them inside the production adapter without marking the data source.
+Still awaiting live acceptance/integration:
+
+- successful real Nebius/Nemotron runtime proof
+- actual device command transport and verified physical actions
+- transfer of serial snapshots into the persistent per-device history and diagnosis context
+- cloud telemetry storage and automatic retention policies
+
+Those capabilities are separate backlog items. Simulated/replayed samples carry an explicit source and do not prove physical hardware behavior. See the [H02/H03 API guide](../docs/backend-api.md) for endpoint semantics, limitations and acceptance checks.
+
+See [H resources and completion gates](../docs/h-resource-checklist.md) for the remaining inputs and [H08 runbook](../docs/h08-runbook.md) for installation, live opt-in and controlled failures. This preemptive software does not mark H01/H04–H08 complete.
 
 ## Prerequisites
 
@@ -96,6 +107,15 @@ Browser links:
 - Active diagnostics: <http://127.0.0.1:8000/api/v1/diagnostics>
 - Swagger UI: <http://127.0.0.1:8000/docs>
 - OpenAPI JSON: <http://127.0.0.1:8000/openapi.json>
+- Browser telemetry monitor: <http://127.0.0.1:8000/monitor>
+
+In another activated terminal, generate explicitly simulated telemetry:
+
+```bash
+python -m nexus_backend.mock_device --count 60 --interval 1
+```
+
+The monitor receives the actual backend WebSocket stream. It supports device selection, reconnection and stale-data indication without requiring a board or model credential.
 
 The browser subscribes to `ws://127.0.0.1:8000/api/v1/live/ws`. The first message is a complete snapshot; subsequent messages replace it, which makes reconnect deterministic.
 
@@ -105,19 +125,21 @@ The root [`.env.example`](../.env.example) is the canonical backend/device templ
 
 | Variable | Required now | Purpose |
 | --- | --- | --- |
-| `NEXUS_ENV` | Yes | Runtime mode such as `development` |
+| `NEXUS_DB_PATH` | No | SQLite path; defaults to `artifacts/nexus.sqlite3` |
+| `NEXUS_CORS_ORIGINS` | No | Allowed browser origins; defaults to local frontend port 5173 |
+| `NEXUS_ENV` | Later | Reserved environment label |
 | `NEXUS_NEBIUS_BASE_URL` | Later | Nebius API base URL |
 | `NEXUS_NEBIUS_API_KEY` | Later | Secret API credential; never expose to frontend |
 | `NEXUS_NVIDIA_MODEL` | Later | Selected NVIDIA/Nemotron model ID |
 | `NEXUS_MQTT_URL` | Later | Device transport broker |
-| `NEXUS_DEVICE_ID` | Yes | Device identity matching contract v1 |
+| `NEXUS_DEVICE_ID` | Yes | Device identity matching contract v1 and the firmware default |
 | `NEXUS_SERIAL_ENABLED` | Yes | Set `false` only for a software-only run |
 | `NEXUS_SERIAL_PORT` | No | Leave blank to auto-detect `303A:1001`; set `COM8` only to force one port |
 | `NEXUS_LOG_ENABLED` | Yes | Keep `true` to persist every backend/firmware log entry locally |
 | `NEXUS_LOG_DIR` | Yes | Log directory; relative paths resolve from the repository root |
 | `NEXUS_MAX_PWM_PERCENT` | Yes | Backend safety ceiling; firmware clamps independently too |
 
-FastAPI does not load the future integration variables yet. Keeping the template stable lets later tasks add adapters without renaming configuration.
+The server reads `NEXUS_DB_PATH` and `NEXUS_CORS_ORIGINS` from its process environment. It does not automatically read `.env`; use Uvicorn's `--env-file` option if needed. Keep the same database path across restarts. Future model/policy variables remain reserved. Local development has no API authentication; use the loopback binding shown above.
 
 ## Run tests and lint
 
@@ -129,7 +151,7 @@ python -m pytest backend/tests -q
 python scripts/validate_contracts.py
 ```
 
-Expected result: seventeen tests pass, including serial parser/diagnostic paths; four schemas and four fixtures validate; and all three stack mirrors contain the shared telemetry fields.
+Tests cover contract rejection, persistent restart, device isolation, exact retries, atomic audit writes, WebSocket reconnect/order, hardware metadata, context bounds, simulated payloads, serial parsing/diagnostics, API coexistence, lifecycle cleanup and idle disconnect. Four schemas and four fixtures validate, and all three stack mirrors retain the shared telemetry fields.
 
 Run one test file while developing:
 
@@ -145,18 +167,39 @@ python -m pytest backend/tests/test_health.py -q
 backend/
 ├── pyproject.toml
 ├── src/nexus_backend/
-│   ├── __init__.py
-│   ├── app.py          FastAPI entry point
-│   ├── contracts.py    Typed v1 contract mirrors
-│   └── serial_bridge.py COM reader, ring buffer and deterministic diagnostics
+│   ├── app.py             API routes, lifespan and WebSocket streams
+│   ├── contracts.py       Typed v1 contract mirrors
+│   ├── serial_bridge.py   COM reader, live log and deterministic diagnostics
+│   ├── store.py           SQLite devices, telemetry, sessions and audit
+│   ├── validation.py      Canonical raw JSON validation
+│   ├── hardware.py        Hardware graph semantic validation
+│   ├── context.py         Bounded source-labelled model context
+│   ├── provider.py        Nebius and simulated model providers
+│   ├── diagnosis.py       Diagnosis proposal validation
+│   ├── orchestrator.py    Bounded diagnosis execution flow
+│   ├── policy.py          Deterministic safety policy
+│   ├── tool_adapter.py    Isolated device-tool adapter
+│   ├── runtime.py         Runtime configuration and limits
+│   ├── evaluation.py      Synthetic evaluation runner
+│   ├── mock_device.py     Explicit simulator CLI
+│   ├── prompts/
+│   └── static/
+│       ├── monitor.html
+│       └── doctor-lab.html
 └── tests/
-    ├── test_health.py
     ├── test_contracts.py
-    ├── test_contract_validation.py
-    └── test_serial_bridge.py
+    ├── test_serial_bridge.py
+    ├── test_store.py
+    ├── test_device_api.py
+    ├── test_hardware.py
+    ├── test_context.py
+    ├── test_provider.py
+    ├── test_orchestrator.py
+    ├── test_policy.py
+    └── test_evaluation.py
 ```
 
-Canonical JSON Schemas live in [`nexus-contracts/v1`](../nexus-contracts/v1/README.md). Python models mirror them but do not replace them.
+Canonical JSON Schemas live in [`nexus-contracts/v1`](../nexus-contracts/v1/README.md). Python models mirror them but do not replace them. The built wheel includes canonical schemas and fixtures directly from that directory so validation and the simulator also work outside a checkout.
 
 ## Adding backend code
 

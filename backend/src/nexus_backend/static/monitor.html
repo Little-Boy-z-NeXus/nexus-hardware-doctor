@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NeXus · Telemetry monitor</title>
+  <style>
+    :root { color-scheme: light; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #20343d; background: #f3f6f6; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    main { max-width: 1080px; margin: 0 auto; padding: 48px 24px; }
+    .eyebrow { margin: 0 0 8px; color: #47746f; font-size: 12px; font-weight: 750; letter-spacing: .15em; text-transform: uppercase; }
+    h1 { margin: 0; font-size: clamp(28px, 4vw, 40px); letter-spacing: -.035em; }
+    .intro { max-width: 680px; line-height: 1.6; color: #53676f; margin-bottom: 28px; }
+    .toolbar, .source-panel, .details, .metric { background: #fff; border: 1px solid #d7e2e2; border-radius: 14px; }
+    .toolbar { display: flex; align-items: end; flex-wrap: wrap; gap: 16px; padding: 20px; }
+    .device-picker { flex: 1 1 320px; }
+    label { display: block; font-size: 13px; font-weight: 650; margin-bottom: 7px; }
+    select, button { font: inherit; min-height: 44px; border-radius: 8px; border: 1px solid #abbfbe; background: #fff; color: #20343d; }
+    select { width: 100%; padding: 9px; }
+    button { padding: 9px 16px; cursor: pointer; }
+    button:hover { background: #e9f4f1; }
+    button:disabled { cursor: wait; opacity: .65; }
+    :focus-visible { outline: 3px solid #226e64; outline-offset: 3px; }
+    .connection { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; font-size: 13px; font-weight: 700; }
+    .connection::before { content: ""; height: 9px; width: 9px; border-radius: 100%; background: #66767b; }
+    .connection[data-state="connected"]::before { background: #137368; }
+    .connection[data-state="stale"]::before { background: #a35d05; }
+    .source-panel { padding: 20px; margin-top: 18px; background: #eaf4f0; border-color: #a4cbbd; }
+    .source-label { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: .13em; margin-bottom: 6px; font-weight: 700; }
+    #source { display: block; font-size: 23px; font-weight: 750; }
+    #source-note { margin: 8px 0 0; font-size: 14px; line-height: 1.5; }
+    .metrics { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin: 18px 0; }
+    .metric { padding: 22px; min-width: 0; }
+    .metric dt { color: #53676f; font-size: 13px; margin-bottom: 14px; }
+    .metric dd { margin: 0; font-size: 28px; font-weight: 680; overflow-wrap: anywhere; }
+    .details { padding: 22px; }
+    .details h2 { font-size: 16px; margin: 0 0 14px; }
+    .details dl { margin: 0; }
+    .detail-row { display: grid; grid-template-columns: 150px 1fr; gap: 18px; padding: 10px 0; border-top: 1px solid #edf1f1; font-size: 14px; }
+    .detail-row dt { color: #53676f; }
+    .detail-row dd { margin: 0; overflow-wrap: anywhere; }
+    #message { min-height: 22px; color: #7a430a; font-size: 14px; line-height: 1.5; }
+    footer { color: #53676f; font-size: 12px; line-height: 1.6; margin-top: 20px; }
+    @media (max-width: 750px) { .metrics { grid-template-columns: repeat(2, 1fr); } main { padding: 28px 16px; } }
+    @media (max-width: 420px) { .detail-row { grid-template-columns: 1fr; gap: 5px; } .metric { padding: 16px; } }
+  </style>
+</head>
+<body>
+<main>
+  <p class="eyebrow">NeXus / Device sessions</p>
+  <h1>Telemetry monitor</h1>
+  <p class="intro">Watch incoming samples from one registered device. The data source stays visible so simulated and replayed readings are easy to identify.</p>
+  <section class="toolbar" aria-label="Device connection">
+    <div class="device-picker"><label for="device">Device</label><select id="device"><option value="">Loading devices…</option></select></div>
+    <button id="refresh" type="button">Refresh devices</button>
+    <span id="connection" class="connection" data-state="disconnected" role="status">Disconnected</span>
+  </section>
+  <div class="source-panel"><span class="source-label">Data source</span><strong id="source">No sample received</strong><p id="source-note">Choose a device to subscribe to its telemetry stream.</p></div>
+  <p id="message" role="status" aria-live="polite"></p>
+  <dl class="metrics" aria-label="Latest sample readings">
+    <div class="metric"><dt>Bus voltage</dt><dd id="voltage">—</dd></div>
+    <div class="metric"><dt>Current</dt><dd id="current">—</dd></div>
+    <div class="metric"><dt>PWM</dt><dd id="pwm">—</dd></div>
+    <div class="metric"><dt>Driver enabled</dt><dd id="driver">—</dd></div>
+  </dl>
+  <section class="details"><h2>Sample details</h2><dl>
+    <div class="detail-row"><dt>Sample ID</dt><dd id="sample">—</dd></div>
+    <div class="detail-row"><dt>Sequence</dt><dd id="sequence">—</dd></div>
+    <div class="detail-row"><dt>Recorded at</dt><dd id="recorded">—</dd></div>
+    <div class="detail-row"><dt>Received in browser</dt><dd id="received">—</dd></div>
+    <div class="detail-row"><dt>Last update</dt><dd id="age">Waiting for a sample</dd></div>
+  </dl></section>
+  <footer>Connection status describes this browser’s stream. Readings and driver state do not establish physical motor movement or hardware health. Samples older than 5 seconds are marked stale.</footer>
+</main>
+<script>
+(() => {
+  "use strict";
+  const $ = (id) => document.getElementById(id);
+  const picker = $("device");
+  let devices = [];
+  let socket = null;
+  let reconnectTimer = null;
+  let generation = 0;
+  let attempt = 0;
+  let connected = false;
+  let connectedAt = 0;
+  let lastReceived = 0;
+  let lastRecorded = null;
+  let lastSource = null;
+  let lastSampleId = null;
+  let lastArrival = 0;
+
+  function status(state, label) {
+    $("connection").dataset.state = state;
+    $("connection").textContent = label;
+  }
+
+  function displaySource(value) {
+    const sources = {
+      simulator: ["SIMULATED DATA", "Generated software readings. No physical hardware measurements."],
+      replay: ["REPLAYED DATA", "Previously recorded samples. This is not a live hardware measurement."],
+      device: ["DEVICE-REPORTED DATA", "Source is declared by the sending device; physical operation is not verified here."],
+    };
+    const source = sources[value] || ["SOURCE UNKNOWN", "No recognized data source has been received."];
+    $("source").textContent = source[0];
+    $("source-note").textContent = source[1];
+  }
+
+  function updateAge() {
+    const now = Date.now();
+    if (lastReceived) {
+      const seconds = Math.max(0, Math.floor((now - lastReceived) / 1000));
+      $("age").textContent = seconds === 0 ? "Received just now" : `Received ${seconds} seconds ago`;
+    }
+    if (!connected) return;
+    // Old cached device/simulator readings stay stale after reconnect. Replays use arrival age.
+    const recordedIsOld = lastSource !== "replay" && lastRecorded !== null && now - lastRecorded > 5000;
+    if (recordedIsOld || now - (lastReceived || connectedAt) > 5000) {
+      status("stale", lastReceived ? "Stale · no fresh sample" : "Stale · waiting for samples");
+    } else {
+      status("connected", lastReceived ? "Connected" : "Connected · waiting for samples");
+    }
+  }
+
+  function showSample(sample) {
+    const m = sample && sample.measurements;
+    if (!sample || sample.device_id !== picker.value || !m || !sample.quality ||
+        ![m.bus_voltage_v, m.current_ma, m.pwm_percent].every(Number.isFinite) ||
+        typeof m.driver_enabled !== "boolean" || typeof sample.sample_id !== "string" ||
+        !Number.isInteger(sample.sequence) || !["device", "simulator", "replay"].includes(sample.quality.source)) {
+      $("message").textContent = "An invalid telemetry sample was ignored.";
+      return;
+    }
+    if (sample.sample_id === lastSampleId) return;
+    lastSampleId = sample.sample_id;
+    lastReceived = Date.now();
+    const timestamp = sample.recorded_at === null ? NaN : Date.parse(sample.recorded_at);
+    lastRecorded = Number.isFinite(timestamp) ? timestamp : null;
+    lastSource = sample.quality.source;
+    displaySource(lastSource);
+    $("voltage").textContent = `${m.bus_voltage_v.toFixed(2)} V`;
+    $("current").textContent = `${m.current_ma.toFixed(1)} mA`;
+    $("pwm").textContent = `${m.pwm_percent}%`;
+    $("driver").textContent = m.driver_enabled ? "Yes" : "No";
+    $("sample").textContent = sample.sample_id;
+    $("sequence").textContent = String(sample.sequence);
+    $("recorded").textContent = lastRecorded === null ? "Device time unavailable" : new Date(lastRecorded).toLocaleString();
+    $("received").textContent = new Date(lastReceived).toLocaleString();
+    $("message").textContent = "";
+    updateAge();
+  }
+
+  function connect(token) {
+    if (token !== generation || !picker.value) return;
+    const scheme = location.protocol === "https:" ? "wss:" : "ws:";
+    const ws = new WebSocket(`${scheme}//${location.host}/api/devices/${encodeURIComponent(picker.value)}/telemetry/stream`);
+    socket = ws;
+    status("disconnected", attempt ? "Reconnecting…" : "Connecting…");
+    ws.onopen = () => {
+      if (token !== generation) { ws.close(); return; }
+      connected = true;
+      connectedAt = Date.now();
+      lastArrival = Date.now();
+      updateAge();
+    };
+    ws.onmessage = (event) => {
+      if (token !== generation) return;
+      lastArrival = Date.now();
+      try {
+        const message = JSON.parse(event.data);
+        if (message.type === "telemetry") { showSample(message.sample); attempt = 0; }
+        else if (message.type === "heartbeat") attempt = 0;
+      } catch {
+        $("message").textContent = "An unreadable stream message was ignored.";
+      }
+    };
+    ws.onerror = () => {
+      if (token === generation) $("message").textContent = "Stream connection interrupted. Reconnecting automatically.";
+      ws.close();
+    };
+    ws.onclose = () => {
+      if (token !== generation) return;
+      connected = false;
+      const delay = Math.min(30000, 1000 * 2 ** Math.min(attempt++, 5));
+      status("disconnected", `Disconnected · retry in ${delay / 1000}s`);
+      reconnectTimer = setTimeout(() => connect(token), delay);
+    };
+  }
+
+  function selectDevice() {
+    generation += 1;
+    clearTimeout(reconnectTimer);
+    if (socket) socket.close();
+    connected = false;
+    attempt = 0;
+    lastReceived = 0;
+    lastRecorded = null;
+    lastSampleId = null;
+    lastSource = null;
+    for (const id of ["voltage", "current", "pwm", "driver", "sample", "sequence", "recorded", "received"]) $(id).textContent = "—";
+    $("age").textContent = "Waiting for a sample";
+    $("message").textContent = "";
+    const selected = devices.find((device) => device.device_id === picker.value);
+    displaySource(selected ? selected.source : null);
+    if (picker.value) connect(generation);
+    else status("disconnected", "Disconnected");
+  }
+
+  async function refreshDevices() {
+    $("refresh").disabled = true;
+    const previous = picker.value;
+    try {
+      const response = await fetch("/api/devices", { cache: "no-store", signal: AbortSignal.timeout(10000) });
+      if (!response.ok) throw new Error(`Device list returned HTTP ${response.status}.`);
+      const body = await response.json();
+      const entries = Array.isArray(body) ? body : body.devices;
+      if (!Array.isArray(entries)) throw new Error("Device list response is invalid.");
+      devices = entries.filter((device) => device && typeof device.device_id === "string");
+      picker.replaceChildren();
+      if (!devices.length) {
+        const option = document.createElement("option");
+        option.value = ""; option.textContent = "No devices registered"; picker.append(option);
+      }
+      for (const device of devices) {
+        const option = document.createElement("option");
+        option.value = device.device_id;
+        option.textContent = `${device.display_name || device.device_id} · ${device.device_id}`;
+        picker.append(option);
+      }
+      if (devices.some((device) => device.device_id === previous)) picker.value = previous;
+      if (!previous || picker.value !== previous) selectDevice();
+      if (!devices.length) $("message").textContent = "Run the simulated device producer, then refresh this list.";
+      else $("message").textContent = "";
+    } catch (error) {
+      $("message").textContent = error.name === "TimeoutError" ? "Device list request timed out. Try Refresh devices." : "Unable to load devices. Check the backend and try Refresh devices.";
+    } finally {
+      $("refresh").disabled = false;
+    }
+  }
+
+  picker.addEventListener("change", selectDevice);
+  $("refresh").addEventListener("click", refreshDevices);
+  window.addEventListener("online", selectDevice);
+  window.addEventListener("pagehide", () => { generation += 1; clearTimeout(reconnectTimer); if (socket) socket.close(); });
+  setInterval(() => {
+    updateAge();
+    if (connected && Date.now() - lastArrival > 45000 && socket) socket.close();
+  }, 1000);
+  refreshDevices();
+})();
+</script>
+</body>
+</html>
