@@ -26,6 +26,7 @@ if not defined NEXUS_PORT (
 if not exist "%~dp0logs" mkdir "%~dp0logs"
 
 echo [NeXus] Monitoring %NEXUS_PORT% at 115200 baud. Press Ctrl+C or close this window to stop.
+echo [NeXus] Expected sensor line: [NEXUS][INFO][INA226_READY] ... shunt=R100 calibration=512
 echo [NeXus] Serial output is saved automatically in:
 echo          %~dp0logs\device-monitor-YYMMDD-HHMMSS.log
 pio device monitor --port %NEXUS_PORT% --baud 115200 --filter log2file

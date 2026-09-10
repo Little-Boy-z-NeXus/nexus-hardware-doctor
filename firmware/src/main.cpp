@@ -1,5 +1,5 @@
 #include <Arduino.h>
-#include <Adafruit_INA219.h>
+#include <INA226.h>
 #include <Wire.h>
 
 #include <cmath>
@@ -15,8 +15,14 @@ constexpr uint8_t kMotorIn2Pin = 14;
 constexpr uint8_t kEncoderAPin = 16;
 constexpr uint8_t kEncoderBPin = 17;
 constexpr uint8_t kMaxPwmPercent = NEXUS_MAX_PWM_PERCENT;
+constexpr uint8_t kIna226Address = 0x40;
+constexpr float kIna226ShuntOhms = 0.1f;       // R100 on the confirmed MVP module.
+constexpr float kIna226CurrentLsbMa = 0.1f;    // 100 uA/bit; calibration register = 512.
+constexpr uint16_t kIna226ManufacturerId = 0x5449;
+constexpr uint16_t kIna226DieIdMask = 0xFFF0;
+constexpr uint16_t kIna226DieId = 0x2260;
 
-Adafruit_INA219 currentSensor;
+INA226 currentSensor(kIna226Address, &Wire);
 uint8_t pwmPercent = 0;
 bool driverEnabled = false;
 bool currentSensorReady = false;
@@ -35,23 +41,83 @@ void applySafeMotorState(uint8_t requestedPercent, bool enable) {
 bool initializeCurrentSensor() {
   lastSensorInitAttemptMs = millis();
   currentSensorReady = currentSensor.begin();
-  if (currentSensorReady) {
-    Serial.println("[NEXUS][INFO][INA219_READY] INA219 connected on SDA=GPIO1 SCL=GPIO2");
-  } else {
+  if (!currentSensorReady) {
     Serial.println(
-        "[NEXUS][ERROR][INA219_I2C_NO_ACK] Check GND, 3V3, SDA=GPIO1 and SCL=GPIO2");
+        "[NEXUS][ERROR][INA226_I2C_NO_ACK] Check GND, 3V3, SDA=GPIO1 and SCL=GPIO2");
+    return false;
   }
-  return currentSensorReady;
+
+  const uint16_t manufacturerId = currentSensor.getManufacturerID();
+  const bool manufacturerReadOk = currentSensor.getLastError() == 0;
+  const uint16_t dieId = currentSensor.getDieID();
+  const bool dieReadOk = currentSensor.getLastError() == 0;
+  if (!manufacturerReadOk || !dieReadOk || manufacturerId != kIna226ManufacturerId ||
+      (dieId & kIna226DieIdMask) != kIna226DieId) {
+    Serial.printf(
+        "[NEXUS][ERROR][INA226_ID_MISMATCH] Expected manufacturer=0x%04X die=0x226x; "
+        "received manufacturer=0x%04X die=0x%04X\n",
+        kIna226ManufacturerId,
+        manufacturerId,
+        dieId);
+    currentSensorReady = false;
+    return false;
+  }
+
+  const int calibrationError =
+      currentSensor.configure(kIna226ShuntOhms, kIna226CurrentLsbMa);
+  if (calibrationError != INA226_ERR_NONE || currentSensor.getLastError() != 0) {
+    Serial.printf(
+        "[NEXUS][ERROR][INA226_CALIBRATION_FAILED] code=0x%04X shunt=%.3fOhm "
+        "current_lsb=%.3fmA\n",
+        static_cast<unsigned int>(calibrationError),
+        kIna226ShuntOhms,
+        kIna226CurrentLsbMa);
+    currentSensorReady = false;
+    return false;
+  }
+
+  const bool configurationReady =
+      currentSensor.setAverage(INA226_16_SAMPLES) &&
+      currentSensor.setBusVoltageConversionTime(INA226_1100_us) &&
+      currentSensor.setShuntVoltageConversionTime(INA226_1100_us) &&
+      currentSensor.setModeShuntBusContinuous();
+  if (!configurationReady || currentSensor.getLastError() != 0) {
+    Serial.println(
+        "[NEXUS][ERROR][INA226_I2C_READ_FAILED] Configuration write failed; sensor will retry");
+    currentSensorReady = false;
+    return false;
+  }
+
+  Serial.println(
+      "[NEXUS][INFO][INA226_READY] INA226 verified on SDA=GPIO1 SCL=GPIO2 "
+      "address=0x40 shunt=R100 calibration=512");
+  return true;
 }
 
 void emitTelemetry() {
-  const float busVoltageV = currentSensor.getBusVoltage_V();
+  const float busVoltageV = currentSensor.getBusVoltage();
+  const bool busReadOk = currentSensor.getLastError() == 0;
+  const float shuntVoltageMv = currentSensor.getShuntVoltage_mV();
+  const bool shuntReadOk = currentSensor.getLastError() == 0;
   const float currentMa = currentSensor.getCurrent_mA();
+  const bool currentReadOk = currentSensor.getLastError() == 0;
   const float powerMw = busVoltageV * currentMa;
 
-  if (!std::isfinite(busVoltageV) || !std::isfinite(currentMa) || !std::isfinite(powerMw)) {
+  if (!busReadOk || !shuntReadOk || !currentReadOk) {
+    Serial.printf(
+        "[NEXUS][ERROR][INA226_I2C_READ_FAILED] bus_ok=%s shunt_ok=%s current_ok=%s; "
+        "sample discarded\n",
+        busReadOk ? "true" : "false",
+        shuntReadOk ? "true" : "false",
+        currentReadOk ? "true" : "false");
+    currentSensorReady = false;
+    return;
+  }
+
+  if (!std::isfinite(busVoltageV) || !std::isfinite(shuntVoltageMv) ||
+      !std::isfinite(currentMa) || !std::isfinite(powerMw)) {
     Serial.println(
-        "[NEXUS][ERROR][INA219_INVALID_READING] Non-finite reading; sensor will be reinitialized");
+        "[NEXUS][ERROR][INA226_INVALID_READING] Non-finite reading; sample discarded");
     currentSensorReady = false;
     return;
   }
@@ -83,7 +149,7 @@ void setup() {
   Serial.begin(115200);
   delay(300);
   Serial.println(
-      "[NEXUS][INFO][BOOT] GOOUUU ESP32-S3-N16R8 / INA219 / L298N / JGB37-520");
+      "[NEXUS][INFO][BOOT] GOOUUU ESP32-S3-N16R8 / INA226 R100 / L298N / JGB37-520");
   pinMode(kMotorEnablePin, OUTPUT);
   pinMode(kMotorIn1Pin, OUTPUT);
   pinMode(kMotorIn2Pin, OUTPUT);

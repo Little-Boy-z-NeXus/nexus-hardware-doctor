@@ -1,16 +1,16 @@
 # nexus-firmware
 
-The firmware runs on one GOOUUU Tech ESP32-S3-N16R8. It reads INA219 power telemetry, controls channel A on an L298N motor driver, clamps PWM locally, and emits the frozen telemetry v1 envelope over serial.
+The firmware runs on one GOOUUU Tech ESP32-S3-N16R8. It reads a confirmed INA226 module with an R100 (0.1 Ω) shunt, controls channel A on an L298N motor driver, clamps PWM locally, and emits the frozen telemetry v1 envelope over serial.
 
 ## Current MVP state
 
 Available now:
 
-- INA219 voltage/current reads
+- calibrated INA226 voltage/current reads
 - L298N channel A enable and direction output
 - local `NEXUS_MAX_PWM_PERCENT` clamp
 - one JSON telemetry sample per second
-- explicit boot/INA219 readiness and failure log lines
+- INA226 manufacturer/die-ID verification plus explicit readiness and I²C failure logs
 - invalid sensor values are withheld instead of emitting non-standard `nan` JSON
 - field names shared with backend and frontend contract v1
 
@@ -19,7 +19,7 @@ Command transport is not implemented yet. The device starts with the driver disa
 ## Hardware required
 
 - GOOUUU Tech ESP32-S3-N16R8 (16 MB flash, 8 MB PSRAM)
-- INA219 voltage/current sensor module
+- INA226 voltage/current sensor module with an `R100` (0.1 Ω) shunt
 - L298N dual H-bridge motor driver module
 - JGB37-520 12 V brushed DC gearmotor with Hall A/B encoder
 - regulated 12 V motor supply sized for the motor
@@ -32,8 +32,9 @@ Do not power the motor from the ESP32 3.3 V or 5 V pin. Connect all grounds corr
 
 | From | To | Purpose |
 | --- | --- | --- |
-| ESP32-S3 GPIO1 | INA219 SDA | I²C data |
-| ESP32-S3 GPIO2 | INA219 SCL | I²C clock |
+| ESP32-S3 GPIO1 | INA226 SDA | I²C data |
+| ESP32-S3 GPIO2 | INA226 SCL | I²C clock |
+| INA226 VBUS | INA226 VIN− | Required bus-voltage reference; bridge the module's VBUS jumper or wire it to the load side |
 | ESP32-S3 GPIO12 | L298N ENA | Channel A PWM speed control; remove the ENA jumper for GPIO PWM |
 | ESP32-S3 GPIO13 | L298N IN1 | Direction input; HIGH while running in the current firmware |
 | ESP32-S3 GPIO14 | L298N IN2 | Direction input; held LOW in the current firmware |
@@ -42,13 +43,15 @@ Do not power the motor from the ESP32 3.3 V or 5 V pin. Connect all grounds corr
 | ESP32-S3 GPIO16 | Motor encoder A, yellow wire | Reserved for encoder pulse input |
 | ESP32-S3 GPIO17 | Motor encoder B, green wire | Reserved for encoder pulse input |
 | ESP32-S3 3V3 | Encoder VCC, blue wire | 3.3 V encoder supply |
-| ESP32-S3 GND | INA219 GND, L298N GND and encoder GND, black wire | Common signal reference |
+| ESP32-S3 GND | INA226 GND, L298N GND and encoder GND, black wire | Common signal reference |
 
-For high-side current measurement, place INA219 in the positive motor-supply path according to the module manufacturer's markings. Do not guess `VIN+` and `VIN-` orientation.
+For high-side current measurement, place INA226 in the positive motor-supply path according to the module manufacturer's markings: adapter `+12V → VIN+`, then `VIN− → L298N +12V`. INA226 measures bus voltage through its separate `VBUS` input, so `VBUS` must be connected to `VIN−` for load-side voltage. Some modules provide a solder jumper; others expose a separate VBUS pad. Do not guess `VIN+` and `VIN-` orientation.
+
+The MVP calibration is deliberately fixed to the confirmed `R100` shunt: `0.1 Ω`, current LSB `0.1 mA`, calibration register `512`. A measured `2.6 mV` shunt drop therefore represents approximately `26 mA`. If the physical resistor marking changes, update both constants in `firmware/src/main.cpp` and revalidate with a multimeter before running the motor.
 
 ### Wiring diagram
 
-![NeXus ESP32, INA219, L298N and JGB37-520 encoder wiring](../docs/nexus-wiring-jgb37-520.svg)
+![NeXus ESP32, INA226, L298N and JGB37-520 encoder wiring](../docs/nexus-wiring-jgb37-520.svg)
 
 The diagram includes the optional JGB37-520 A/B encoder wiring on GPIO16 and GPIO17. The current firmware configures those pins but does not count pulses yet, so `motor_rpm` remains `null` until encoder support is implemented.
 
@@ -128,7 +131,7 @@ The checked-in defaults are in [`platformio.ini`](platformio.ini):
 | Flag | Default | Meaning |
 | --- | --- | --- |
 | `NEXUS_DEVICE_ID` | `nexus-demo-esp32` | Device identity in every payload |
-| `NEXUS_HARDWARE_MODEL_ID` | `nexus-s3-l298n-motor-rig-v1` | Frozen ESP32-S3/L298N hardware model identity |
+| `NEXUS_HARDWARE_MODEL_ID` | `nexus-s3-ina226-l298n-motor-rig-v1` | Frozen ESP32-S3/INA226/L298N hardware model identity |
 | `NEXUS_MAX_PWM_PERCENT` | `80` | Absolute firmware PWM ceiling |
 
 Do not raise the PWM ceiling until the physical hardware baseline and temperature checks are complete. Never store Wi-Fi or broker credentials in `platformio.ini`.
@@ -141,7 +144,7 @@ At 115200 baud, the device emits one compact JSON object per line:
 {
   "schema_version": "1.0.0",
   "device_id": "nexus-demo-esp32",
-  "hardware_model_id": "nexus-s3-l298n-motor-rig-v1",
+  "hardware_model_id": "nexus-s3-ina226-l298n-motor-rig-v1",
   "sample_id": "nexus-demo-esp32-42",
   "recorded_at": null,
   "sequence": 42,
@@ -162,7 +165,7 @@ At 115200 baud, the device emits one compact JSON object per line:
 
 `recorded_at` remains `null` until a later transport task synchronizes device time. The backend may stamp receipt time but must not rename the field. `motor_rpm` is also `null` until the firmware encoder task reads GPIO16/GPIO17 and converts pulses to RPM.
 
-The firmware also emits readable status lines. `[NEXUS][ERROR][INA219_I2C_NO_ACK]` means the sensor did not acknowledge during startup; `[NEXUS][ERROR][INA219_INVALID_READING]` means a later read was not finite. The firmware retries INA219 every five seconds, while the backend converts these codes into a Vietnamese explanation and repair step in the UI.
+The firmware also emits readable status lines. `[NEXUS][INFO][INA226_READY]` means address, manufacturer ID, die ID and R100 calibration all passed. `[NEXUS][ERROR][INA226_I2C_NO_ACK]`, `INA226_ID_MISMATCH`, `INA226_CALIBRATION_FAILED`, `INA226_I2C_READ_FAILED`, and `INA226_INVALID_READING` identify the exact failure stage. Failed reads are discarded and never become telemetry. The firmware retries INA226 every five seconds, while the backend converts these codes into a Vietnamese explanation and repair step in the UI.
 
 ## Firmware contract files
 
@@ -175,7 +178,7 @@ After changing a telemetry field, run `python scripts/validate_contracts.py` fro
 ## Safety before every hardware run
 
 1. Keep motor power off while changing wires.
-2. Confirm common ground and INA219 polarity.
+2. Confirm common ground, INA226 polarity, and the `R100` marking.
 3. Confirm L298N supply polarity, ENA jumper state, and that the motor supply is within the motor and driver ratings.
 4. Keep the motor mechanically clear and secured.
 5. Keep a quick motor-power disconnect within reach.
@@ -189,7 +192,10 @@ The 30-minute baseline, temperature result, supply rating, and photos belong to 
 - No port appears: replace charge-only USB cables; for native USB, look for VID:PID `303A:1001`; for the USB-TTL connector, install the CH343 driver and reconnect.
 - `Failed to connect ... No serial data received`: do not add `--upload-port COM8` when using the connector printed `ESP32`; the project uploads over built-in USB-JTAG. If USB-JTAG reports a Windows driver error, move the cable to the connector printed `CH343`, temporarily set `upload_protocol = esptool`, detect its new COM port, and upload to that port after entering bootloader mode if needed.
 - Port is busy: close every serial monitor and IDE serial window before upload.
-- INA219 is not detected: check SDA/SCL, common ground, module power, and the I²C address.
-- Readings are negative: verify INA219 current direction and `VIN+`/`VIN-` orientation.
+- INA226 is not detected: check SDA/SCL, common ground, 3.3 V module power, and I²C address `0x40`.
+- `INA226_ID_MISMATCH`: confirm the IC is really INA226 rather than INA219/INA260 and reset the board.
+- Current is correct but bus voltage stays at 0 V: connect the INA226 `VBUS` input to `VIN−`; measuring 12 V at the screw terminal alone does not prove that the IC's VBUS pin is connected.
+- Readings are negative: verify INA226 current direction and `VIN+`/`VIN-` orientation.
+- Current is exactly eight times too high: the board still has INA219-calibrated firmware; upload this repository's INA226 build.
 - Motor never starts: confirm external motor power, ENA jumper/PWM wiring, IN1/IN2, common ground, and the local safety clamp.
 - Device resets when the motor starts: isolate motor power noise, inspect supply capacity and wiring, and do not bypass safety limits.
