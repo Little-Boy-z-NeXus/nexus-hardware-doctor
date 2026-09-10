@@ -67,9 +67,9 @@ const initialSnapshot: HardwareSnapshot = {
   diagnostics: [],
   health: { status: "warning", active_issue_count: 0 },
   hardware: {
-    hardware_model_id: "nexus-s3-l298n-motor-rig-v1",
+    hardware_model_id: "nexus-s3-ina226-l298n-motor-rig-v1",
     controller: "GOOUUU Tech ESP32-S3-N16R8",
-    sensor: "INA219",
+    sensor: "INA226 (R100 shunt)",
     driver: "L298N",
     motor: "JGB37-520 12V + Hall encoder",
     power: "12V DC (không dùng pin vuông 9V)",
