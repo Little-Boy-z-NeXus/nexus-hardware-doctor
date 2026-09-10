@@ -157,7 +157,7 @@ def test_live_log_bounds_and_diagnostic_filters_preserved(tmp_path):
     bridge = TrackingBridge()
     app = create_app(tmp_path / "live.sqlite3", bridge=bridge)
     with TestClient(app) as client:
-        bridge.ingest_line("INA219_I2C_NO_ACK")
+        bridge.ingest_line("INA226_I2C_NO_ACK")
         assert client.get("/api/v1/diagnostics").json()[0]["active"] is True
         bridge.ingest_line(json.dumps(fixture("telemetry")))
         assert client.get("/api/v1/diagnostics").json() == []

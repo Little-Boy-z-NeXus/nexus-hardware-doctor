@@ -67,7 +67,7 @@ def test_context_labels_sources_and_only_advertises_implemented_read_operations(
     assert result["sources"]["hardware_model"] == "declared_configuration"
     assert result["sources"]["symptom"] == "user"
     assert result["available_sensors"] == [{
-        "component_id": "ina219", "model": "INA219",
+        "component_id": "ina226", "model": "INA226 with R100 0.1 ohm shunt",
         "capabilities": ["measure_voltage", "measure_current"],
     }]
     missing = {entry["path"] for entry in result["missing_metadata"]}

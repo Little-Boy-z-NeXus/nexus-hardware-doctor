@@ -14,8 +14,8 @@ Available now:
 - GOOUUU ESP32-S3 serial auto-detection and reconnect
 - timestamped session logs under `logs/hardware-live-*.ndjson`
 - `/api/v1/live` snapshot plus `/api/v1/live/ws` realtime stream
-- deterministic Vietnamese diagnostics for the fixed INA219/L298N/motor rig
-- strict Python contract mirrors, automated tests and Ruff linting
+- deterministic Vietnamese diagnostics for the fixed INA226 R100/L298N/motor rig
+- strict Python contract mirrors, JSON Schema/fixture validation, automated tests and Ruff linting
 
 Prepared for H01/H04–H08:
 
@@ -132,9 +132,7 @@ The root [`.env.example`](../.env.example) is the canonical backend/device templ
 | `NEXUS_NEBIUS_API_KEY` | Later | Secret API credential; never expose to frontend |
 | `NEXUS_NVIDIA_MODEL` | Later | Selected NVIDIA/Nemotron model ID |
 | `NEXUS_MQTT_URL` | Later | Device transport broker |
-| `NEXUS_DEVICE_ID` | Firmware | Default identity; registration carries explicit identity |
-| `NEXUS_MAX_PWM_PERCENT` | Firmware/later policy | Firmware safety ceiling; later backend policy configuration |
-| `NEXUS_DEVICE_ID` | Yes | Device identity matching contract v1 |
+| `NEXUS_DEVICE_ID` | Yes | Device identity matching contract v1 and the firmware default |
 | `NEXUS_SERIAL_ENABLED` | Yes | Set `false` only for a software-only run |
 | `NEXUS_SERIAL_PORT` | No | Leave blank to auto-detect `303A:1001`; set `COM8` only to force one port |
 | `NEXUS_LOG_ENABLED` | Yes | Keep `true` to persist every backend/firmware log entry locally |
@@ -153,8 +151,7 @@ python -m pytest backend/tests -q
 python scripts/validate_contracts.py
 ```
 
-Tests cover contract rejection, persistent restart, device isolation, exact retries, atomic audit writes, WebSocket reconnect/order, hardware metadata, context bounds and simulated payloads. Four schemas and four fixtures validate, and all three stack mirrors retain the shared telemetry fields.
-Tests also cover serial parsing/diagnostics, coexistence of live and persistent APIs, application isolation, lifecycle cleanup and idle WebSocket disconnect. Four schemas and four fixtures validate, and all three stack mirrors contain the shared telemetry fields.
+Tests cover contract rejection, persistent restart, device isolation, exact retries, atomic audit writes, WebSocket reconnect/order, hardware metadata, context bounds, simulated payloads, serial parsing/diagnostics, API coexistence, lifecycle cleanup and idle disconnect. Four schemas and four fixtures validate, and all three stack mirrors retain the shared telemetry fields.
 
 Run one test file while developing:
 
@@ -170,28 +167,36 @@ python -m pytest backend/tests/test_health.py -q
 backend/
 ├── pyproject.toml
 ├── src/nexus_backend/
-│   ├── __init__.py
-│   ├── app.py          API routes, lifespan and WebSocket stream
-│   ├── contracts.py    Typed v1 contract mirrors
-│   ├── store.py        SQLite devices, telemetry, sessions and audit
-│   ├── validation.py   Canonical raw JSON validation
-│   ├── hardware.py     Hardware graph semantic validation
-│   ├── context.py      Bounded source-labeled model context
-│   ├── mock_device.py  Explicit simulator CLI
-│   └── static/monitor.html
-│   ├── app.py          FastAPI entry point
-│   ├── contracts.py    Typed v1 contract mirrors
-│   └── serial_bridge.py COM reader, ring buffer and deterministic diagnostics
+│   ├── app.py             API routes, lifespan and WebSocket streams
+│   ├── contracts.py       Typed v1 contract mirrors
+│   ├── serial_bridge.py   COM reader, live log and deterministic diagnostics
+│   ├── store.py           SQLite devices, telemetry, sessions and audit
+│   ├── validation.py      Canonical raw JSON validation
+│   ├── hardware.py        Hardware graph semantic validation
+│   ├── context.py         Bounded source-labelled model context
+│   ├── provider.py        Nebius and simulated model providers
+│   ├── diagnosis.py       Diagnosis proposal validation
+│   ├── orchestrator.py    Bounded diagnosis execution flow
+│   ├── policy.py          Deterministic safety policy
+│   ├── tool_adapter.py    Isolated device-tool adapter
+│   ├── runtime.py         Runtime configuration and limits
+│   ├── evaluation.py      Synthetic evaluation runner
+│   ├── mock_device.py     Explicit simulator CLI
+│   ├── prompts/
+│   └── static/
+│       ├── monitor.html
+│       └── doctor-lab.html
 └── tests/
-    ├── test_health.py
     ├── test_contracts.py
-    ├── test_contract_validation.py
+    ├── test_serial_bridge.py
     ├── test_store.py
     ├── test_device_api.py
     ├── test_hardware.py
     ├── test_context.py
-    └── test_mock_device.py
-    └── test_serial_bridge.py
+    ├── test_provider.py
+    ├── test_orchestrator.py
+    ├── test_policy.py
+    └── test_evaluation.py
 ```
 
 Canonical JSON Schemas live in [`nexus-contracts/v1`](../nexus-contracts/v1/README.md). Python models mirror them but do not replace them. The built wheel includes canonical schemas and fixtures directly from that directory so validation and the simulator also work outside a checkout.

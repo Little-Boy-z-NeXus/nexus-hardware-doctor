@@ -2,7 +2,9 @@
 
 NeXus is an AI doctor for physical hardware. The hackathon MVP turns one ESP32 motor rig into a software-readable system that can prevent unsafe configurations, diagnose failures from telemetry, and safely heal software-controllable faults.
 
-This repository targets the [Nebius x NVIDIA Global AI Hackathon](https://nebiusglobalaihackathon.devpost.com/) and intentionally supports one topology: GOOUUU Tech ESP32-S3-N16R8, INA219, L298N, one JGB37-520 12 V DC gearmotor with encoder, and a 12 V supply.
+This repository targets the [Nebius x NVIDIA Global AI Hackathon](https://nebiusglobalaihackathon.devpost.com/) and intentionally supports one topology: GOOUUU Tech ESP32-S3-N16R8, INA226 with an R100 (0.1 Ω) shunt, L298N, one JGB37-520 12 V DC gearmotor with encoder, and a 12 V supply.
+
+The INA226 `VBUS` input must be bridged to `VIN−` (the load side of the R100 shunt) so the application can read the 12 V motor bus.
 
 ## Current build status
 
@@ -10,7 +12,7 @@ This repository targets the [Nebius x NVIDIA Global AI Hackathon](https://nebius
 | --- | --- | --- |
 | Frontend | Realtime Dashboard/Hardware Graph, ESP32 live log, reconnect and human-readable fault cards | Connect AI Doctor to the same evidence stream |
 | Backend | Persistent sessions/telemetry, serial live snapshots/logs, hardware context, configurable Nebius client, simulated diagnosis/policy/evaluation and Docker runbook | Verify live model calls and integrate serial evidence plus real commands |
-| Firmware | Safe PWM clamp, strict telemetry v1, INA219 startup/error logs | Add authenticated command transport and encoder calibration |
+| Firmware | Safe PWM clamp, strict telemetry v1, calibrated INA226 startup/error logs | Add authenticated command transport and encoder calibration |
 | Contracts | Four frozen JSON Schemas, fixtures and migration enforcement | Change only through a reviewed migration note or v2 |
 
 The three demo paths are `Prevent`, `Manual Diagnose`, and `Auto Heal`. Features that do not make one of those paths more reliable are out of scope until after the hackathon.
@@ -53,6 +55,12 @@ No command typing is required after the prerequisite applications are installed.
 | `nexus-check-project.cmd` | Run repository, backend, frontend, and firmware checks |
 
 For the first use, double-click `nexus-setup.cmd` once. Normal operation then requires only `nexus-start-app.cmd`: the backend automatically finds the GOOUUU ESP32-S3 COM port, writes `logs/hardware-live-*.ndjson`, and streams the same log to Hardware Graph in realtime. Do not open PlatformIO Serial Monitor at the same time because only one process can own the COM port. Close the two server windows or use `nexus-stop-app.cmd` to stop the application. Keep motor power disconnected while uploading firmware.
+
+For the U05 physical acceptance only, double-click `nexus-run-hardware-baseline.cmd` and
+remain beside the rig for the complete 30-minute test. It validates the 12 V/INA226/current
+path, stops on unsafe readings, writes local evidence, and restores normal safe firmware.
+Follow [`docs/hardware-baseline-u05.md`](docs/hardware-baseline-u05.md); never leave the motor
+running unattended.
 
 ## Clone and validate the repository
 

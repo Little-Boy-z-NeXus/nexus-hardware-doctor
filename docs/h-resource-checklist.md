@@ -33,7 +33,7 @@ I finish the live adapter/diagnosis checks and submit their evidence. No board i
 
 ## Checklist B — verified rig and adapter → H05/H06
 
-- [ ] Confirm the actual BOM matches the current GOOUUU ESP32-S3-N16R8, INA219, L298N and JGB37-520 Hall-encoder motor example; identify the supply and any substitutions.
+- [ ] Confirm the actual BOM matches the current GOOUUU ESP32-S3-N16R8, INA226 R100, L298N and JGB37-520 Hall-encoder motor example; identify the supply and any substitutions.
 - [ ] Labelled wiring diagram/photos and pin map, including motor outputs and grounds.
 - [ ] Verified supply/component/pin ratings; PWM range, current ceiling, test duration and measured baseline. Example fixture values are not approved physical limits.
 - [ ] Identified USB data port or documented gateway/device ID; connection secrets stored securely if applicable.

@@ -257,6 +257,7 @@ async def run_diagnosis(context: dict, planner, *, mode: str = "mock", max_steps
             attempted_writes += 1
         data = None
         failure = None
+        timed_out = False
         for retry in range((max_retries if name in READ_TOOLS else 0) + 1):
             try:
                 data = _check_result_data(await bounded(executor.execute(name, deepcopy(arguments))),
@@ -264,6 +265,7 @@ async def run_diagnosis(context: dict, planner, *, mode: str = "mock", max_steps
                 break
             except TimeoutError:
                 failure = "Tool execution reached the diagnosis time limit"
+                timed_out = True
                 break
             except Exception:  # noqa: BLE001 - a failed adapter must never establish an action result
                 failure = "Tool execution failed; no successful measurement was established"
@@ -279,7 +281,7 @@ async def run_diagnosis(context: dict, planner, *, mode: str = "mock", max_steps
                                      payload={"scope": "simulation",
                                               "physical_operation_verified": False}))
                 return finish("needs_manual", "The attempted change could not be verified")
-            if asyncio.get_running_loop().time() >= deadline:
+            if timed_out:
                 return finish("timeout", "Diagnosis reached its time limit")
             continue
         observation.update(status="succeeded", data=data, recorded_at=_now())

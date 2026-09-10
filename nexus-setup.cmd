@@ -52,7 +52,7 @@ if errorlevel 1 (
 echo.
 echo [SUCCESS] NeXus setup is complete.
 echo Double-click nexus-start-app.cmd to open the web application.
-echo Double-click nexus-run-firmware.cmd to upload and monitor the ESP32-S3.
+echo Double-click nexus-run-firmware.cmd to upload and monitor the ESP32-S3 with INA226 R100.
 if not defined NEXUS_NO_PAUSE pause
 exit /b 0
 

@@ -9,7 +9,7 @@ Create branches from an up-to-date `main` using one of these forms:
 - `docs/<issue>-short-kebab-name`
 - `chore/<issue>-short-kebab-name`
 
-Examples: `feat/h02-nemotron-client` and `fix/n03-ina219-timeout`.
+Examples: `feat/h02-nemotron-client` and `fix/n03-ina226-timeout`.
 
 `main` is the integration and demo branch. Do not commit directly to it after the initial repository bootstrap.
 

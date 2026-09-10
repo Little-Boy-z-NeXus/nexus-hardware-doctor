@@ -1,8 +1,8 @@
 {
   "schema_version": "1.0.0",
-  "hardware_model_id": "nexus-s3-l298n-motor-rig-v1",
+  "hardware_model_id": "nexus-s3-ina226-l298n-motor-rig-v1",
   "device_id": "nexus-demo-esp32",
-  "name": "NeXus GOOUUU ESP32-S3-N16R8 L298N motor demo rig",
+  "name": "NeXus GOOUUU ESP32-S3-N16R8 INA226 L298N motor demo rig",
   "components": [
     {
       "component_id": "esp32",
@@ -20,12 +20,17 @@
       "capabilities": ["sample_telemetry", "control_motor"]
     },
     {
-      "component_id": "ina219",
+      "component_id": "ina226",
       "component_type": "sensor",
-      "model": "INA219",
+      "model": "INA226 with R100 0.1 ohm shunt",
       "pins": [
         { "pin_id": "sda", "label": "SDA", "mode": "i2c" },
-        { "pin_id": "scl", "label": "SCL", "mode": "i2c" }
+        { "pin_id": "scl", "label": "SCL", "mode": "i2c" },
+        { "pin_id": "vin_plus", "label": "VIN+", "mode": "power" },
+        { "pin_id": "vin_minus", "label": "VIN−", "mode": "power" },
+        { "pin_id": "vbus", "label": "VBUS", "mode": "input" },
+        { "pin_id": "vcc", "label": "VCC 3.3V", "mode": "power" },
+        { "pin_id": "gnd", "label": "GND", "mode": "ground" }
       ],
       "capabilities": ["measure_voltage", "measure_current"]
     },
@@ -57,20 +62,28 @@
   ],
   "connections": [
     {
-      "connection_id": "esp32_to_ina219_sda",
+      "connection_id": "esp32_to_ina226_sda",
       "from_component_id": "esp32",
       "from_pin": "gpio_1",
-      "to_component_id": "ina219",
+      "to_component_id": "ina226",
       "to_pin": "sda",
       "signal_type": "i2c"
     },
     {
-      "connection_id": "esp32_to_ina219_scl",
+      "connection_id": "esp32_to_ina226_scl",
       "from_component_id": "esp32",
       "from_pin": "gpio_2",
-      "to_component_id": "ina219",
+      "to_component_id": "ina226",
       "to_pin": "scl",
       "signal_type": "i2c"
+    },
+    {
+      "connection_id": "ina226_vin_minus_to_vbus",
+      "from_component_id": "ina226",
+      "from_pin": "vin_minus",
+      "to_component_id": "ina226",
+      "to_pin": "vbus",
+      "signal_type": "power"
     },
     {
       "connection_id": "esp32_to_l298n_pwm",

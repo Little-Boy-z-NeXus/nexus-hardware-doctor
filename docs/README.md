@@ -6,10 +6,11 @@ This directory records the decisions required to build and demonstrate the hacka
 
 1. [`mvp-scope.md`](mvp-scope.md) — the user, problem, three golden paths, and explicit exclusions.
 2. [`architecture.md`](architecture.md) — runtime flow, Auto Heal sequence, service boundaries, and contract versioning.
-3. [`nexus-wiring-jgb37-520.svg`](nexus-wiring-jgb37-520.svg) — exact GOOUUU ESP32-S3-N16R8, INA219, L298N and encoder wiring.
+3. [`nexus-wiring-jgb37-520.svg`](nexus-wiring-jgb37-520.svg) — exact GOOUUU ESP32-S3-N16R8, INA226, L298N and encoder wiring.
 4. [`ownership.md`](ownership.md) — responsibilities for Hiếu, Hoàng, Nguyễn, and Nguyên.
-5. [`security.md`](security.md) — secret handling, redaction, model/tool boundaries, and incident basics.
-6. [`backlog.md`](backlog.md) — link to the live Google Sheet and local working rules.
+5. [`hardware-baseline-u05.md`](hardware-baseline-u05.md) — supervised 30-minute electrical and safety acceptance.
+6. [`security.md`](security.md) — secret handling, redaction, model/tool boundaries, and incident basics.
+7. [`backlog.md`](backlog.md) — link to the live Google Sheet and local working rules.
 
 ## Document index
 
@@ -19,6 +20,7 @@ This directory records the decisions required to build and demonstrate the hacka
 | [`architecture.md`](architecture.md) | Changing a service boundary, data flow, tool, or schema | Hiếu + Hoàng |
 | [`nexus-wiring-jgb37-520.svg`](nexus-wiring-jgb37-520.svg) | Building or checking the physical ESP32-S3/L298N motor rig | Hiếu + Nguyễn |
 | [`ownership.md`](ownership.md) | Assigning work or choosing a reviewer | Hiếu |
+| [`hardware-baseline-u05.md`](hardware-baseline-u05.md) | Running and evidencing the U05 hardware/safety gate | Hiếu + Nguyễn |
 | [`security.md`](security.md) | Handling keys, telemetry, logs, prompts, or device commands | Hoàng + Hiếu |
 | [`backlog.md`](backlog.md) | Finding the live plan or mapping a commit to a task ID | Entire team |
 | [`h-resource-checklist.md`](h-resource-checklist.md) | Supplying resources to finish H tasks; remaining live acceptance gates | Hoàng |

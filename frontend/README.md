@@ -67,7 +67,7 @@ Copy `.env.example` to `.env.local` only when you need to override the defaults.
 | Route | MVP purpose |
 | --- | --- |
 | `/dashboard` | Overall health, live signal cards, preventive risk and activity |
-| `/hardware` | Fixed GOOUUU S3 → INA219 → L298N → JGB37-520 topology, log and fault guide |
+| `/hardware` | Fixed GOOUUU S3 → INA226 R100 → L298N → JGB37-520 topology, log and fault guide |
 | `/doctor` | Natural-language diagnosis, evidence and safety context |
 
 Unknown paths redirect to `/dashboard`.

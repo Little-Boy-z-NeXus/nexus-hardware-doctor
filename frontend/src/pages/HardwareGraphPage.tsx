@@ -94,13 +94,13 @@ export function HardwareGraphPage() {
         : ("waiting" as NodeState),
     },
     {
-      id: "ina219",
-      name: "INA219",
+      id: "ina226",
+      name: "INA226",
       type: "Voltage + current sensor",
       detail: `${valueOrDash(measurements?.bus_voltage_v)} V · ${valueOrDash(measurements?.current_ma, 1)} mA`,
       icon: Activity,
       tone: "teal",
-      state: componentState("ina219", activeDiagnostics, Boolean(telemetry)),
+      state: componentState("ina226", activeDiagnostics, Boolean(telemetry)),
     },
     {
       id: "l298n",
@@ -169,7 +169,7 @@ export function HardwareGraphPage() {
         <div className="panel__header">
           <div>
             <p className="eyebrow">BOM signal path</p>
-            <h2>GOOUUU S3 → INA219 → L298N → JGB37-520</h2>
+            <h2>GOOUUU S3 → INA226 R100 → L298N → JGB37-520</h2>
           </div>
           <span className={`status-pill status-pill--${snapshot.health.status}`}>
             {activeDiagnostics.length} lỗi đang mở
@@ -236,7 +236,7 @@ export function HardwareGraphPage() {
             )}
             {activeDiagnostics.map((item) => (
               <div className={`diagnostic-item diagnostic-item--${item.severity}`} key={item.code}>
-                <div><strong>{item.title}</strong><span>{item.code} · lặp {item.occurrences} lần</span></div>
+                <div><strong>{item.title}</strong><span>{item.code} · {item.occurrences} mẫu liên tiếp</span></div>
                 <p>{item.message}</p>
                 <p><b>Làm ngay:</b> {item.action}</p>
               </div>
