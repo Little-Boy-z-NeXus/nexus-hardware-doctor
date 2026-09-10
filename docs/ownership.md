@@ -12,7 +12,7 @@
 
 ## Nguyễn
 
-- Owns ESP32 firmware, INA219 telemetry, device commands, automated test routines, and repeatable hardware fault injection.
+- Owns ESP32 firmware, INA226 telemetry, device commands, automated test routines, and repeatable hardware fault injection.
 - Records the hardware baseline and safe operating limits.
 
 ## Nguyên

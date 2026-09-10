@@ -23,7 +23,7 @@
 
   <rect width="1600" height="1000" fill="#f8fafc"/>
   <text x="800" y="58" text-anchor="middle" class="title">NeXus MVP — SƠ ĐỒ ĐẤU DÂY AN TOÀN</text>
-  <text x="800" y="94" text-anchor="middle" class="subtitle">GOOUUU ESP32-S3-N16R8 + INA219 + L298N + JGB37-520</text>
+  <text x="800" y="94" text-anchor="middle" class="subtitle">GOOUUU ESP32-S3-N16R8 + INA226 R100 + L298N + JGB37-520</text>
 
   <!-- Top component blocks -->
   <g filter="url(#shadow)">
@@ -41,7 +41,7 @@
   <circle cx="105" cy="345" r="17" fill="#111827"/><text x="105" y="351" text-anchor="middle" font-size="22" font-weight="700" fill="white">−</text>
   <text x="135" y="351" class="pin">0V / GND</text>
 
-  <text x="530" y="166" text-anchor="middle" class="block-title">INA219</text>
+  <text x="530" y="166" text-anchor="middle" class="block-title">INA226 · R100 (0.1 Ω)</text>
   <text x="530" y="194" text-anchor="middle" class="small">Đo dòng high-side</text>
   <g class="pin">
     <circle cx="415" cy="260" r="13" fill="#dc2626"/><text x="415" y="231" text-anchor="middle">VIN+</text>
@@ -50,7 +50,10 @@
     <circle cx="485" cy="380" r="13" fill="#111827"/><text x="485" y="354" text-anchor="middle">GND</text>
     <circle cx="560" cy="380" r="13" fill="#2563eb"/><text x="560" y="354" text-anchor="middle">SDA</text>
     <circle cx="625" cy="380" r="13" fill="#2563eb"/><text x="625" y="354" text-anchor="middle">SCL</text>
+    <circle cx="650" cy="320" r="10" fill="#dc2626"/><text x="620" y="326" text-anchor="end">VBUS</text>
   </g>
+  <path d="M645 273 V310" class="wire" stroke="#dc2626" stroke-width="4" stroke-dasharray="7 5" marker-end="url(#arrow-red)"/>
+  <text x="530" y="306" text-anchor="middle" class="small">BẮT BUỘC: VBUS → VIN−</text>
 
   <text x="947" y="166" text-anchor="middle" class="block-title">L298N — KÊNH A</text>
   <text x="947" y="194" text-anchor="middle" class="small">Tháo jumper ENA để điều khiển PWM</text>
@@ -134,7 +137,7 @@
   <circle cx="670" cy="665" r="7" fill="#9333ea"/>
   <path d="M670 687 V665 H350 V455 H430 V393" class="wire" stroke="#9333ea" stroke-width="5" marker-end="url(#arrow-purple)"/>
   <path d="M670 665 H1185 V555 H1260 V503" class="wire" stroke="#2563eb" stroke-width="5" marker-end="url(#arrow-blue)"/>
-  <text x="390" y="449" class="small" fill="#7e22ce">3V3 → INA219 VCC</text>
+  <text x="390" y="449" class="small" fill="#7e22ce">3V3 → INA226 VCC</text>
   <text x="1190" y="548" class="small" fill="#1d4ed8">3V3 → Encoder VCC (xanh dương)</text>
 
   <!-- Encoder A/B: route on far right, no crossings with GND -->

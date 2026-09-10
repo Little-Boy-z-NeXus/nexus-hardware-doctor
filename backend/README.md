@@ -12,7 +12,7 @@ Available now:
 - strict telemetry ingest with non-finite value rejection
 - timestamped session logs under `logs/hardware-live-*.ndjson`
 - `/api/v1/live` snapshot plus `/api/v1/live/ws` realtime stream
-- deterministic Vietnamese diagnostics for the fixed INA219/L298N/motor rig
+- deterministic Vietnamese diagnostics for the fixed INA226 R100/L298N/motor rig
 - JSON Schema and fixture validation
 - automated tests and Ruff linting
 

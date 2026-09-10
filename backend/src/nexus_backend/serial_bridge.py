@@ -20,12 +20,20 @@ from serial.tools import list_ports
 
 from nexus_backend.contracts import TelemetrySample
 
-EXPECTED_HARDWARE_MODEL_ID = "nexus-s3-l298n-motor-rig-v1"
+EXPECTED_HARDWARE_MODEL_ID = "nexus-s3-ina226-l298n-motor-rig-v1"
 DEFAULT_BAUD_RATE = 115_200
 MIN_BUS_VOLTAGE_V = 9.5
 MAX_CURRENT_MA = 1_500.0
 MAX_PWM_PERCENT = 80
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
+MEASUREMENT_DIAGNOSTIC_CODES = (
+    "INA226_REFERENCE_INVALID",
+    "MOTOR_SUPPLY_NOT_DETECTED",
+    "MOTOR_UNDERVOLTAGE",
+    "MOTOR_OVERCURRENT",
+    "INA226_POLARITY_REVERSED",
+    "PWM_SAFETY_LIMIT_EXCEEDED",
+)
 
 SnapshotSink = Callable[[dict[str, object]], None]
 
@@ -136,7 +144,7 @@ class SerialBridge:
                     "hardware": {
                         "hardware_model_id": EXPECTED_HARDWARE_MODEL_ID,
                         "controller": "GOOUUU Tech ESP32-S3-N16R8",
-                        "sensor": "INA219",
+                        "sensor": "INA226 (R100 shunt)",
                         "driver": "L298N",
                         "motor": "JGB37-520 12V + Hall encoder",
                         "power": "12V DC (không dùng pin vuông 9V)",
@@ -162,14 +170,34 @@ class SerialBridge:
             if port:
                 self._connection["port"] = port
 
-        if "i2cWriteReadNonStop returned Error" in line or "INA219_I2C_NO_ACK" in line:
+        if "i2cWriteReadNonStop returned Error" in line or any(
+            code in line
+            for code in (
+                "INA226_I2C_NO_ACK",
+                "INA226_I2C_READ_FAILED",
+                "INA226_CALIBRATION_FAILED",
+                "INA226_INVALID_READING",
+            )
+        ):
             self._diagnose(
-                "INA219_I2C_NO_ACK",
+                "INA226_I2C_FAILURE",
                 "error",
-                "ina219",
-                "Mất kết nối INA219",
-                "ESP32 không nhận được phản hồi I2C từ INA219. Thường do thiếu GND chung, lỏng SDA/SCL hoặc cấp sai VCC.",
-                "Tắt nguồn motor; nối INA219 GND→ESP32 GND, VCC→3V3, SDA→GPIO1, SCL→GPIO2 rồi khởi động lại board.",
+                "ina226",
+                "Không đọc được INA226",
+                "ESP32 không đọc hoặc cấu hình được INA226; firmware đã bỏ mẫu lỗi thay vì gửi số giả lên UI.",
+                "Tắt nguồn motor; kiểm tra INA226 GND→ESP32 GND, VCC→3V3, SDA→GPIO1, SCL→GPIO2 rồi reset board.",
+            )
+            self._notify()
+            return
+
+        if "INA226_ID_MISMATCH" in line:
+            self._diagnose(
+                "INA226_ID_MISMATCH",
+                "error",
+                "ina226",
+                "Module không phản hồi như INA226",
+                "ESP32 nhận I2C ACK nhưng mã nhà sản xuất hoặc mã chip không đúng INA226.",
+                "Đọc mã in trên IC; dùng đúng module INA226 tại địa chỉ 0x40 rồi reset board.",
             )
             self._notify()
             return
@@ -196,7 +224,7 @@ class SerialBridge:
                 "esp32",
                 "Gói telemetry không hợp lệ",
                 f"Backend đã bỏ qua dòng lỗi để UI không hiển thị số sai: {str(exc)[:180]}",
-                "Reset ESP32. Nếu thấy nan, kiểm tra lại INA219 rồi nạp firmware NeXus mới nhất.",
+                "Reset ESP32. Nếu thấy nan, kiểm tra lại INA226 rồi nạp firmware NeXus mới nhất.",
             )
             self._notify()
             return
@@ -227,7 +255,8 @@ class SerialBridge:
         self._resolve("SERIAL_PORT_ERROR")
         self._resolve("TELEMETRY_TIMEOUT")
         self._resolve("TELEMETRY_INVALID")
-        self._resolve("INA219_I2C_NO_ACK")
+        self._resolve("INA226_I2C_FAILURE")
+        self._resolve("INA226_ID_MISMATCH")
         self._resolve("HARDWARE_MODEL_MISMATCH")
         self._evaluate_measurements(sample)
 
@@ -249,15 +278,15 @@ class SerialBridge:
 
         if values.bus_voltage_v <= 0.1 and abs(values.current_ma) > 5:
             self._diagnose(
-                "INA219_REFERENCE_INVALID",
+                "INA226_REFERENCE_INVALID",
                 "error",
-                "ina219",
-                "Số đo INA219 không hợp lý",
+                "ina226",
+                "Số đo INA226 không hợp lý",
                 f"Điện áp là {values.bus_voltage_v:.2f} V nhưng dòng vẫn là {values.current_ma:.1f} mA.",
-                "Kiểm tra GND chung và đường công suất: nguồn +→VIN+, VIN−→L298N +12V; không nối VIN− xuống GND.",
+                "Kiểm tra GND chung; nối VBUS của INA226 với VIN− (phía tải), nguồn +→VIN+, VIN−→L298N +12V.",
             )
         else:
-            self._resolve("INA219_REFERENCE_INVALID")
+            self._resolve("INA226_REFERENCE_INVALID")
 
         if values.bus_voltage_v <= 0.1:
             self._diagnose(
@@ -265,8 +294,8 @@ class SerialBridge:
                 "warning",
                 "power",
                 "Chưa thấy nguồn 12V của motor",
-                "INA219 đang đọc xấp xỉ 0 V. Điều này bình thường nếu nguồn motor đang tắt.",
-                "Nếu bạn đã bật nguồn, kiểm tra nguồn 12V, GND chung, VIN+ và VIN− của INA219.",
+                "INA226 đang đọc xấp xỉ 0 V. Điều này bình thường nếu nguồn motor đang tắt.",
+                "Nếu nguồn đã bật, kiểm tra VBUS INA226 đã được nối/jumper sang VIN− và GND đã dùng chung.",
             )
         else:
             self._resolve("MOTOR_SUPPLY_NOT_DETECTED")
@@ -297,15 +326,15 @@ class SerialBridge:
 
         if values.current_ma < -5:
             self._diagnose(
-                "INA219_POLARITY_REVERSED",
+                "INA226_POLARITY_REVERSED",
                 "warning",
-                "ina219",
-                "INA219 có thể đang đấu ngược chiều",
+                "ina226",
+                "INA226 có thể đang đấu ngược chiều",
                 f"Dòng điện đang âm ({values.current_ma:.1f} mA).",
                 "Kiểm tra lại nguồn + đi vào VIN+ và điện ra L298N đi từ VIN−.",
             )
         else:
-            self._resolve("INA219_POLARITY_REVERSED")
+            self._resolve("INA226_POLARITY_REVERSED")
 
         if values.pwm_percent > MAX_PWM_PERCENT:
             self._diagnose(
@@ -402,6 +431,9 @@ class SerialBridge:
     def _set_connection(self, status: str, port: str | None, message: str) -> None:
         with self._lock:
             self._connection.update(status=status, port=port, message=message)
+        if status in {"searching", "error", "disconnected"}:
+            for code in MEASUREMENT_DIAGNOSTIC_CODES:
+                self._resolve(code)
         self._notify()
 
     def _append_log(self, level: str, message: str, *, source: str) -> None:
@@ -454,6 +486,7 @@ class SerialBridge:
         now = utc_now()
         with self._lock:
             previous = self._diagnostics.get(code)
+            continuing = previous is not None and bool(previous["active"])
             self._diagnostics[code] = {
                 "code": code,
                 "severity": severity,
@@ -461,9 +494,9 @@ class SerialBridge:
                 "title": title,
                 "message": message,
                 "action": action,
-                "first_seen_at": previous["first_seen_at"] if previous else now,
+                "first_seen_at": previous["first_seen_at"] if continuing else now,
                 "last_seen_at": now,
-                "occurrences": int(previous["occurrences"]) + 1 if previous else 1,
+                "occurrences": int(previous["occurrences"]) + 1 if continuing else 1,
                 "active": True,
             }
 

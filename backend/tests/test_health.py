@@ -31,9 +31,9 @@ def test_live_snapshot_exposes_fixed_mvp_hardware() -> None:
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["hardware"]["hardware_model_id"] == "nexus-s3-l298n-motor-rig-v1"
+    assert payload["hardware"]["hardware_model_id"] == "nexus-s3-ina226-l298n-motor-rig-v1"
     assert payload["hardware"]["controller"] == "GOOUUU Tech ESP32-S3-N16R8"
-    assert payload["hardware"]["sensor"] == "INA219"
+    assert payload["hardware"]["sensor"] == "INA226 (R100 shunt)"
     assert payload["hardware"]["driver"] == "L298N"
 
 

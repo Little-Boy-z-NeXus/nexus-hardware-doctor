@@ -37,12 +37,12 @@ def test_valid_mvp_telemetry_becomes_latest_snapshot() -> None:
     assert snapshot["health"] == {"status": "healthy", "active_issue_count": 0}
 
 
-def test_i2c_error_explains_ina219_wiring_repair() -> None:
+def test_i2c_error_explains_ina226_wiring_repair() -> None:
     bridge = SerialBridge(enabled=False, persist_logs=False)
     bridge.ingest_line("[133521][E][Wire.cpp:499] requestFrom(): i2cWriteReadNonStop returned Error -1")
 
     snapshot = bridge.snapshot()
-    finding = next(item for item in snapshot["diagnostics"] if item["code"] == "INA219_I2C_NO_ACK")
+    finding = next(item for item in snapshot["diagnostics"] if item["code"] == "INA226_I2C_FAILURE")
 
     assert finding["active"] is True
     assert finding["severity"] == "error"
@@ -68,9 +68,39 @@ def test_zero_voltage_with_current_reports_reference_and_supply_problems() -> No
     bridge.ingest_line(json.dumps(payload))
 
     assert {
-        "INA219_REFERENCE_INVALID",
+        "INA226_REFERENCE_INVALID",
         "MOTOR_SUPPLY_NOT_DETECTED",
     }.issubset(active_codes(bridge))
+    reference_finding = next(
+        item
+        for item in bridge.snapshot()["diagnostics"]
+        if item["code"] == "INA226_REFERENCE_INVALID"
+    )
+    assert "VBUS" in reference_finding["action"]
+
+
+def test_ina226_read_failure_never_becomes_telemetry() -> None:
+    bridge = SerialBridge(enabled=False, persist_logs=False)
+
+    bridge.ingest_line(
+        "[NEXUS][ERROR][INA226_I2C_READ_FAILED] "
+        "bus_ok=false shunt_ok=true current_ok=true; sample discarded"
+    )
+
+    assert bridge.snapshot()["telemetry"] is None
+    assert "INA226_I2C_FAILURE" in active_codes(bridge)
+
+
+def test_measurement_findings_are_not_current_after_disconnect() -> None:
+    bridge = SerialBridge(enabled=False, persist_logs=False)
+    payload = fixture_payload()
+    payload["measurements"].update(bus_voltage_v=0.0, current_ma=26.0, power_mw=0.0)
+    bridge.ingest_line(json.dumps(payload))
+
+    bridge._set_connection("disconnected", None, "USB disconnected")
+
+    assert "INA226_REFERENCE_INVALID" not in active_codes(bridge)
+    assert "MOTOR_SUPPLY_NOT_DETECTED" not in active_codes(bridge)
 
 
 def test_wrong_hardware_model_is_never_accepted_as_mvp_data() -> None:

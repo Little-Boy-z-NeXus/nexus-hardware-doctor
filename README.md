@@ -2,7 +2,9 @@
 
 NeXus is an AI doctor for physical hardware. The hackathon MVP turns one ESP32 motor rig into a software-readable system that can prevent unsafe configurations, diagnose failures from telemetry, and safely heal software-controllable faults.
 
-This repository targets the [Nebius x NVIDIA Global AI Hackathon](https://nebiusglobalaihackathon.devpost.com/) and intentionally supports one topology: GOOUUU Tech ESP32-S3-N16R8, INA219, L298N, one JGB37-520 12 V DC gearmotor with encoder, and a 12 V supply.
+This repository targets the [Nebius x NVIDIA Global AI Hackathon](https://nebiusglobalaihackathon.devpost.com/) and intentionally supports one topology: GOOUUU Tech ESP32-S3-N16R8, INA226 with an R100 (0.1 Ω) shunt, L298N, one JGB37-520 12 V DC gearmotor with encoder, and a 12 V supply.
+
+The INA226 `VBUS` input must be bridged to `VIN−` (the load side of the R100 shunt) so the application can read the 12 V motor bus.
 
 ## Current build status
 
@@ -10,7 +12,7 @@ This repository targets the [Nebius x NVIDIA Global AI Hackathon](https://nebius
 | --- | --- | --- |
 | Frontend | Realtime Dashboard/Hardware Graph, ESP32 live log, reconnect and human-readable fault cards | Connect AI Doctor to the same evidence stream |
 | Backend | FastAPI, serial auto-detection, telemetry validation, persistent session logs, WebSocket fan-out and MVP diagnostics | Add Nemotron adapter and orchestration |
-| Firmware | Safe PWM clamp, strict telemetry v1, INA219 startup/error logs | Add authenticated command transport and encoder calibration |
+| Firmware | Safe PWM clamp, strict telemetry v1, calibrated INA226 startup/error logs | Add authenticated command transport and encoder calibration |
 | Contracts | Four frozen JSON Schemas, fixtures and migration enforcement | Change only through a reviewed migration note or v2 |
 
 The three demo paths are `Prevent`, `Manual Diagnose`, and `Auto Heal`. Features that do not make one of those paths more reliable are out of scope until after the hackathon.
