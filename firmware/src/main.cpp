@@ -21,6 +21,9 @@ constexpr float kIna226CurrentLsbMa = 0.1f;    // 100 uA/bit; calibration regist
 constexpr uint16_t kIna226ManufacturerId = 0x5449;
 constexpr uint16_t kIna226DieIdMask = 0xFFF0;
 constexpr uint16_t kIna226DieId = 0x2260;
+#ifdef NEXUS_ENABLE_BASELINE_CONTROL
+constexpr uint32_t kBaselineKeepaliveTimeoutMs = 4000;
+#endif
 
 INA226 currentSensor(kIna226Address, &Wire);
 uint8_t pwmPercent = 0;
@@ -28,6 +31,10 @@ bool driverEnabled = false;
 bool currentSensorReady = false;
 uint32_t telemetrySequence = 0;
 uint32_t lastSensorInitAttemptMs = 0;
+#ifdef NEXUS_ENABLE_BASELINE_CONTROL
+String baselineCommandBuffer;
+uint32_t lastBaselineKeepaliveMs = 0;
+#endif
 
 void applySafeMotorState(uint8_t requestedPercent, bool enable) {
   pwmPercent = min(requestedPercent, kMaxPwmPercent);
@@ -37,6 +44,81 @@ void applySafeMotorState(uint8_t requestedPercent, bool enable) {
   digitalWrite(kMotorIn2Pin, LOW);
   analogWrite(kMotorEnablePin, driverEnabled ? map(pwmPercent, 0, 100, 0, 255) : 0);
 }
+
+#ifdef NEXUS_ENABLE_BASELINE_CONTROL
+void processBaselineCommand(const String& command) {
+  if (command == "NEXUS BASELINE STOP") {
+    applySafeMotorState(0, false);
+    Serial.println("[NEXUS][INFO][BASELINE_MOTOR_STOPPED] Motor output is disabled");
+    return;
+  }
+
+  if (command == "NEXUS BASELINE KEEPALIVE") {
+    if (driverEnabled) {
+      lastBaselineKeepaliveMs = millis();
+    }
+    return;
+  }
+
+  constexpr char kStartPrefix[] = "NEXUS BASELINE START ";
+  if (command.startsWith(kStartPrefix)) {
+    const String pwmText = command.substring(sizeof(kStartPrefix) - 1);
+    const int requestedPwm = pwmText.toInt();
+    if (requestedPwm < 1 || requestedPwm > kMaxPwmPercent ||
+        String(requestedPwm) != pwmText) {
+      Serial.printf(
+          "[NEXUS][ERROR][BASELINE_COMMAND_REJECTED] PWM must be 1..%u percent\n",
+          kMaxPwmPercent);
+      applySafeMotorState(0, false);
+      return;
+    }
+
+    lastBaselineKeepaliveMs = millis();
+    applySafeMotorState(static_cast<uint8_t>(requestedPwm), true);
+    Serial.printf(
+        "[NEXUS][INFO][BASELINE_MOTOR_STARTED] pwm_percent=%d keepalive_timeout_ms=%lu\n",
+        requestedPwm,
+        static_cast<unsigned long>(kBaselineKeepaliveTimeoutMs));
+    return;
+  }
+
+  Serial.println(
+      "[NEXUS][WARNING][BASELINE_COMMAND_UNKNOWN] Use START <PWM>, KEEPALIVE or STOP");
+}
+
+void serviceBaselineCommands() {
+  while (Serial.available() > 0) {
+    const char incoming = static_cast<char>(Serial.read());
+    if (incoming == '\r') {
+      continue;
+    }
+    if (incoming == '\n') {
+      baselineCommandBuffer.trim();
+      if (!baselineCommandBuffer.isEmpty()) {
+        processBaselineCommand(baselineCommandBuffer);
+      }
+      baselineCommandBuffer = "";
+      continue;
+    }
+    if (baselineCommandBuffer.length() < 80) {
+      baselineCommandBuffer += incoming;
+    } else {
+      baselineCommandBuffer = "";
+      applySafeMotorState(0, false);
+      Serial.println(
+          "[NEXUS][ERROR][BASELINE_COMMAND_REJECTED] Command exceeded 80 characters");
+    }
+  }
+}
+
+void enforceBaselineFailsafe() {
+  if (driverEnabled && millis() - lastBaselineKeepaliveMs > kBaselineKeepaliveTimeoutMs) {
+    applySafeMotorState(0, false);
+    Serial.println(
+        "[NEXUS][ERROR][BASELINE_FAILSAFE_STOP] Keepalive expired; motor output disabled");
+  }
+}
+#endif
 
 bool initializeCurrentSensor() {
   lastSensorInitAttemptMs = millis();
@@ -150,6 +232,10 @@ void setup() {
   delay(300);
   Serial.println(
       "[NEXUS][INFO][BOOT] GOOUUU ESP32-S3-N16R8 / INA226 R100 / L298N / JGB37-520");
+#ifdef NEXUS_ENABLE_BASELINE_CONTROL
+  Serial.println(
+      "[NEXUS][WARNING][BASELINE_CONTROL_ENABLED] USB-only supervised hardware test mode");
+#endif
   pinMode(kMotorEnablePin, OUTPUT);
   pinMode(kMotorIn1Pin, OUTPUT);
   pinMode(kMotorIn2Pin, OUTPUT);
@@ -161,8 +247,10 @@ void setup() {
 }
 
 void loop() {
-  // Command transport is intentionally deferred to the firmware backlog item.
-  // The safety clamp remains local even after MQTT or serial commands are added.
+#ifdef NEXUS_ENABLE_BASELINE_CONTROL
+  serviceBaselineCommands();
+  enforceBaselineFailsafe();
+#endif
   if (!currentSensorReady && millis() - lastSensorInitAttemptMs >= 5000) {
     initializeCurrentSensor();
   }

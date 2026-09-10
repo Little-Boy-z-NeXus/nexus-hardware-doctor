@@ -167,6 +167,18 @@ At 115200 baud, the device emits one compact JSON object per line:
 
 The firmware also emits readable status lines. `[NEXUS][INFO][INA226_READY]` means address, manufacturer ID, die ID and R100 calibration all passed. `[NEXUS][ERROR][INA226_I2C_NO_ACK]`, `INA226_ID_MISMATCH`, `INA226_CALIBRATION_FAILED`, `INA226_I2C_READ_FAILED`, and `INA226_INVALID_READING` identify the exact failure stage. Failed reads are discarded and never become telemetry. The firmware retries INA226 every five seconds, while the backend converts these codes into a Vietnamese explanation and repair step in the UI.
 
+## Supervised U05 baseline mode
+
+Normal firmware never accepts USB motor commands. The separate PlatformIO environment
+`nexus-goouuu-esp32-s3-n16r8-baseline` enables only three local commands for the supervised
+U05 fixture test: `NEXUS BASELINE START <PWM>`, `NEXUS BASELINE KEEPALIVE`, and
+`NEXUS BASELINE STOP`. PWM is still clamped to 80%, the motor boots off, and missing
+keepalive stops the driver within four seconds.
+
+Use the root `nexus-run-hardware-baseline.cmd`; it runs at 30% PWM, saves evidence, then
+restores normal firmware automatically. Do not upload the baseline environment for normal
+application use. See [`../docs/hardware-baseline-u05.md`](../docs/hardware-baseline-u05.md).
+
 ## Firmware contract files
 
 - Field-name constants: [`include/nexus_contract_v1.h`](include/nexus_contract_v1.h)
