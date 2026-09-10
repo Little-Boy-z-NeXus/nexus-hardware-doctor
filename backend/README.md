@@ -11,16 +11,11 @@ Available now:
 - raw canonical validation plus semantic hardware graph checks
 - bounded, source-labeled context for the later model adapter
 - a simulated device producer and a browser telemetry monitor at `/monitor`
-- strict Python contract mirrors, automated tests and Ruff linting
-- FastAPI application and `/health` endpoint
-- strict Python mirrors of all four v1 contracts
 - GOOUUU ESP32-S3 serial auto-detection and reconnect
-- strict telemetry ingest with non-finite value rejection
 - timestamped session logs under `logs/hardware-live-*.ndjson`
 - `/api/v1/live` snapshot plus `/api/v1/live/ws` realtime stream
 - deterministic Vietnamese diagnostics for the fixed INA219/L298N/motor rig
-- JSON Schema and fixture validation
-- automated tests and Ruff linting
+- strict Python contract mirrors, automated tests and Ruff linting
 
 Prepared for H01/H04–H08:
 
@@ -28,15 +23,13 @@ Prepared for H01/H04–H08:
 - bounded read/plan/policy/execute/verify orchestration with an isolated simulator
 - persistent diagnosis outcomes/events and a browser lab at `/doctor-lab`
 - synthetic evaluation, container packaging and a reproducible runbook
-- database/cloud telemetry retention
-- Nebius/Nemotron runtime calls
-- diagnosis orchestration and tool execution
 
 Still awaiting live acceptance/integration:
 
 - successful real Nebius/Nemotron runtime proof
 - actual device command transport and verified physical actions
-- the React real/mock API client (G02)
+- transfer of serial snapshots into the persistent per-device history and diagnosis context
+- cloud telemetry storage and automatic retention policies
 
 Those capabilities are separate backlog items. Simulated/replayed samples carry an explicit source and do not prove physical hardware behavior. See the [H02/H03 API guide](../docs/backend-api.md) for endpoint semantics, limitations and acceptance checks.
 
@@ -161,7 +154,7 @@ python scripts/validate_contracts.py
 ```
 
 Tests cover contract rejection, persistent restart, device isolation, exact retries, atomic audit writes, WebSocket reconnect/order, hardware metadata, context bounds and simulated payloads. Four schemas and four fixtures validate, and all three stack mirrors retain the shared telemetry fields.
-Expected result: seventeen tests pass, including serial parser/diagnostic paths; four schemas and four fixtures validate; and all three stack mirrors contain the shared telemetry fields.
+Tests also cover serial parsing/diagnostics, coexistence of live and persistent APIs, application isolation, lifecycle cleanup and idle WebSocket disconnect. Four schemas and four fixtures validate, and all three stack mirrors contain the shared telemetry fields.
 
 Run one test file while developing:
 

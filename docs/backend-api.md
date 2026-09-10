@@ -24,6 +24,21 @@ The producer stops after the requested sample count. Restarting it generates new
 
 ## Configuration and persistence
 
+The read-only serial routes `/api/v1/live`, `/api/v1/telemetry`, `/api/v1/logs`,
+`/api/v1/diagnostics` and `/api/v1/live/ws` coexist with the persistent `/api/devices`
+routes in one application. Serial snapshots and NDJSON logs are separate from
+SQLite telemetry/session records; receiving serial data does not register a device
+or overwrite stored simulator data. Both WebSocket families use the configured
+origin policy. An idle live client is removed when it disconnects.
+
+Each application owns its bridge, live subscribers and database connection. The
+exported server starts/stops the bridge with the database lifespan and follows
+`NEXUS_SERIAL_ENABLED`; set it to `false` for development without hardware access.
+`create_app(...)` disables serial access by default for isolated consumers/tests;
+pass `serial_enabled=None` to use the environment or inject a bridge explicitly.
+Importing the application alone does not open USB or SQLite. Live snapshots and
+health remain readable before lifespan startup; persistent routes require it.
+
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `NEXUS_DB_PATH` | `artifacts/nexus.sqlite3` | SQLite path, relative to the server working directory |
