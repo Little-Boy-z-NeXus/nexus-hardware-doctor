@@ -10,6 +10,7 @@ RUN useradd --uid 10001 --create-home nexus && mkdir /data && chown nexus:nexus 
 USER nexus
 WORKDIR /home/nexus
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 NEXUS_DB_PATH=/data/nexus.sqlite3 NEXUS_ENABLE_LIVE_MODEL=false
+ENV NEXUS_SERIAL_ENABLED=false NEXUS_LOG_DIR=/data/logs
 EXPOSE 8000
 HEALTHCHECK --interval=15s --timeout=3s --start-period=10s --retries=3 CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2)"
 CMD ["python", "-m", "uvicorn", "nexus_backend.app:app", "--host", "0.0.0.0", "--port", "8000", "--no-access-log"]

@@ -15,6 +15,8 @@ While the simulator is producing samples, open <http://127.0.0.1:8000/monitor> o
 
 The container runs as user `nexus`, publishes only on host loopback, has a health check, and retains its SQLite database in the `nexus-data` volume. `docker compose down` stops the service without deleting that volume. No hardware USB device, physical adapter or public ingress is configured.
 
+The upstream USB telemetry bridge and its `/api/v1/live` routes coexist with the persisted H APIs in one application. Docker/Compose explicitly disables serial discovery; direct Python startup follows `NEXUS_SERIAL_ENABLED` (upstream default: enabled). Use `NEXUS_SERIAL_ENABLED=false` for a software-only local run. Serial snapshots are read-only and do not automatically register devices or populate H diagnosis history; that integration still needs verified device identity and hardware configuration. CI starts the installed container and checks both API families as well as the packaged evaluation.
+
 ### Upgrading an existing demo database
 
 The current GOOUUU ESP32-S3/JGB37 example changes the hardware model and wiring while retaining the example device ID. A database containing the earlier example correctly rejects its replacement with HTTP 409: device configuration is immutable. Preserve that history and register the updated simulator under a distinct ID:
