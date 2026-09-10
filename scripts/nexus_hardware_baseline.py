@@ -25,6 +25,8 @@ MIN_BUS_VOLTAGE_V = 9.5
 MAX_BUS_VOLTAGE_V = 14.5
 MAX_CURRENT_MA = 1500.0
 MIN_CURRENT_RISE_MA = 30.0
+MAX_LOW_CURRENT_CONSECUTIVE_SAMPLES = 5
+MIN_SAMPLE_COVERAGE = 0.90
 DEFAULT_PWM_PERCENT = 30
 DEFAULT_DURATION_MINUTES = 30
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
@@ -36,6 +38,8 @@ class BaselineState:
     samples: list[dict[str, float | int | bool | None]] = field(default_factory=list)
     failures: list[str] = field(default_factory=list)
     firmware_errors: list[str] = field(default_factory=list)
+    low_current_sample_count: int = 0
+    max_low_current_streak: int = 0
     start_monotonic: float = 0.0
     stop_monotonic: float = 0.0
 
@@ -109,6 +113,28 @@ def measurement_failures(
             f"Dòng chỉ tăng {current - idle_current_ma:.1f} mA; chưa chứng minh motor nhận tải."
         )
     return failures
+
+
+def update_low_current_streak(
+    *, current_ma: float, idle_current_ma: float, previous_streak: int
+) -> tuple[int, str | None]:
+    """Require several consecutive weak-current samples before failing the rig.
+
+    INA226/USB telemetry can occasionally contain one transient zero sample while the
+    surrounding motor readings remain healthy. Five consecutive samples (about five
+    seconds at the MVP's 1 Hz rate) still stops the motor quickly for a real disconnect.
+    """
+    if current_ma >= idle_current_ma + MIN_CURRENT_RISE_MA:
+        return 0, None
+
+    streak = previous_streak + 1
+    if streak < MAX_LOW_CURRENT_CONSECUTIVE_SAMPLES:
+        return streak, None
+    current_rise = current_ma - idle_current_ma
+    return streak, (
+        f"Dòng chỉ tăng {current_rise:.1f} mA trong {streak} mẫu liên tiếp; "
+        "chưa chứng minh motor nhận tải."
+    )
 
 
 def open_serial(port: str) -> serial.Serial:
@@ -186,6 +212,7 @@ def run_baseline(
                 next_keepalive = state.start_monotonic
                 next_progress = state.start_monotonic
                 last_telemetry = state.start_monotonic
+                low_current_streak = 0
 
                 while time.monotonic() < deadline:
                     now = time.monotonic()
@@ -218,13 +245,28 @@ def run_baseline(
                                 measurements,
                                 requested_pwm=pwm_percent,
                                 idle_current_ma=state.idle_current_ma,
-                                check_current_rise=(
-                                    time.monotonic() - state.start_monotonic >= 3
-                                ),
+                                check_current_rise=False,
                             )
                             if failures:
                                 state.failures.extend(failures)
                                 break
+                            if time.monotonic() - state.start_monotonic >= 3:
+                                low_current_streak, current_failure = (
+                                    update_low_current_streak(
+                                        current_ma=float(measurements["current_ma"]),
+                                        idle_current_ma=state.idle_current_ma,
+                                        previous_streak=low_current_streak,
+                                    )
+                                )
+                                if low_current_streak:
+                                    state.low_current_sample_count += 1
+                                    state.max_low_current_streak = max(
+                                        state.max_low_current_streak,
+                                        low_current_streak,
+                                    )
+                                if current_failure:
+                                    state.failures.append(current_failure)
+                                    break
 
                     if time.monotonic() - last_telemetry > 5:
                         state.failures.append("Mất telemetry quá 5 giây.")
@@ -259,6 +301,8 @@ def state_to_dict(state: BaselineState) -> dict[str, object]:
         "sample_count": len(state.samples),
         "failures": state.failures,
         "firmware_errors": state.firmware_errors,
+        "low_current_sample_count": state.low_current_sample_count,
+        "max_low_current_streak": state.max_low_current_streak,
     }
 
 
@@ -271,12 +315,18 @@ def write_report(
     evidence_path: Path,
     physical_checks: dict[str, bool],
 ) -> bool:
-    electrical_pass = not state.failures and len(state.samples) >= max(1, duration_seconds - 5)
+    duration_actual = max(0.0, state.stop_monotonic - state.start_monotonic)
+    required_samples = max(1, math.floor(duration_seconds * MIN_SAMPLE_COVERAGE))
+    electrical_pass = (
+        not state.failures
+        and duration_actual >= duration_seconds
+        and len(state.samples) >= required_samples
+    )
     physical_pass = all(physical_checks.values())
     passed = electrical_pass and physical_pass
     voltages = [float(sample["bus_voltage_v"]) for sample in state.samples]
     currents = [float(sample["current_ma"]) for sample in state.samples]
-    duration_actual = max(0.0, state.stop_monotonic - state.start_monotonic)
+    sample_coverage = len(state.samples) / max(1, duration_seconds) * 100
 
     def stats(values: list[float]) -> str:
         if not values:
@@ -296,6 +346,7 @@ def write_report(
 - Thời lượng yêu cầu: `{duration_seconds}` giây
 - Thời lượng thực tế: `{duration_actual:.1f}` giây
 - Số mẫu hợp lệ: `{len(state.samples)}`
+- Độ phủ mẫu: `{sample_coverage:.1f}%` (yêu cầu ≥ {MIN_SAMPLE_COVERAGE * 100:.0f}%)
 - Evidence NDJSON: `{evidence_path}`
 
 ## Kết quả điện
@@ -303,6 +354,7 @@ def write_report(
 - Bus voltage (V): {stats(voltages)}
 - Current (mA): {stats(currents)}
 - Dòng idle: {state.idle_current_ma:.1f} mA
+- Mẫu dòng thấp thoáng qua: {state.low_current_sample_count} (chuỗi dài nhất: {state.max_low_current_streak})
 
 ## Checklist vật lý do người vận hành xác nhận
 

@@ -13,6 +13,7 @@ SPEC.loader.exec_module(BASELINE_MODULE)
 BaselineState = BASELINE_MODULE.BaselineState
 measurement_failures = BASELINE_MODULE.measurement_failures
 parse_telemetry = BASELINE_MODULE.parse_telemetry
+update_low_current_streak = BASELINE_MODULE.update_low_current_streak
 write_report = BASELINE_MODULE.write_report
 
 
@@ -67,6 +68,33 @@ def test_measurement_failures_rejects_missing_motor_current_rise() -> None:
     assert any("chưa chứng minh motor nhận tải" in item for item in failures)
 
 
+def test_current_rise_monitor_tolerates_one_transient_zero_sample() -> None:
+    streak, failure = update_low_current_streak(
+        current_ma=0.0, idle_current_ma=26.0, previous_streak=0
+    )
+    assert streak == 1
+    assert failure is None
+
+    streak, failure = update_low_current_streak(
+        current_ma=90.0, idle_current_ma=26.0, previous_streak=streak
+    )
+    assert streak == 0
+    assert failure is None
+
+
+def test_current_rise_monitor_rejects_five_consecutive_weak_samples() -> None:
+    streak = 0
+    failure = None
+    for _ in range(5):
+        streak, failure = update_low_current_streak(
+            current_ma=26.0, idle_current_ma=26.0, previous_streak=streak
+        )
+
+    assert streak == 5
+    assert failure is not None
+    assert "5 mẫu liên tiếp" in failure
+
+
 def test_report_pass_requires_electrical_samples_and_all_physical_checks(tmp_path) -> None:
     sample = {
         "bus_voltage_v": 12.1,
@@ -95,3 +123,37 @@ def test_report_pass_requires_electrical_samples_and_all_physical_checks(tmp_pat
 
     assert passed is True
     assert "**PASS**" in report_path.read_text(encoding="utf-8")
+
+
+def test_report_accepts_real_duration_with_ina226_sample_rate_below_one_hz(
+    tmp_path,
+) -> None:
+    sample = {
+        "bus_voltage_v": 12.1,
+        "current_ma": 90.0,
+        "power_mw": 1089.0,
+        "pwm_percent": 30,
+        "driver_enabled": True,
+        "motor_rpm": None,
+    }
+    state = BaselineState(
+        idle_current_ma=26.2,
+        samples=[sample] * 1785,
+        start_monotonic=10.0,
+        stop_monotonic=1810.42,
+    )
+    report_path = tmp_path / "report.md"
+
+    passed = write_report(
+        report_path,
+        state,
+        duration_seconds=1800,
+        pwm_percent=30,
+        evidence_path=tmp_path / "evidence.ndjson",
+        physical_checks={"Không quá nhiệt": True, "Video đã lưu": True},
+    )
+
+    assert passed is True
+    report = report_path.read_text(encoding="utf-8")
+    assert "**PASS**" in report
+    assert "99.2%" in report

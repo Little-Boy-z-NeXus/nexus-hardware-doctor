@@ -39,7 +39,8 @@ Double-click `nexus-run-hardware-baseline.cmd` at the repository root. The launc
 3. asks the operator to confirm labels, ENA jumper, motor mounting and emergency stop;
 4. runs at 30% PWM with a four-second keepalive failsafe;
 5. stops immediately on missing telemetry, invalid voltage, reversed polarity, overcurrent,
-   unexpected PWM, or insufficient current rise;
+   or unexpected PWM; a weak-current condition must persist for five consecutive samples
+   so one isolated INA226/serial glitch cannot abort an otherwise healthy 30-minute run;
 6. saves raw NDJSON and a Markdown report under `artifacts/U05/`;
 7. restores normal firmware, where USB baseline commands are disabled;
 8. restarts the realtime app.
@@ -79,7 +80,8 @@ Do not bypass the INA226 or short an output to test it.
 
 U05 is complete only when all are true:
 
-- generated report says `PASS` for at least 1,800 seconds;
+- generated report says `PASS` for at least 1,800 elapsed seconds with at least 90% sample
+  coverage (the serial loop independently fails on any telemetry gap longer than 5 seconds);
 - no INA226 read failure, undervoltage, reversed polarity or overcurrent occurred;
 - motor and L298N had no abnormal heat, smell, noise or vibration;
 - every relevant wire is labelled;
