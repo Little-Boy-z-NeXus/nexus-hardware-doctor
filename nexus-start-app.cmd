@@ -16,7 +16,7 @@ if errorlevel 1 (
   exit /b 1
 )
 
-start "" "http://127.0.0.1:5173/dashboard"
+start "" "http://127.0.0.1:5173/hardware"
 echo [SUCCESS] NeXus is running. Close the Backend and Frontend windows to stop it.
 powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Sleep -Seconds 2"
 exit /b 0

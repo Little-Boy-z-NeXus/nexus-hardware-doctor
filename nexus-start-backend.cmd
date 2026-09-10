@@ -10,7 +10,7 @@ if not exist "backend\.venv\Scripts\python.exe" (
 )
 
 set "NEXUS_PYTHON=%CD%\backend\.venv\Scripts\python.exe"
-"%NEXUS_PYTHON%" -c "import nexus_backend, uvicorn" >nul 2>&1
+"%NEXUS_PYTHON%" -c "import nexus_backend, serial, uvicorn" >nul 2>&1
 if errorlevel 1 (
   echo [NeXus] Backend dependencies are missing; installing them now...
   "%NEXUS_PYTHON%" -m pip install -e ".\backend[dev]"
