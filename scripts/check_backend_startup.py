@@ -19,7 +19,7 @@ def main() -> None:
         try:
             health = read_json(base_url, "/health")
             break
-        except (URLError, TimeoutError):
+        except (URLError, TimeoutError, ConnectionError):
             if time.monotonic() >= deadline:
                 raise
             time.sleep(1)
