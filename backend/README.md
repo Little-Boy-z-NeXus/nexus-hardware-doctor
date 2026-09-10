@@ -12,6 +12,15 @@ Available now:
 - bounded, source-labeled context for the later model adapter
 - a simulated device producer and a browser telemetry monitor at `/monitor`
 - strict Python contract mirrors, automated tests and Ruff linting
+- FastAPI application and `/health` endpoint
+- strict Python mirrors of all four v1 contracts
+- GOOUUU ESP32-S3 serial auto-detection and reconnect
+- strict telemetry ingest with non-finite value rejection
+- timestamped session logs under `logs/hardware-live-*.ndjson`
+- `/api/v1/live` snapshot plus `/api/v1/live/ws` realtime stream
+- deterministic Vietnamese diagnostics for the fixed INA219/L298N/motor rig
+- JSON Schema and fixture validation
+- automated tests and Ruff linting
 
 Prepared for H01/H04–H08:
 
@@ -19,6 +28,9 @@ Prepared for H01/H04–H08:
 - bounded read/plan/policy/execute/verify orchestration with an isolated simulator
 - persistent diagnosis outcomes/events and a browser lab at `/doctor-lab`
 - synthetic evaluation, container packaging and a reproducible runbook
+- database/cloud telemetry retention
+- Nebius/Nemotron runtime calls
+- diagnosis orchestration and tool execution
 
 Still awaiting live acceptance/integration:
 
@@ -96,6 +108,10 @@ Expected payload:
 Browser links:
 
 - Health: <http://127.0.0.1:8000/health>
+- Live snapshot: <http://127.0.0.1:8000/api/v1/live>
+- Latest valid telemetry: <http://127.0.0.1:8000/api/v1/telemetry>
+- Recent serial log: <http://127.0.0.1:8000/api/v1/logs>
+- Active diagnostics: <http://127.0.0.1:8000/api/v1/diagnostics>
 - Swagger UI: <http://127.0.0.1:8000/docs>
 - OpenAPI JSON: <http://127.0.0.1:8000/openapi.json>
 - Browser telemetry monitor: <http://127.0.0.1:8000/monitor>
@@ -107,6 +123,8 @@ python -m nexus_backend.mock_device --count 60 --interval 1
 ```
 
 The monitor receives the actual backend WebSocket stream. It supports device selection, reconnection and stale-data indication without requiring a board or model credential.
+
+The browser subscribes to `ws://127.0.0.1:8000/api/v1/live/ws`. The first message is a complete snapshot; subsequent messages replace it, which makes reconnect deterministic.
 
 ## Environment configuration
 
@@ -123,6 +141,12 @@ The root [`.env.example`](../.env.example) is the canonical backend/device templ
 | `NEXUS_MQTT_URL` | Later | Device transport broker |
 | `NEXUS_DEVICE_ID` | Firmware | Default identity; registration carries explicit identity |
 | `NEXUS_MAX_PWM_PERCENT` | Firmware/later policy | Firmware safety ceiling; later backend policy configuration |
+| `NEXUS_DEVICE_ID` | Yes | Device identity matching contract v1 |
+| `NEXUS_SERIAL_ENABLED` | Yes | Set `false` only for a software-only run |
+| `NEXUS_SERIAL_PORT` | No | Leave blank to auto-detect `303A:1001`; set `COM8` only to force one port |
+| `NEXUS_LOG_ENABLED` | Yes | Keep `true` to persist every backend/firmware log entry locally |
+| `NEXUS_LOG_DIR` | Yes | Log directory; relative paths resolve from the repository root |
+| `NEXUS_MAX_PWM_PERCENT` | Yes | Backend safety ceiling; firmware clamps independently too |
 
 The server reads `NEXUS_DB_PATH` and `NEXUS_CORS_ORIGINS` from its process environment. It does not automatically read `.env`; use Uvicorn's `--env-file` option if needed. Keep the same database path across restarts. Future model/policy variables remain reserved. Local development has no API authentication; use the loopback binding shown above.
 
@@ -137,6 +161,7 @@ python scripts/validate_contracts.py
 ```
 
 Tests cover contract rejection, persistent restart, device isolation, exact retries, atomic audit writes, WebSocket reconnect/order, hardware metadata, context bounds and simulated payloads. Four schemas and four fixtures validate, and all three stack mirrors retain the shared telemetry fields.
+Expected result: seventeen tests pass, including serial parser/diagnostic paths; four schemas and four fixtures validate; and all three stack mirrors contain the shared telemetry fields.
 
 Run one test file while developing:
 
@@ -161,6 +186,9 @@ backend/
 │   ├── context.py      Bounded source-labeled model context
 │   ├── mock_device.py  Explicit simulator CLI
 │   └── static/monitor.html
+│   ├── app.py          FastAPI entry point
+│   ├── contracts.py    Typed v1 contract mirrors
+│   └── serial_bridge.py COM reader, ring buffer and deterministic diagnostics
 └── tests/
     ├── test_health.py
     ├── test_contracts.py
@@ -170,6 +198,7 @@ backend/
     ├── test_hardware.py
     ├── test_context.py
     └── test_mock_device.py
+    └── test_serial_bridge.py
 ```
 
 Canonical JSON Schemas live in [`nexus-contracts/v1`](../nexus-contracts/v1/README.md). Python models mirror them but do not replace them. The built wheel includes canonical schemas and fixtures directly from that directory so validation and the simulator also work outside a checkout.
@@ -188,4 +217,6 @@ Canonical JSON Schemas live in [`nexus-contracts/v1`](../nexus-contracts/v1/READ
 - `ModuleNotFoundError: nexus_backend`: activate the correct virtual environment and reinstall with `python -m pip install -e ".\backend[dev]"` on Windows or `-e "./backend[dev]"` on Unix.
 - Port 8000 is busy: run `uvicorn nexus_backend.app:app --reload --port 8001` and update `VITE_API_BASE_URL` for the frontend.
 - Contract validation fails: compare the payload with the matching fixture; do not loosen the backend model alone.
+- COM port is busy: close PlatformIO/Arduino Serial Monitor. The backend and a CLI monitor cannot read the same Windows COM port simultaneously.
+- Board is connected but no data arrives: press RESET, confirm baud 115200, and upload the current NeXus firmware.
 - Nebius key appears in a log: revoke it, remove the log from shared artifacts, and follow [docs/security.md](../docs/security.md).

@@ -9,10 +9,13 @@ Available now:
 - responsive desktop/mobile application shell
 - React Router navigation for all three screens
 - typed v1 contract mirrors
+- REST bootstrap and WebSocket realtime snapshots with automatic reconnect
+- real ESP32 terminal log with pause/hide-old-log controls
+- component-level fault cards with a direct repair action
 - Vite environment configuration
 - ESLint and production build checks
 
-The visible readings and conversation are presentation data for G01. Real/mock API switching, WebSocket reconnect, and runtime schema-error states belong to backlog item G02.
+Dashboard and Hardware Graph use the backend's real serial stream. Missing hardware values render as `--`; the UI never substitutes demo readings. The AI Doctor conversation is still presentation-only until its dedicated backend integration.
 
 ## Prerequisites
 
@@ -64,7 +67,7 @@ Copy `.env.example` to `.env.local` only when you need to override the defaults.
 | Route | MVP purpose |
 | --- | --- |
 | `/dashboard` | Overall health, live signal cards, preventive risk and activity |
-| `/hardware` | Fixed ESP32 → INA219 → L298N → DC motor topology |
+| `/hardware` | Fixed GOOUUU S3 → INA219 → L298N → JGB37-520 topology, log and fault guide |
 | `/doctor` | Natural-language diagnosis, evidence and safety context |
 
 Unknown paths redirect to `/dashboard`.
@@ -75,7 +78,7 @@ Template: [`.env.example`](.env.example)
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `VITE_API_BASE_URL` | `http://localhost:8000` | Backend HTTP base URL |
+| `VITE_API_BASE_URL` | `http://127.0.0.1:8000` | Backend HTTP base URL |
 | `VITE_DEVICE_ID` | `nexus-demo-esp32` | Device selected by the MVP UI |
 
 Every browser-exposed variable must use the `VITE_` prefix. Never put Nebius keys, device secrets, Wi-Fi passwords, or private tokens in a frontend environment file because Vite bundles exposed values into client code.
@@ -102,7 +105,7 @@ Run these inside `frontend`, or prefix them with `npm --prefix frontend` from th
 npm run check
 ```
 
-Expected result: ESLint exits without errors, nine unit tests pass, and Vite creates `dist/index.html` plus hashed assets. `dist/` and `node_modules/` are generated locally and must not be committed.
+Expected result: ESLint exits without errors, ten unit tests pass, and Vite creates `dist/index.html` plus hashed assets. `dist/` and `node_modules/` are generated locally and must not be committed.
 
 Run only the unit tests or keep them in watch mode:
 
@@ -135,6 +138,7 @@ frontend/
     ├── config/        Validated/defaulted environment access
     ├── contracts/     TypeScript mirrors of contract v1
     ├── pages/         Dashboard, Hardware Graph and AI Doctor routes
+    ├── realtime/      Shared REST/WebSocket hardware monitor state
     ├── test/          Shared Vitest setup
     ├── App.tsx        Route definitions
     ├── App.test.tsx   Route and navigation unit tests
@@ -160,5 +164,6 @@ The canonical schemas are under [`../nexus-contracts/v1`](../nexus-contracts/v1/
 - `npm ci` reports lockfile mismatch: do not edit the lockfile manually; run `npm install` only when intentionally changing dependencies and commit both package files.
 - Blank page on a direct production route: configure the host to fall back to `index.html` for client-side routes.
 - Frontend cannot reach backend: confirm the backend health endpoint, `VITE_API_BASE_URL`, browser console, and CORS configuration.
+- Hardware page stays on “Đang chờ ESP32”: keep the backend window open, close every CLI Serial Monitor, and reconnect the board.
 - Environment change is ignored: restart Vite after editing `.env.local`.
 - Port 5173 is busy: Vite prints another local port; use that URL or stop the existing process.
