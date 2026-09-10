@@ -9,7 +9,7 @@ This repository targets the [Nebius x NVIDIA Global AI Hackathon](https://nebius
 | Area | What works now | Next integration |
 | --- | --- | --- |
 | Frontend | Realtime Dashboard/Hardware Graph, ESP32 live log, reconnect and human-readable fault cards | Connect AI Doctor to the same evidence stream |
-| Backend | FastAPI, serial auto-detection, telemetry validation, persistent session logs, WebSocket fan-out and MVP diagnostics | Add Nemotron adapter and orchestration |
+| Backend | Persistent sessions/telemetry, serial live snapshots/logs, hardware context, configurable Nebius client, simulated diagnosis/policy/evaluation and Docker runbook | Verify live model calls and integrate serial evidence plus real commands |
 | Firmware | Safe PWM clamp, strict telemetry v1, INA219 startup/error logs | Add authenticated command transport and encoder calibration |
 | Contracts | Four frozen JSON Schemas, fixtures and migration enforcement | Change only through a reviewed migration note or v2 |
 
@@ -97,7 +97,21 @@ Open:
 - Latest valid telemetry: <http://127.0.0.1:8000/api/v1/telemetry>
 - Interactive API docs: <http://127.0.0.1:8000/docs>
 
-The backend owns the serial port, rejects malformed/`nan` packets, persists timestamped NDJSON entries under `logs/`, and streams complete live snapshots over `/api/v1/live/ws`. Nemotron and device orchestration remain later backlog items.
+The backend exposes device registration, telemetry/history, WebSocket streaming, diagnosis session records, audit events, hardware models and bounded context. SQLite retains configuration and data across restarts. See the [backend API guide](docs/backend-api.md).
+
+To exercise H02 and H03 without a board, keep the backend running and open another activated terminal:
+
+```bash
+python -m nexus_backend.mock_device --count 60
+```
+
+Open <http://127.0.0.1:8000/monitor> while the simulator runs. It displays source-labeled telemetry from the persistent per-device backend stream. The React Dashboard and Hardware Graph use the separate serial live snapshot API; simulator registration does not replace their hardware readings.
+
+The backend owns the serial port, rejects malformed/`nan` packets, persists timestamped NDJSON entries under `logs/`, and streams complete live snapshots over `/api/v1/live/ws`. These read-only live endpoints coexist with the SQLite device/session APIs. Live model acceptance, transfer of serial snapshots into diagnosis history and physical command integration remain pending.
+
+The [diagnosis lab](http://127.0.0.1:8000/doctor-lab) runs the preemptive H01/H04–H08 software. Simulation requires no model key. Live mode requires configured Nebius access and explicit enablement; its tools are read-only. Real model/physical acceptance has not been claimed. See the [H resource checklist](docs/h-resource-checklist.md), [model guide](docs/h01-h04.md), [orchestration/policy guide](docs/h05-h06.md), [evaluation guide](docs/h07-evaluation.md), and [Docker runbook](docs/h08-runbook.md).
+
+Run all synthetic diagnosis checks with `python -m nexus_backend.evaluation --output artifacts/h07-evaluation.json`. This scores the deterministic mock planner, not Nemotron or real hardware. `docker compose up --build -d` provides an isolated backend with persistent data and no model access enabled by default.
 
 ## Quick start: frontend
 
