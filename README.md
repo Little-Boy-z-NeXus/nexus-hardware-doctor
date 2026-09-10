@@ -8,11 +8,8 @@ This repository targets the [Nebius x NVIDIA Global AI Hackathon](https://nebius
 
 | Area | What works now | Next integration |
 | --- | --- | --- |
-| Frontend | Three responsive routes, environment config, lint and production build | Replace display fixtures with the typed API client |
-| Backend | Persistent device sessions, validated telemetry, WebSocket monitor, hardware loader and bounded context | Add Nemotron adapter and diagnosis orchestration |
-| Firmware | Safe PWM clamp and telemetry v1 serial output | Add authenticated command transport and real rig calibration |
 | Frontend | Realtime Dashboard/Hardware Graph, ESP32 live log, reconnect and human-readable fault cards | Connect AI Doctor to the same evidence stream |
-| Backend | FastAPI, serial auto-detection, telemetry validation, persistent session logs, WebSocket fan-out and MVP diagnostics | Add Nemotron adapter and orchestration |
+| Backend | Persistent device sessions/telemetry, hardware loader/context, serial live snapshots/logs and MVP diagnostics | Add Nemotron adapter and orchestration |
 | Firmware | Safe PWM clamp, strict telemetry v1, INA219 startup/error logs | Add authenticated command transport and encoder calibration |
 | Contracts | Four frozen JSON Schemas, fixtures and migration enforcement | Change only through a reviewed migration note or v2 |
 
@@ -108,8 +105,9 @@ To exercise H02 and H03 without a board, keep the backend running and open anoth
 python -m nexus_backend.mock_device --count 60
 ```
 
-Open <http://127.0.0.1:8000/monitor> while the simulator runs. It displays source-labeled telemetry from the actual backend stream. The existing React dashboard remains a presentation scaffold until G02/G04. Nemotron diagnosis and physical device actions remain separate backlog items.
-The backend owns the serial port, rejects malformed/`nan` packets, persists timestamped NDJSON entries under `logs/`, and streams complete live snapshots over `/api/v1/live/ws`. Nemotron and device orchestration remain later backlog items.
+Open <http://127.0.0.1:8000/monitor> while the simulator runs. It displays source-labeled telemetry from the persistent per-device backend stream. The React Dashboard and Hardware Graph use the separate serial live snapshot API; simulator registration does not replace their hardware readings.
+
+The backend owns the serial port, rejects malformed/`nan` packets, persists timestamped NDJSON entries under `logs/`, and streams complete live snapshots over `/api/v1/live/ws`. These read-only live endpoints coexist with the SQLite device/session APIs. Nemotron diagnosis and physical device actions remain separate backlog items.
 
 ## Quick start: frontend
 

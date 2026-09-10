@@ -11,26 +11,16 @@ Available now:
 - raw canonical validation plus semantic hardware graph checks
 - bounded, source-labeled context for the later model adapter
 - a simulated device producer and a browser telemetry monitor at `/monitor`
+- GOOUUU ESP32-S3 serial auto-detection and reconnect
+- timestamped session logs under `logs/hardware-live-*.ndjson`
+- `/api/v1/live` snapshot plus `/api/v1/live/ws` realtime stream
+- deterministic Vietnamese diagnostics for the fixed INA219/L298N/motor rig
 - strict Python contract mirrors, automated tests and Ruff linting
 
 Not implemented yet:
 
-- Nebius/Nemotron runtime calls
-- diagnosis orchestration and tool execution
-- the React real/mock API client (G02)
-- FastAPI application and `/health` endpoint
-- strict Python mirrors of all four v1 contracts
-- GOOUUU ESP32-S3 serial auto-detection and reconnect
-- strict telemetry ingest with non-finite value rejection
-- timestamped session logs under `logs/hardware-live-*.ndjson`
-- `/api/v1/live` snapshot plus `/api/v1/live/ws` realtime stream
-- deterministic Vietnamese diagnostics for the fixed INA219/L298N/motor rig
-- JSON Schema and fixture validation
-- automated tests and Ruff linting
-
-Not implemented yet:
-
-- database/cloud telemetry retention
+- automatic transfer of serial snapshots into the persistent per-device store
+- cloud telemetry storage and automatic retention policies
 - Nebius/Nemotron runtime calls
 - diagnosis orchestration and tool execution
 
@@ -155,7 +145,7 @@ python scripts/validate_contracts.py
 ```
 
 Tests cover contract rejection, persistent restart, device isolation, exact retries, atomic audit writes, WebSocket reconnect/order, hardware metadata, context bounds and simulated payloads. Four schemas and four fixtures validate, and all three stack mirrors retain the shared telemetry fields.
-Expected result: seventeen tests pass, including serial parser/diagnostic paths; four schemas and four fixtures validate; and all three stack mirrors contain the shared telemetry fields.
+Tests also cover serial parsing/diagnostics, coexistence of live and persistent APIs, application isolation, lifecycle cleanup and idle WebSocket disconnect. Four schemas and four fixtures validate, and all three stack mirrors contain the shared telemetry fields.
 
 Run one test file while developing:
 

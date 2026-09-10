@@ -1,11 +1,10 @@
 """Local MVP APIs for device data, diagnosis sessions, and hardware context."""
-"""API entry point for the NeXus hardware-doctor MVP."""
 
 from __future__ import annotations
 
 import asyncio
 import os
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from importlib.resources import files
 from pathlib import Path
 from typing import Annotated, Literal
@@ -20,8 +19,37 @@ from starlette.websockets import WebSocketDisconnect
 from nexus_backend import __version__
 from nexus_backend.context import build_context
 from nexus_backend.hardware import load_hardware_model
+from nexus_backend.serial_bridge import SerialBridge
 from nexus_backend.store import SQLiteStore, StoreConflict, StoreNotFound
 from nexus_backend.validation import ContractValidationError, validate_contract
+
+
+class LiveHub:
+    """Fan out a single application's snapshots on its own event loop."""
+
+    def __init__(self) -> None:
+        self._subscribers: set[asyncio.Queue[dict[str, object]]] = set()
+
+    def subscribe(self) -> asyncio.Queue[dict[str, object]]:
+        queue: asyncio.Queue[dict[str, object]] = asyncio.Queue(maxsize=2)
+        self._subscribers.add(queue)
+        return queue
+
+    def unsubscribe(self, queue: asyncio.Queue[dict[str, object]]) -> None:
+        self._subscribers.discard(queue)
+
+    def publish(self, snapshot: dict[str, object]) -> None:
+        for queue in self._subscribers:
+            if queue.full():
+                queue.get_nowait()
+            queue.put_nowait(snapshot)
+
+
+def _allowed_websocket_origin(websocket: WebSocket, origins: list[str]) -> bool:
+    origin = websocket.headers.get("origin")
+    scheme = "https" if websocket.url.scheme == "wss" else "http"
+    same_origin = f"{scheme}://{websocket.url.netloc}"
+    return origin is None or origin in [same_origin, *origins]
 
 
 class APIRequest(BaseModel):
@@ -59,8 +87,17 @@ class ContextRequest(NewSession):
     max_samples: int = Field(default=10, ge=1, le=20, strict=True)
 
 
-def create_app(db_path: str | Path | None = None) -> FastAPI:
-    """Create an isolated application; open the database only during lifespan."""
+def create_app(
+    db_path: str | Path | None = None, *, serial_enabled: bool | None = False,
+    bridge: SerialBridge | None = None,
+) -> FastAPI:
+    """Create isolated state; factory calls disable hardware access unless requested.
+
+    The exported server app passes None to preserve environment-controlled serial
+    startup. Tests can supply a disabled/instrumented bridge without accessing USB.
+    """
+    serial_bridge = bridge if bridge is not None else SerialBridge(enabled=serial_enabled)
+    live_hub = LiveHub()
 
     @asynccontextmanager
     async def lifespan(application: FastAPI):
@@ -68,12 +105,31 @@ def create_app(db_path: str | Path | None = None) -> FastAPI:
             "NEXUS_DB_PATH", "artifacts/nexus.sqlite3"
         )
         application.state.store = SQLiteStore(database)
+        loop = asyncio.get_running_loop()
+        publishing = True
+
+        def publish_from_thread(snapshot: dict[str, object]) -> None:
+            if publishing:
+                loop.call_soon_threadsafe(live_hub.publish, snapshot)
+
         try:
+            serial_bridge.set_sink(publish_from_thread)
+            serial_bridge.start()
             yield
         finally:
-            application.state.store.close()
+            publishing = False
+            # Detach first so a bridge finishing a read cannot publish after shutdown.
+            try:
+                serial_bridge.set_sink(None)
+            finally:
+                try:
+                    await asyncio.to_thread(serial_bridge.stop)
+                finally:
+                    application.state.store.close()
 
     application = FastAPI(title="nexus-backend", version=__version__, lifespan=lifespan)
+    application.state.serial_bridge = serial_bridge
+    application.state.live_hub = live_hub
     origins = [
         value.strip() for value in os.getenv(
             "NEXUS_CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173"
@@ -116,6 +172,66 @@ def create_app(db_path: str | Path | None = None) -> FastAPI:
     @application.get("/monitor", response_class=HTMLResponse, include_in_schema=False)
     def monitor() -> str:
         return files("nexus_backend").joinpath("static/monitor.html").read_text("utf-8")
+
+    @application.get("/api/v1/live", tags=["Live hardware"])
+    def live_snapshot() -> dict[str, object]:
+        """Read the serial bridge without replacing persistent per-device APIs."""
+        return serial_bridge.snapshot()
+
+    @application.get("/api/v1/telemetry", tags=["Live hardware"])
+    def live_telemetry() -> dict[str, object]:
+        telemetry = serial_bridge.snapshot()["telemetry"]
+        if telemetry is None:
+            raise HTTPException(404, "Chưa nhận được telemetry hợp lệ từ ESP32.")
+        return telemetry
+
+    @application.get("/api/v1/logs", tags=["Live hardware"])
+    def recent_logs(limit: int = 100) -> list[dict[str, object]]:
+        return serial_bridge.snapshot()["logs"][-max(1, min(limit, 160)):]
+
+    @application.get("/api/v1/diagnostics", tags=["Live hardware"])
+    def live_diagnostics(active_only: bool = True) -> list[dict[str, object]]:
+        items = serial_bridge.snapshot()["diagnostics"]
+        return [item for item in items if item["active"]] if active_only else items
+
+    @application.websocket("/api/v1/live/ws")
+    async def live_websocket(websocket: WebSocket) -> None:
+        if not _allowed_websocket_origin(websocket, origins):
+            await websocket.close(code=1008, reason="Origin is not allowed")
+            return
+        await websocket.accept()
+        queue = live_hub.subscribe()
+
+        async def receive_disconnect() -> None:
+            while True:
+                message = await websocket.receive()
+                if message["type"] == "websocket.disconnect":
+                    return
+
+        disconnected = asyncio.create_task(receive_disconnect())
+        next_snapshot = None
+        try:
+            await websocket.send_json({"type": "snapshot", "data": serial_bridge.snapshot()})
+            while True:
+                next_snapshot = asyncio.create_task(queue.get())
+                done, _ = await asyncio.wait(
+                    {disconnected, next_snapshot}, return_when=asyncio.FIRST_COMPLETED,
+                )
+                if disconnected in done:
+                    break
+                await websocket.send_json({"type": "snapshot", "data": next_snapshot.result()})
+        except (WebSocketDisconnect, asyncio.CancelledError):
+            pass
+        finally:
+            live_hub.unsubscribe(queue)
+            disconnected.cancel()
+            if next_snapshot is not None:
+                next_snapshot.cancel()
+            with suppress(asyncio.CancelledError):
+                await asyncio.gather(
+                    disconnected, *([next_snapshot] if next_snapshot is not None else []),
+                    return_exceptions=True,
+                )
 
     @application.post("/api/devices", status_code=201, tags=["Devices"])
     def register(body: RegisterDevice, request: Request) -> dict:
@@ -192,10 +308,7 @@ def create_app(db_path: str | Path | None = None) -> FastAPI:
     @application.websocket("/api/devices/{device_id}/telemetry/stream")
     async def stream(websocket: WebSocket, device_id: str) -> None:
         """Send the latest sample, then every persisted sample in receive order."""
-        origin = websocket.headers.get("origin")
-        scheme = "https" if websocket.url.scheme == "wss" else "http"
-        same_origin = f"{scheme}://{websocket.url.netloc}"
-        if origin is not None and origin not in [same_origin, *origins]:
+        if not _allowed_websocket_origin(websocket, origins):
             await websocket.close(code=1008, reason="Origin is not allowed")
             return
         store = websocket.app.state.store
@@ -234,113 +347,4 @@ def create_app(db_path: str | Path | None = None) -> FastAPI:
     return application
 
 
-app = create_app()
-from contextlib import asynccontextmanager
-
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
-from fastapi.middleware.cors import CORSMiddleware
-
-from nexus_backend import __version__
-from nexus_backend.serial_bridge import SerialBridge
-
-
-class LiveHub:
-    """Fan the newest bridge snapshot out to browser WebSocket clients."""
-
-    def __init__(self) -> None:
-        self._subscribers: set[asyncio.Queue[dict[str, object]]] = set()
-
-    def subscribe(self) -> asyncio.Queue[dict[str, object]]:
-        queue: asyncio.Queue[dict[str, object]] = asyncio.Queue(maxsize=2)
-        self._subscribers.add(queue)
-        return queue
-
-    def unsubscribe(self, queue: asyncio.Queue[dict[str, object]]) -> None:
-        self._subscribers.discard(queue)
-
-    def publish(self, snapshot: dict[str, object]) -> None:
-        for queue in self._subscribers:
-            if queue.full():
-                queue.get_nowait()
-            queue.put_nowait(snapshot)
-
-
-live_hub = LiveHub()
-serial_bridge = SerialBridge()
-
-
-@asynccontextmanager
-async def lifespan(_: FastAPI):
-    loop = asyncio.get_running_loop()
-
-    def publish_from_thread(snapshot: dict[str, object]) -> None:
-        loop.call_soon_threadsafe(live_hub.publish, snapshot)
-
-    serial_bridge.set_sink(publish_from_thread)
-    serial_bridge.start()
-    yield
-    serial_bridge.stop()
-    serial_bridge.set_sink(None)
-
-
-app = FastAPI(title="nexus-backend", version=__version__, lifespan=lifespan)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
-    allow_credentials=False,
-    allow_methods=["GET"],
-    allow_headers=["*"],
-)
-
-
-@app.get("/health")
-def health() -> dict[str, str]:
-    """Return a dependency-free process health signal."""
-    return {"status": "ok", "service": "nexus-backend", "version": __version__}
-
-
-@app.get("/api/v1/live")
-def live_snapshot() -> dict[str, object]:
-    """Return connection, telemetry, diagnostics, logs, and the fixed MVP BOM."""
-    return serial_bridge.snapshot()
-
-
-@app.get("/api/v1/telemetry")
-def latest_telemetry() -> dict[str, object]:
-    """Return the latest valid device packet without inventing presentation data."""
-    telemetry = serial_bridge.snapshot()["telemetry"]
-    if telemetry is None:
-        raise HTTPException(status_code=404, detail="Chưa nhận được telemetry hợp lệ từ ESP32.")
-    return telemetry
-
-
-@app.get("/api/v1/logs")
-def recent_logs(limit: int = 100) -> list[dict[str, object]]:
-    """Return recent firmware and bridge lines for debugging without a CLI."""
-    safe_limit = max(1, min(limit, 160))
-    return serial_bridge.snapshot()["logs"][-safe_limit:]
-
-
-@app.get("/api/v1/diagnostics")
-def diagnostics(active_only: bool = True) -> list[dict[str, object]]:
-    """Return human-readable deterministic hardware findings."""
-    items = serial_bridge.snapshot()["diagnostics"]
-    if active_only:
-        return [item for item in items if item["active"]]
-    return items
-
-
-@app.websocket("/api/v1/live/ws")
-async def live_websocket(websocket: WebSocket) -> None:
-    """Stream complete snapshots so reconnecting UIs always converge."""
-    await websocket.accept()
-    queue = live_hub.subscribe()
-    try:
-        await websocket.send_json({"type": "snapshot", "data": serial_bridge.snapshot()})
-        while True:
-            snapshot = await queue.get()
-            await websocket.send_json({"type": "snapshot", "data": snapshot})
-    except WebSocketDisconnect:
-        pass
-    finally:
-        live_hub.unsubscribe(queue)
+app = create_app(serial_enabled=None)
