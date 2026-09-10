@@ -34,7 +34,7 @@ def main() -> None:
     assert "get" in paths["/api/v1/telemetry"]
     with urlopen(base_url + "/doctor-lab", timeout=2) as response:
         assert response.status == 200
-    print("Installed backend startup, device persistence, live API and diagnosis routes: PASS")
+    print("Installed backend startup, device API, live API and diagnosis routes: PASS")
 
 
 if __name__ == "__main__":
