@@ -1,11 +1,19 @@
+import importlib.util
 import json
+import sys
+from pathlib import Path
 
-from scripts.nexus_hardware_baseline import (
-    BaselineState,
-    measurement_failures,
-    parse_telemetry,
-    write_report,
-)
+SCRIPT_PATH = Path(__file__).resolve().parents[2] / "scripts" / "nexus_hardware_baseline.py"
+SPEC = importlib.util.spec_from_file_location("nexus_hardware_baseline", SCRIPT_PATH)
+assert SPEC is not None and SPEC.loader is not None
+BASELINE_MODULE = importlib.util.module_from_spec(SPEC)
+sys.modules[SPEC.name] = BASELINE_MODULE
+SPEC.loader.exec_module(BASELINE_MODULE)
+
+BaselineState = BASELINE_MODULE.BaselineState
+measurement_failures = BASELINE_MODULE.measurement_failures
+parse_telemetry = BASELINE_MODULE.parse_telemetry
+write_report = BASELINE_MODULE.write_report
 
 
 def telemetry_line(**measurement_overrides: object) -> str:
