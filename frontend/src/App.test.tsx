@@ -17,7 +17,7 @@ function renderAt(path: string) {
 
 describe("NeXus application routes", () => {
   it.each([
-    ["/dashboard", "Your hardware is healthy", "Dashboard"],
+    ["/dashboard", "Waiting for your hardware", "Dashboard"],
     ["/hardware", "Hardware Graph", "Hardware Graph"],
     ["/doctor", "AI Doctor", "AI Doctor"],
   ])("renders %s and marks its navigation item active", (path, heading, navLabel) => {
@@ -31,7 +31,7 @@ describe("NeXus application routes", () => {
     renderAt(path);
 
     expect(
-      await screen.findByRole("heading", { level: 1, name: "Your hardware is healthy" }),
+      await screen.findByRole("heading", { level: 1, name: "Waiting for your hardware" }),
     ).toBeInTheDocument();
     expect(screen.getByText("nexus-demo-esp32")).toBeInTheDocument();
   });

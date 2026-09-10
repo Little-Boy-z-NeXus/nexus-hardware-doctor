@@ -1,5 +1,9 @@
 export function normalizeBaseUrl(value: string | undefined) {
-  return (value ?? "http://localhost:8000").replace(/\/+$/, "");
+  return (value ?? "http://127.0.0.1:8000").replace(/\/+$/, "");
+}
+
+export function toWebSocketUrl(baseUrl: string) {
+  return baseUrl.replace(/^http:/, "ws:").replace(/^https:/, "wss:");
 }
 
 export const env = {
