@@ -10,8 +10,9 @@ This directory records the decisions required to build and demonstrate the hacka
 4. [`ownership.md`](ownership.md) — responsibilities for Hiếu, Hoàng, Nguyễn, and Nguyên.
 5. [`hardware-baseline-u05.md`](hardware-baseline-u05.md) — supervised 30-minute electrical and safety acceptance.
 6. [`n03-command-adapter.md`](n03-command-adapter.md) — firmware command protocol, safety gates and physical acceptance cases.
-7. [`security.md`](security.md) — secret handling, redaction, model/tool boundaries, and incident basics.
-8. [`backlog.md`](backlog.md) — link to the live Google Sheet and local working rules.
+7. [`n04-health-check.md`](n04-health-check.md) — deterministic pre-power rule checks that can run without hardware.
+8. [`security.md`](security.md) — secret handling, redaction, model/tool boundaries, and incident basics.
+9. [`backlog.md`](backlog.md) — link to the live Google Sheet and local working rules.
 
 ## Document index
 
@@ -23,6 +24,7 @@ This directory records the decisions required to build and demonstrate the hacka
 | [`ownership.md`](ownership.md) | Assigning work or choosing a reviewer | Hiếu |
 | [`hardware-baseline-u05.md`](hardware-baseline-u05.md) | Running and evidencing the U05 hardware/safety gate | Hiếu + Nguyễn |
 | [`n03-command-adapter.md`](n03-command-adapter.md) | Building or physically accepting the N03 serial command layer | Nguyễn |
+| [`n04-health-check.md`](n04-health-check.md) | Running deterministic pre-power rule checks without hardware | Nguyễn |
 | [`security.md`](security.md) | Handling keys, telemetry, logs, prompts, or device commands | Hoàng + Hiếu |
 | [`backlog.md`](backlog.md) | Finding the live plan or mapping a commit to a task ID | Entire team |
 | [`h-resource-checklist.md`](h-resource-checklist.md) | Supplying resources to finish H tasks; remaining live acceptance gates | Hoàng |

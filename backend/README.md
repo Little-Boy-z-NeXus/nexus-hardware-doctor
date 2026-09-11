@@ -15,6 +15,7 @@ Available now:
 - timestamped session logs under `logs/hardware-live-*.ndjson`
 - `/api/v1/live` snapshot plus `/api/v1/live/ws` realtime stream
 - deterministic Vietnamese diagnostics for the fixed INA226 R100/L298N/motor rig
+- pre-power Health Check rules for voltage, wiring, pin direction, supply and metadata
 - strict Python contract mirrors, JSON Schema/fixture validation, automated tests and Ruff linting
 
 Prepared for H01/H04–H08:
@@ -108,6 +109,15 @@ Browser links:
 - Swagger UI: <http://127.0.0.1:8000/docs>
 - OpenAPI JSON: <http://127.0.0.1:8000/openapi.json>
 - Browser telemetry monitor: <http://127.0.0.1:8000/monitor>
+- Stateless hardware Health Check: `POST /api/v1/health-check`
+
+The Health Check does not need a board. Send the frozen `hardware_model` plus optional
+declared evidence in `profile.pin_profiles`, `profile.connection_readings`, and
+`profile.required_connections`. It returns a deterministic `pass`, `warning`, or `fail`
+with `severity`, evidence and remediation for every finding. Electrical ratings are never
+invented: for example, detecting 5 V into a 3.3 V GPIO requires the caller to declare or
+measure those two values. Rule fixtures live in
+[`tests/fixtures/health-check-cases.json`](tests/fixtures/health-check-cases.json).
 
 In another activated terminal, generate explicitly simulated telemetry:
 
