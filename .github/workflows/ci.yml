@@ -53,7 +53,7 @@ jobs:
         run: ruff check backend scripts
 
       - name: Run backend tests
-        run: pytest backend/tests -q
+        run: python -m pytest backend/tests -q
 
       - name: Run explicitly simulated diagnosis regression
         run: python -m nexus_backend.evaluation --output /tmp/nexus-evaluation.json
