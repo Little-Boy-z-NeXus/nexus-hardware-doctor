@@ -58,6 +58,29 @@ jobs:
       - name: Run explicitly simulated diagnosis regression
         run: python -m nexus_backend.evaluation --output /tmp/nexus-evaluation.json
 
+  firmware:
+    name: Firmware safe, baseline and command builds
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Install PlatformIO
+        run: pip install platformio==6.2.0
+
+      - name: Compile all GOOUUU ESP32-S3 firmware safety modes
+        run: >-
+          pio run --project-dir firmware
+          --environment nexus-goouuu-esp32-s3-n16r8
+          --environment nexus-goouuu-esp32-s3-n16r8-baseline
+          --environment nexus-goouuu-esp32-s3-n16r8-command-test
+
   packaging:
     name: Backend container and simulated regression
     runs-on: ubuntu-latest

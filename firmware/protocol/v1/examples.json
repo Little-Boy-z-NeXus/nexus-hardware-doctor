@@ -1,0 +1,72 @@
+{
+  "commands": [
+    {
+      "protocol_version": "1.0.0",
+      "request_id": "tool-01k4nexus001",
+      "command": "read_voltage",
+      "arguments": {},
+      "timeout_ms": 1000
+    },
+    {
+      "protocol_version": "1.0.0",
+      "request_id": "tool-01k4nexus002",
+      "command": "set_pwm",
+      "arguments": { "pwm_percent": 30 },
+      "timeout_ms": 1000
+    },
+    {
+      "protocol_version": "1.0.0",
+      "request_id": "tool-01k4nexus003",
+      "command": "run_motor_test",
+      "arguments": { "duration_ms": 500, "pwm_percent": 20 },
+      "timeout_ms": 1000
+    }
+  ],
+  "responses": [
+    {
+      "protocol_version": "1.0.0",
+      "response_type": "ack",
+      "request_id": "tool-01k4nexus001",
+      "command": "read_voltage",
+      "accepted": true,
+      "duplicate": false,
+      "writes_enabled": false
+    },
+    {
+      "protocol_version": "1.0.0",
+      "response_type": "result",
+      "request_id": "tool-01k4nexus001",
+      "command": "read_voltage",
+      "completed_at_ms": 1200,
+      "elapsed_ms": 3,
+      "hardware_effect": false,
+      "result": { "bus_voltage_v": 12.08 },
+      "before": {
+        "bus_voltage_v": 12.08,
+        "current_ma": 34.1,
+        "power_mw": 411.93,
+        "pwm_percent": 0,
+        "driver_enabled": false
+      },
+      "after": {
+        "bus_voltage_v": 12.08,
+        "current_ma": 34.0,
+        "power_mw": 410.72,
+        "pwm_percent": 0,
+        "driver_enabled": false
+      }
+    },
+    {
+      "protocol_version": "1.0.0",
+      "response_type": "error",
+      "request_id": "tool-01k4nexus002",
+      "command": "set_pwm",
+      "completed_at_ms": 1300,
+      "error": {
+        "code": "COMMAND_WRITES_DISABLED",
+        "message": "Upload the command-test environment for supervised physical writes",
+        "hardware_effect": false
+      }
+    }
+  ]
+}

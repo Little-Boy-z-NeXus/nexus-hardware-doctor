@@ -13,8 +13,12 @@ Available now:
 - INA226 manufacturer/die-ID verification plus explicit readiness and I²C failure logs
 - invalid sensor values are withheld instead of emitting non-standard `nan` JSON
 - field names shared with backend and frontend contract v1
+- correlated serial commands with ACK/result/error and before/after snapshots
+- duplicate-request replay protection and strict argument/timeout validation
 
-Command transport is not implemented yet. The device starts with the driver disabled and does not accept serial or MQTT actions in the current foundation.
+The device always starts with the driver disabled. Normal firmware accepts safe reads,
+`reset_driver`, and stopped-state INA226 recalibration, but rejects motor writes. The separate
+supervised command-test build enables bounded motor writes for N03 acceptance.
 
 ## Hardware required
 
@@ -133,6 +137,9 @@ The checked-in defaults are in [`platformio.ini`](platformio.ini):
 | `NEXUS_DEVICE_ID` | `nexus-demo-esp32` | Device identity in every payload |
 | `NEXUS_HARDWARE_MODEL_ID` | `nexus-s3-ina226-l298n-motor-rig-v1` | Frozen ESP32-S3/INA226/L298N hardware model identity |
 | `NEXUS_MAX_PWM_PERCENT` | `80` | Absolute firmware PWM ceiling |
+| `NEXUS_MAX_CURRENT_MA` | `1500` | Motion is stopped/rejected above this measured current |
+| `NEXUS_MIN_BUS_VOLTAGE_MV` | `9500` | Minimum measured motor bus for motion |
+| `NEXUS_MAX_BUS_VOLTAGE_MV` | `13000` | Maximum verified MVP motor bus for motion |
 
 Do not raise the PWM ceiling until the physical hardware baseline and temperature checks are complete. Never store Wi-Fi or broker credentials in `platformio.ini`.
 
@@ -179,11 +186,37 @@ Use the root `nexus-run-hardware-baseline.cmd`; it runs at 30% PWM, saves eviden
 restores normal firmware automatically. Do not upload the baseline environment for normal
 application use. See [`../docs/hardware-baseline-u05.md`](../docs/hardware-baseline-u05.md).
 
+## N03 device command mode
+
+The USB serial command protocol is documented and machine-checked under
+[`protocol/v1`](protocol/v1/README.md). It supports `read_voltage`, `read_current`,
+`read_gpio`, `enable_driver`, `set_pwm`, `run_motor_test`, `reset_driver`, and
+`recalibrate_sensor`. The host copies canonical `tool_call_id` into device `request_id`, so
+the frozen Tool Call v1 contract does not change.
+
+Normal firmware returns `COMMAND_WRITES_DISABLED` for `enable_driver`, `set_pwm`, and
+`run_motor_test`. For a supervised physical acceptance session on Windows, stop the app and
+all serial monitors, then double-click `nexus-upload-command-firmware.cmd`. Afterwards use:
+
+```powershell
+python scripts/nexus_device_command.py read_voltage --port COM8 --request-id n03-read-1
+python scripts/nexus_device_command.py read_gpio --port COM8 --pin-id gpio_16 --request-id n03-gpio-1
+python scripts/nexus_device_command.py set_pwm --port COM8 --pwm-percent 20 --confirm-write --request-id n03-pwm-1 --verify-duplicate
+python scripts/nexus_device_command.py enable_driver --port COM8 --enabled --confirm-write --request-id n03-enable-1
+python scripts/nexus_device_command.py reset_driver --port COM8 --request-id n03-stop-1
+```
+
+Replace `COM8` with the detected port. Keep the quick 12 V disconnect in reach. The command
+client refuses motor writes without `--confirm-write`; firmware independently enforces bus,
+current, PWM and duration bounds. See
+[`../docs/n03-command-adapter.md`](../docs/n03-command-adapter.md) for the acceptance matrix.
+
 ## Firmware contract files
 
 - Field-name constants: [`include/nexus_contract_v1.h`](include/nexus_contract_v1.h)
 - Canonical telemetry schema: [`../nexus-contracts/v1/schemas/telemetry.schema.json`](../nexus-contracts/v1/schemas/telemetry.schema.json)
 - Valid telemetry fixture: [`../nexus-contracts/v1/fixtures/telemetry.example.json`](../nexus-contracts/v1/fixtures/telemetry.example.json)
+- Device command/response schemas: [`protocol/v1`](protocol/v1/README.md)
 
 After changing a telemetry field, run `python scripts/validate_contracts.py` from the repository root. A frozen schema change also requires a migration note.
 

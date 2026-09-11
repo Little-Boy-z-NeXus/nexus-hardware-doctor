@@ -9,6 +9,7 @@ These scripts provide fast, deterministic checks for repository structure and fr
 | [`validate_repo.py`](validate_repo.py) | Python 3.11 standard library | Required folders/files, naming, root license, backlog link, package prefixes, secret-file exclusions, README links |
 | [`validate_contracts.py`](validate_contracts.py) | Backend development dependencies | Four JSON Schemas, four fixtures, cross-fixture references, shared stack fields, migration-note rule |
 | [`nexus_hardware_baseline.py`](nexus_hardware_baseline.py) | Backend virtual environment + supervised hardware | U05 30-minute voltage/current/PWM soak test, failsafe stop, local evidence and report |
+| [`nexus_device_command.py`](nexus_device_command.py) | `pyserial` from the backend environment + supervised hardware | N03 correlated ACK/result/error exchange, local argument checks and duplicate replay verification |
 
 Both scripts return exit code `0` on success and a non-zero exit code with actionable messages on failure. GitHub Actions relies on those exit codes.
 
@@ -85,6 +86,17 @@ Firmware compilation is separate because it requires PlatformIO:
 ```bash
 pio run --project-dir firmware
 ```
+
+Build both the default-safe and N03 command-test variants:
+
+```bash
+pio run --project-dir firmware --environment nexus-goouuu-esp32-s3-n16r8
+pio run --project-dir firmware --environment nexus-goouuu-esp32-s3-n16r8-command-test
+```
+
+The command-test variant permits bounded physical motor writes. Read
+[`../docs/n03-command-adapter.md`](../docs/n03-command-adapter.md) and keep the motor-power
+disconnect within reach before uploading it.
 
 ## Adding or changing a validator
 
