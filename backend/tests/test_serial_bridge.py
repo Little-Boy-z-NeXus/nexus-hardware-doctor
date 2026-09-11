@@ -127,3 +127,23 @@ def test_live_log_is_persisted_as_timestamped_ndjson(tmp_path: Path) -> None:
     assert entry["source"] == "firmware"
     assert entry["level"] == "telemetry"
     assert json.loads(entry["message"])["device_id"] == "nexus-demo-esp32"
+
+
+def test_device_command_response_is_logged_without_fake_telemetry_error() -> None:
+    bridge = SerialBridge(enabled=False, persist_logs=False)
+    response = {
+        "protocol_version": "1.0.0",
+        "response_type": "ack",
+        "request_id": "tool-01k4nexus001",
+        "command": "read_voltage",
+        "accepted": True,
+        "duplicate": False,
+        "writes_enabled": False,
+    }
+
+    bridge.ingest_line(json.dumps(response), port="COM8")
+
+    snapshot = bridge.snapshot()
+    assert snapshot["telemetry"] is None
+    assert "TELEMETRY_INVALID" not in active_codes(bridge)
+    assert snapshot["logs"][-1]["level"] == "info"

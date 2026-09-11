@@ -208,6 +208,9 @@ class SerialBridge:
 
         try:
             payload = json.loads(line, parse_constant=reject_non_json_number)
+            if self._is_device_command_response(payload):
+                self._notify()
+                return
             sample = TelemetrySample.model_validate(payload)
             measurements = sample.measurements
             numeric_values = (
@@ -517,8 +520,33 @@ class SerialBridge:
     @staticmethod
     def _infer_log_level(line: str) -> str:
         lowered = line.lower()
+        if ('"response_type":"error"' in lowered
+                or '"response_type": "error"' in lowered):
+            return "error"
+        if any(
+            marker in lowered
+            for marker in (
+                '"response_type":"ack"',
+                '"response_type": "ack"',
+                '"response_type":"result"',
+                '"response_type": "result"',
+            )
+        ):
+            return "info"
         if "[e]" in lowered or "[error]" in lowered or "error" in lowered or "nan" in lowered:
             return "error"
         if "[w]" in lowered or "[warning]" in lowered or "warn" in lowered:
             return "warning"
         return "telemetry" if line.startswith("{") else "info"
+
+    @staticmethod
+    def _is_device_command_response(payload: object) -> bool:
+        """Keep command ACK/result/error lines visible without treating them as telemetry."""
+        if not isinstance(payload, dict):
+            return False
+        return (
+            payload.get("protocol_version") == "1.0.0"
+            and payload.get("response_type") in {"ack", "result", "error"}
+            and (isinstance(payload.get("request_id"), str) or payload.get("request_id") is None)
+            and (isinstance(payload.get("command"), str) or payload.get("command") is None)
+        )

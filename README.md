@@ -12,7 +12,7 @@ The INA226 `VBUS` input must be bridged to `VIN−` (the load side of the R100 s
 | --- | --- | --- |
 | Frontend | Realtime Dashboard/Hardware Graph, ESP32 live log, reconnect and human-readable fault cards | Connect AI Doctor to the same evidence stream |
 | Backend | Persistent sessions/telemetry, serial live snapshots/logs, hardware context, configurable Nebius client, simulated diagnosis/policy/evaluation and Docker runbook | Verify live model calls and integrate serial evidence plus real commands |
-| Firmware | Safe PWM clamp, strict telemetry v1, calibrated INA226 startup/error logs | Add authenticated command transport and encoder calibration |
+| Firmware | Safe PWM clamp, strict telemetry v1, calibrated INA226 logs, bounded device command protocol | Connect the physical adapter through H05 policy; add encoder calibration |
 | Contracts | Four frozen JSON Schemas, fixtures and migration enforcement | Change only through a reviewed migration note or v2 |
 
 The three demo paths are `Prevent`, `Manual Diagnose`, and `Auto Heal`. Features that do not make one of those paths more reliable are out of scope until after the hackathon.
@@ -50,6 +50,7 @@ No command typing is required after the prerequisite applications are installed.
 | `nexus-start-backend.cmd` | Start only the API at `http://127.0.0.1:8000` |
 | `nexus-start-frontend.cmd` | Start only the UI at `http://127.0.0.1:5173` |
 | `nexus-upload-firmware.cmd` | Upload firmware through the GOOUUU ESP32-S3 built-in USB-JTAG interface |
+| `nexus-upload-command-firmware.cmd` | Upload the supervised N03 build that enables bounded motor commands |
 | `nexus-monitor-firmware.cmd` | Standalone Serial Monitor; saves each session under `logs/device-monitor-*.log` |
 | `nexus-run-firmware.cmd` | Upload firmware, open standalone Serial Monitor, and save the session under `logs/` |
 | `nexus-check-project.cmd` | Run repository, backend, frontend, and firmware checks |

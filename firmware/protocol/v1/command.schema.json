@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:nexus:device-command:v1:command",
+  "title": "NeXus ESP32 serial command v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["protocol_version", "request_id", "command", "arguments", "timeout_ms"],
+  "properties": {
+    "protocol_version": { "const": "1.0.0" },
+    "request_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "command": {
+      "enum": [
+        "read_voltage",
+        "read_current",
+        "read_gpio",
+        "enable_driver",
+        "set_pwm",
+        "run_motor_test",
+        "reset_driver",
+        "recalibrate_sensor"
+      ]
+    },
+    "arguments": { "type": "object" },
+    "timeout_ms": { "type": "integer", "minimum": 100, "maximum": 5000 }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "command": {
+            "enum": ["read_voltage", "read_current", "reset_driver", "recalibrate_sensor"]
+          }
+        }
+      },
+      "then": { "properties": { "arguments": { "maxProperties": 0 } } }
+    },
+    {
+      "if": { "properties": { "command": { "const": "read_gpio" } } },
+      "then": {
+        "properties": {
+          "arguments": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["pin_id"],
+            "properties": {
+              "pin_id": { "enum": ["gpio_12", "gpio_13", "gpio_14", "gpio_16", "gpio_17"] }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "command": { "const": "enable_driver" } } },
+      "then": {
+        "properties": {
+          "arguments": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["enabled"],
+            "properties": { "enabled": { "type": "boolean" } }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "command": { "const": "set_pwm" } } },
+      "then": {
+        "properties": {
+          "arguments": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["pwm_percent"],
+            "properties": {
+              "pwm_percent": { "type": "integer", "minimum": 0, "maximum": 80 }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": { "properties": { "command": { "const": "run_motor_test" } } },
+      "then": {
+        "properties": {
+          "arguments": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["duration_ms"],
+            "properties": {
+              "duration_ms": { "type": "integer", "minimum": 100, "maximum": 3000 },
+              "pwm_percent": { "type": "integer", "minimum": 1, "maximum": 80 }
+            }
+          }
+        }
+      }
+    }
+  ]
+}
