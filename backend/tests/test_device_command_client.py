@@ -1,13 +1,22 @@
+import importlib.util
 import json
+import sys
 from collections import deque
+from pathlib import Path
 
 import pytest
-from scripts.nexus_device_command import (
-    DeviceCommandError,
-    build_request,
-    exchange,
-    parse_response,
-)
+
+SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "nexus_device_command.py"
+SPEC = importlib.util.spec_from_file_location("nexus_device_command", SCRIPT)
+assert SPEC is not None and SPEC.loader is not None
+nexus_device_command = importlib.util.module_from_spec(SPEC)
+sys.modules[SPEC.name] = nexus_device_command
+SPEC.loader.exec_module(nexus_device_command)
+
+DeviceCommandError = nexus_device_command.DeviceCommandError
+build_request = nexus_device_command.build_request
+exchange = nexus_device_command.exchange
+parse_response = nexus_device_command.parse_response
 
 
 class FakeSerial:
