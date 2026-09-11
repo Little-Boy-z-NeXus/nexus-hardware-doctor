@@ -13,6 +13,7 @@ dependencies = [
   "jsonschema[format]>=4.23,<5",
   "pydantic>=2.9,<3",
   "pyserial>=3.5,<4",
+  "python-dotenv>=1,<2",
   "uvicorn[standard]>=0.30,<1",
 ]
 

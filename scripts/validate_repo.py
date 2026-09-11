@@ -3,10 +3,29 @@
 from __future__ import annotations
 
 import re
+import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def validate_secret_files(root: Path, errors: list[str]) -> None:
+    """Permit documented ignored local configuration, reject tracked/exposed secrets."""
+    for name in (".env", "secrets.json", "credentials.json"):
+        tracked = subprocess.run(
+            ["git", "ls-files", "--error-unmatch", "--", name], cwd=root,
+            capture_output=True, check=False,
+        )
+        if tracked.returncode == 0:
+            errors.append(f"Secret file must not be tracked by Git: {name}")
+        elif (root / name).exists():
+            ignored = subprocess.run(
+                ["git", "check-ignore", "--quiet", "--", name], cwd=root,
+                capture_output=True, check=False,
+            )
+            if ignored.returncode != 0:
+                errors.append(f"Local secret file is not excluded from Git: {name}")
 
 REQUIRED_DIRECTORIES = (
     "firmware",
@@ -172,13 +191,7 @@ def main() -> int:
             errors,
         )
 
-    forbidden = [ROOT / ".env", ROOT / "secrets.json", ROOT / "credentials.json"]
-    for path in forbidden:
-        require(
-            not path.exists(),
-            f"Forbidden local secret file present: {path.name}",
-            errors,
-        )
+    validate_secret_files(ROOT, errors)
 
     validate_readme_links(errors)
 

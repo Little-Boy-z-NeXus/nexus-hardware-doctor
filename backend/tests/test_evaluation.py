@@ -167,3 +167,38 @@ def test_live_flag_requires_configuration_and_does_not_print_secrets(monkeypatch
     output = capsys.readouterr().out
     assert "do-not-print-this-value" not in output
     assert json.loads(output)["h07_complete"] is False
+
+
+def test_explicit_env_file_does_not_interpolate_secrets_or_change_process_env(
+    tmp_path, monkeypatch, capsys
+):
+    import os
+
+    from nexus_backend import evaluation
+
+    path = tmp_path / ".env"
+    path.write_text("NEXUS_NEBIUS_API_KEY='literal-${SECRET_SUFFIX}'\n")
+    monkeypatch.delenv("NEXUS_NEBIUS_API_KEY", raising=False)
+    monkeypatch.setenv("SECRET_SUFFIX", "must-not-expand")
+    received = []
+
+    async def fake_run(**kwargs):
+        received.append(kwargs)
+        return {"planner_mode": "live_model_synthetic_inputs",
+                "cases": {"top2_correct": 10, "total": 10},
+                "software_gate_passed": True, "h07_complete": False}
+
+    monkeypatch.setattr(evaluation, "run_evaluation", fake_run)
+    assert main(["--live", "--env-file", str(path),
+                 "--output", str(tmp_path / "report.json")]) == 0
+    assert received[0]["environ"]["NEXUS_NEBIUS_API_KEY"] == "literal-${SECRET_SUFFIX}"
+    assert "NEXUS_NEBIUS_API_KEY" not in os.environ
+    assert "literal-" not in capsys.readouterr().out
+
+
+def test_env_file_requires_explicit_live_flag_and_missing_file_fails(tmp_path, capsys):
+    with pytest.raises(SystemExit) as caught:
+        main(["--env-file", str(tmp_path / ".env")])
+    assert caught.value.code == 2
+    assert main(["--live", "--env-file", str(tmp_path / ".env")]) == 2
+    assert "FileNotFoundError" in capsys.readouterr().out

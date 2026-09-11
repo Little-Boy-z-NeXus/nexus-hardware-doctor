@@ -14,10 +14,12 @@ from .context import build_context
 from .provider import NebiusProvider, ProviderConfig, ProviderError
 from .validation import ContractValidationError, validate_contract
 
-PROMPT_VERSION = "diagnosis-v1"
+PROMPT_VERSION = "diagnosis-v2"
 IDENTIFIER = {"type": "string", "minLength": 1, "maxLength": 128,
               "pattern": "^[A-Za-z0-9_.:-]+$"}
 NUMBER = {"type": "number", "minimum": 0, "maximum": 1}
+HYPOTHESIS_IDS = ["normal", "power", "pwm", "driver", "wiring", "overvoltage",
+                  "calibration", "sensor", "tool_error", "motor"]
 TOOL_ARGUMENTS = {
     "get_hardware_graph": ({}, []),
     "get_telemetry": ({}, []),
@@ -217,26 +219,74 @@ class NebiusPlanner:
 
     def __init__(self, provider: NebiusProvider | None = None):
         self.provider = provider or NebiusProvider(ProviderConfig.from_env())
+        self.last_attempts: list[dict] = []
 
     @classmethod
     def from_env(cls) -> NebiusPlanner:
         return cls(NebiusProvider(ProviderConfig.from_env()))
 
     async def plan(self, context: dict, observations: list[dict]) -> dict:
+        self.last_attempts = []
         clean, observed = prepare_inputs(context, observations)
-        prompt = files("nexus_backend").joinpath("prompts/diagnosis-v1.txt").read_text()
+        schema = deepcopy(PLAN_SCHEMA)
+        schema["properties"]["hypotheses"]["items"]["properties"]["id"] = {
+            **IDENTIFIER, "enum": HYPOTHESIS_IDS,
+        }
+        # Describe only tools actually available for this run. Full local validation
+        # remains authoritative even when provider-side constraints are supported.
+        schema["properties"]["next_tool"]["anyOf"] = [{"type": "null"}] + [
+            _tool_schema(name, *TOOL_ARGUMENTS[name]) for name in clean["available_tools"]
+        ]
+        evidence_ids = {sample["sample_id"] for sample in clean["telemetry"]}
+        for observation in observed:
+            if observation["status"] in {"succeeded", "failed"}:
+                evidence_ids.add(observation["evidence_id"])
+            if observation["status"] == "succeeded" and "sample" in observation["data"]:
+                evidence_ids.add(observation["data"]["sample"]["sample_id"])
+        evidence_schema = schema["properties"]["hypotheses"]["items"]["properties"]["evidence_ids"]
+        if evidence_ids:
+            evidence_schema["items"] = {**evidence_schema["items"], "enum": sorted(evidence_ids)}
+            evidence_schema["minItems"] = 1
+        else:
+            evidence_schema["maxItems"] = 0
+        prompt = files("nexus_backend").joinpath(f"prompts/{PROMPT_VERSION}.txt").read_text()
+        prompt += "\nOutput JSON schema for this run:\n" + json.dumps(schema, allow_nan=False)
         messages = [{"role": "system", "content": prompt}, {
             "role": "user", "content": json.dumps({
-                "untrusted_diagnostic_data": {"context": clean, "observations": observed},
+                "untrusted_diagnostic_data": {
+                    "symptom": clean["symptom"], "observations": observed,
+                    "telemetry": clean["telemetry"], "available_tools": clean["available_tools"],
+                    "hardware_context": {key: value for key, value in clean.items()
+                                         if key not in {"symptom", "telemetry", "available_tools"}},
+                },
             }, allow_nan=False),
         }]
-        content = await self.provider.complete(messages, PLAN_SCHEMA)
-        try:
-            plan = validate_plan(content)
-            self.provider.reject_secret_echo(plan)
-            return _validate_evidence(plan, clean, observed)
-        except PlanValidationError:
-            raise ProviderError("invalid_response") from None
+        request_validator = Draft202012Validator(schema)
+        for attempt in range(2):
+            try:
+                content = await self.provider.complete(messages, schema)
+                plan = validate_plan(content)
+                self.provider.reject_secret_echo(plan)
+                if not request_validator.is_valid(plan):
+                    raise PlanValidationError()
+                return _validate_evidence(plan, clean, observed)
+            except (PlanValidationError, ProviderError) as error:
+                if isinstance(error, ProviderError) and error.code != "invalid_response":
+                    raise
+                if attempt == 1:
+                    raise ProviderError("invalid_response") from None
+                # One bounded correction; never feed back raw output, reasoning or secrets.
+                messages[0]["content"] += (
+                    "\nThe previous response failed local validation. Return a complete, short "
+                    "JSON object. Use only schema-listed IDs, available tools and evidence. "
+                    "Every hypothesis must cite evidence when evidence exists. A failed "
+                    "observation supports only tool_error and a non-diagnosed stop. "
+                    "next_tool null requires a stop other than continue. With a tool, use "
+                    "continue. Keep user_message below 280 characters."
+                )
+            finally:
+                if self.provider.last_completion:
+                    self.last_attempts.append(deepcopy(self.provider.last_completion))
 
 
 class MockPlanner:
