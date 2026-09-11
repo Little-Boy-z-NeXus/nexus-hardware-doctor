@@ -22,6 +22,7 @@ from starlette.websockets import WebSocketDisconnect
 from nexus_backend import __version__
 from nexus_backend.context import build_context
 from nexus_backend.hardware import load_hardware_model
+from nexus_backend.health_check import run_health_check
 from nexus_backend.runtime import RunLimiter, configure_logging, log_run
 from nexus_backend.serial_bridge import SerialBridge
 from nexus_backend.store import SQLiteStore, StoreConflict, StoreNotFound
@@ -94,6 +95,11 @@ class ContextRequest(NewSession):
 class DiagnosisRequest(NewSession):
     mode: Literal["mock", "live"] = "mock"
     max_steps: int = Field(default=6, ge=1, le=8, strict=True)
+
+
+class HealthCheckRequest(APIRequest):
+    hardware_model: dict = Field(description="Complete frozen hardware-model v1 document.")
+    profile: dict = Field(default_factory=dict, description="Optional declared electrical evidence.")
 
 
 def create_app(
@@ -341,6 +347,14 @@ def create_app(
     @application.get("/api/devices/{device_id}/hardware-model", tags=["Hardware"])
     def hardware_model(device_id: str, request: Request) -> dict:
         return request.app.state.store.get_hardware_model(device_id)
+
+    @application.post("/api/v1/health-check", tags=["Hardware"])
+    def health_check(body: HealthCheckRequest) -> dict:
+        """Run deterministic pre-power rules without accessing a physical board."""
+        try:
+            return run_health_check(body.hardware_model, body.profile)
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(422, str(exc)) from exc
 
     @application.post("/api/devices/{device_id}/telemetry", status_code=201, tags=["Telemetry"])
     def ingest(device_id: str, sample: dict, request: Request, response: Response) -> dict:
