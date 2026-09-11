@@ -108,3 +108,17 @@ disconnect within reach before uploading it.
 - Run the script on Windows and through GitHub Actions before merging.
 
 Do not put generated reports, private telemetry, keys, or raw model logs under `scripts/`.
+
+## H01/H04 live model and H05 read-only smoke check
+
+`python scripts/check_live_model.py --live --env-file .env` exercises a real configured
+NVIDIA model through the existing orchestrator. A synthetic PWM fault is held in an isolated
+read-only adapter; the model must request telemetry, receive it and return a grounded fault
+hypothesis. The report is written under ignored `artifacts/` and explicitly excludes physical
+acceptance. It returns 0 for a passing check, 1 for an unsuccessful run, and 2 for configuration
+or runner failure. Omitting `--live` is rejected before any API request.
+
+The companion `python -m nexus_backend.evaluation --live --env-file .env` scores ten synthetic
+cases. These explicit live commands incur model usage; normal automated tests use mocked HTTP.
+Repository secret-file checks require Git and permit ignored local `.env` files, while
+rejecting tracked or unignored credentials.

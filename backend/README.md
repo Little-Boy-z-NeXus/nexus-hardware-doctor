@@ -18,7 +18,7 @@ Available now:
 - pre-power Health Check rules for voltage, wiring, pin direction, supply and metadata
 - strict Python contract mirrors, JSON Schema/fixture validation, automated tests and Ruff linting
 
-Prepared for H01/H04–H08:
+Model and diagnosis support:
 
 - a strict, configurable async Nebius/Nemotron client and a separately labelled mock planner
 - bounded read/plan/policy/execute/verify orchestration with an isolated simulator
@@ -27,14 +27,14 @@ Prepared for H01/H04–H08:
 
 Still awaiting live acceptance/integration:
 
-- successful real Nebius/Nemotron runtime proof
+- physical diagnosis acceptance beyond the [verified live calls on synthetic data](../docs/evidence/h01-h04-live-nebius.md)
 - actual device command transport and verified physical actions
 - transfer of serial snapshots into the persistent per-device history and diagnosis context
 - cloud telemetry storage and automatic retention policies
 
 Those capabilities are separate backlog items. Simulated/replayed samples carry an explicit source and do not prove physical hardware behavior. See the [H02/H03 API guide](../docs/backend-api.md) for endpoint semantics, limitations and acceptance checks.
 
-See [H resources and completion gates](../docs/h-resource-checklist.md) for the remaining inputs and [H08 runbook](../docs/h08-runbook.md) for installation, live opt-in and controlled failures. This preemptive software does not mark H01/H04–H08 complete.
+See [H resources and completion gates](../docs/h-resource-checklist.md) for the remaining inputs and [H08 runbook](../docs/h08-runbook.md) for installation, live opt-in and controlled failures. Physical H05–H08 acceptance remains separate from the recorded live-model checks.
 
 ## Prerequisites
 
@@ -138,9 +138,12 @@ The root [`.env.example`](../.env.example) is the canonical backend/device templ
 | `NEXUS_DB_PATH` | No | SQLite path; defaults to `artifacts/nexus.sqlite3` |
 | `NEXUS_CORS_ORIGINS` | No | Allowed browser origins; defaults to local frontend port 5173 |
 | `NEXUS_ENV` | Later | Reserved environment label |
-| `NEXUS_NEBIUS_BASE_URL` | Later | Nebius API base URL |
-| `NEXUS_NEBIUS_API_KEY` | Later | Secret API credential; never expose to frontend |
-| `NEXUS_NVIDIA_MODEL` | Later | Selected NVIDIA/Nemotron model ID |
+| `NEXUS_NEBIUS_BASE_URL` | Live mode | Nebius HTTPS `/v1` base URL |
+| `NEXUS_NEBIUS_API_KEY` | Live mode | Secret API credential; never expose to frontend |
+| `NEXUS_NVIDIA_MODEL` | Live mode | Selected NVIDIA/Nemotron model ID |
+| `NEXUS_ENABLE_LIVE_MODEL` | Live API | Set `true` to permit explicit live diagnoses |
+| `NEXUS_NEBIUS_ENABLE_THINKING` | No | Optional Nemotron template control: `true`, `false`, or empty |
+| `NEXUS_NEBIUS_MAX_OUTPUT_TOKENS` | No | Reasoning plus answer budget, 256–8192; default 2048 |
 | `NEXUS_MQTT_URL` | Later | Device transport broker |
 | `NEXUS_DEVICE_ID` | Yes | Device identity matching contract v1 and the firmware default |
 | `NEXUS_SERIAL_ENABLED` | Yes | Set `false` only for a software-only run |
@@ -149,7 +152,7 @@ The root [`.env.example`](../.env.example) is the canonical backend/device templ
 | `NEXUS_LOG_DIR` | Yes | Log directory; relative paths resolve from the repository root |
 | `NEXUS_MAX_PWM_PERCENT` | Yes | Backend safety ceiling; firmware clamps independently too |
 
-The server reads `NEXUS_DB_PATH` and `NEXUS_CORS_ORIGINS` from its process environment. It does not automatically read `.env`; use Uvicorn's `--env-file` option if needed. Keep the same database path across restarts. Future model/policy variables remain reserved. Local development has no API authentication; use the loopback binding shown above.
+The server reads configuration from its process environment. Use Uvicorn's `--env-file .env`; the Windows launcher adds this automatically when the file exists. Keep the same database path across restarts. Live mode still requires an explicit live request, and physical writes remain disabled. Local development has no API authentication; use the loopback binding shown above.
 
 ## Run tests and lint
 
