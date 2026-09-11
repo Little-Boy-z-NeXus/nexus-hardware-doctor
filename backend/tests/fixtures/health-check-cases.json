@@ -1,0 +1,56 @@
+[
+  {
+    "id": "five_volt_into_esp32_gpio",
+    "profile": {
+      "pin_profiles": [
+        {"component_id": "dc_motor", "pin_id": "encoder_a", "direction": "output", "nominal_voltage_v": 5.0},
+        {"component_id": "esp32", "pin_id": "gpio_16", "direction": "input", "max_voltage_v": 3.3}
+      ],
+      "connection_readings": [
+        {"connection_id": "motor_encoder_a_to_esp32", "voltage_v": 5.0}
+      ]
+    },
+    "expected_rule": "VOLTAGE_LIMIT_EXCEEDED"
+  },
+  {
+    "id": "required_encoder_wire_missing",
+    "remove_connection_id": "motor_encoder_b_to_esp32",
+    "profile": {
+      "required_connections": [
+        {
+          "from_component_id": "dc_motor",
+          "from_pin": "encoder_b",
+          "to_component_id": "esp32",
+          "to_pin": "gpio_17",
+          "signal_type": "digital"
+        }
+      ]
+    },
+    "expected_rule": "REQUIRED_CONNECTION_MISSING"
+  },
+  {
+    "id": "two_outputs_connected",
+    "set_pin_mode": {"component_id": "l298n", "pin_id": "in1", "mode": "output"},
+    "profile": {},
+    "expected_rule": "PIN_DIRECTION_CONFLICT"
+  },
+  {
+    "id": "twelve_volt_supply_into_six_volt_motor",
+    "profile": {
+      "pin_profiles": [
+        {"component_id": "l298n", "pin_id": "out1", "direction": "power_out", "nominal_voltage_v": 12.0},
+        {"component_id": "dc_motor", "pin_id": "motor_plus", "direction": "power_in", "max_voltage_v": 6.0}
+      ],
+      "connection_readings": [
+        {"connection_id": "l298n_to_motor_positive", "voltage_v": 12.0}
+      ]
+    },
+    "expected_rule": "POWER_SUPPLY_INCOMPATIBLE"
+  },
+  {
+    "id": "sensor_model_missing",
+    "remove_component_field": {"component_id": "ina226", "field": "model"},
+    "profile": {},
+    "expected_rule": "COMPONENT_METADATA_MISSING"
+  }
+]

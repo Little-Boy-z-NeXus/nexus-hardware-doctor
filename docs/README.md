@@ -21,6 +21,7 @@ This directory records the decisions required to build and demonstrate the hacka
 | [`nexus-wiring-jgb37-520.svg`](nexus-wiring-jgb37-520.svg) | Building or checking the physical ESP32-S3/L298N motor rig | Hiếu + Nguyễn |
 | [`ownership.md`](ownership.md) | Assigning work or choosing a reviewer | Hiếu |
 | [`hardware-baseline-u05.md`](hardware-baseline-u05.md) | Running and evidencing the U05 hardware/safety gate | Hiếu + Nguyễn |
+| [`n04-health-check.md`](n04-health-check.md) | Running deterministic pre-power rule checks without hardware | Nguyễn |
 | [`security.md`](security.md) | Handling keys, telemetry, logs, prompts, or device commands | Hoàng + Hiếu |
 | [`backlog.md`](backlog.md) | Finding the live plan or mapping a commit to a task ID | Entire team |
 | [`h-resource-checklist.md`](h-resource-checklist.md) | Supplying resources to finish H tasks; remaining live acceptance gates | Hoàng |
