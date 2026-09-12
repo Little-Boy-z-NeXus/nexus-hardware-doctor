@@ -18,6 +18,26 @@ Vietnamese fault card to the Hardware Graph.
 The UI shows `Chờ kiểm chứng` for an encoder while the motor is stopped. No pulse at rest is
 normal and cannot prove either a healthy or broken wire. A supervised motor run is required.
 
+## Firmware and physical-hardware fingerprint
+
+The locked MVP profile is `nexus-s3-ina226-l298n-motor-rig-v1`: GOOUUU ESP32-S3-N16R8,
+INA226 with an R100 shunt at `0x40`, L298N, and JGB37-520 12 V with encoder. Firmware broadcasts
+this compiled `HARDWARE_PROFILE` at boot and every ten seconds. The backend compares it with the
+locked BOM before the Hardware Graph marks the firmware profile verified.
+
+Two failures deliberately produce different actions:
+
+- `FIRMWARE_PROFILE_MISMATCH`: the board is running firmware built for another model, such as an
+  old INA219 profile. Do not rewire the rig; turn motor power off and upload the repository's
+  current firmware.
+- `INA226_ID_MISMATCH`: a device ACKs at `0x40`, but its manufacturer/die registers are not an
+  INA226. Do not tune calibration to hide the problem; inspect the IC marking and install the
+  locked INA226 R100 module.
+
+The live API exposes these independent results under `compatibility`: reported and expected
+model IDs, firmware-profile verification, sensor-identity verification, and the last successful
+verification time. This object is operational UI state and does not alter frozen telemetry v1.
+
 ## Detection latency
 
 - SDA/SCL electrical, ACK, identity and measurement-consistency checks run before every
@@ -45,6 +65,10 @@ fault, then power down again and restore the wire.
 5. Remove encoder B and repeat: the UI must name the green B/GPIO17 wire.
 6. Restore both encoder wires and repeat the supervised test: `ENCODER_SIGNAL_OK` must clear the
    active encoder fault.
+7. Replay or flash an old INA219 hardware-model profile: the UI must show
+   `FIRMWARE_PROFILE_MISMATCH` and reject its telemetry.
+8. Connect a non-INA226 device that ACKs at `0x40`: the UI must show `INA226_ID_MISMATCH`; no
+   numeric measurement may be accepted.
 
 ## Rule for future signals
 
