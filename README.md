@@ -11,7 +11,7 @@ The INA226 `VBUS` input must be bridged to `VIN−` (the load side of the R100 s
 | Area | What works now | Next integration |
 | --- | --- | --- |
 | Frontend | Realtime Dashboard/Hardware Graph, ESP32 live log, reconnect and human-readable fault cards | Connect AI Doctor to the same evidence stream |
-| Backend | Persistent sessions/telemetry, serial snapshots/logs, hardware context, verified live Nebius client, diagnosis/policy/evaluation and Docker runbook | Integrate serial evidence and policy-controlled device commands |
+| Backend | Persistent sessions/telemetry, explicit serial-history binding, verified live Nebius client, read-only orchestration, policy/evaluation and Docker runbook | Run U07 physical 3/3; keep motor writes behind later policy gates |
 | Firmware | Safe PWM clamp, strict telemetry v1, calibrated INA226 logs, bounded device command protocol | Connect the physical adapter through H05 policy; add encoder calibration |
 | Contracts | Four frozen JSON Schemas, fixtures and migration enforcement | Change only through a reviewed migration note or v2 |
 
@@ -54,6 +54,7 @@ No command typing is required after the prerequisite applications are installed.
 | `nexus-run-n03-hardware-acceptance.cmd` | Upload and run the full N03 real-board command matrix |
 | `nexus-run-n05-fault-acceptance.cmd` | Run N05 software faults, physical OUT2-open checks and restored baseline |
 | `nexus-run-n06-auto-heal-acceptance.cmd` | Run five bounded physical PWM Auto Heal cycles and restore safe firmware |
+| `nexus-run-u07-vertical-slice.cmd` | Start the full app and require 3/3 physical telemetry -> Nemotron -> read-only-tool runs |
 | `nexus-start-replay-demo.cmd` | Start backend/frontend with sanitized realtime telemetry and no board/COM port |
 | `nexus-prepare-n08-recovery-kit.cmd` | Build checksummed default-safe firmware backup and wiring bundle |
 | `nexus-run-n08-recovery-drill.cmd` | Time a safe firmware/INA226 recovery and save local evidence |
@@ -68,6 +69,12 @@ remain beside the rig for the complete 30-minute test. It validates the 12 V/INA
 path, stops on unsafe readings, writes local evidence, and restores normal safe firmware.
 Follow [`docs/hardware-baseline-u05.md`](docs/hardware-baseline-u05.md); never leave the motor
 running unattended.
+
+For U07, first keep the Nebius credential only in an ignored local `.env`, bind
+`NEXUS_SERIAL_DEVICE_ID=nexus-demo-esp32`, then double-click
+`nexus-run-u07-vertical-slice.cmd`. Replay and mock data intentionally fail this gate. See the
+[U07 vertical-slice runbook](docs/u07-vertical-slice.md) for the exact 3/3 evidence and safe
+internal-video checklist.
 
 ## Clone and validate the repository
 
@@ -112,7 +119,7 @@ Open:
 - Latest valid telemetry: <http://127.0.0.1:8000/api/v1/telemetry>
 - Interactive API docs: <http://127.0.0.1:8000/docs>
 
-The backend exposes device registration, telemetry/history, WebSocket streaming, diagnosis session records, audit events, hardware models and bounded context. SQLite retains configuration and data across restarts. See the [backend API guide](docs/backend-api.md).
+The backend exposes device registration, telemetry/history, WebSocket streaming, diagnosis session records, audit events, hardware models and bounded context. A live diagnosis can require a fresh policy-approved serial read by setting `require_fresh_read=true`; it fails unless the physical device is explicitly bound. SQLite retains configuration and data across restarts. See the [backend API guide](docs/backend-api.md).
 
 To exercise H02 and H03 without a board, keep the backend running and open another activated terminal:
 
@@ -122,7 +129,7 @@ python -m nexus_backend.mock_device --count 60
 
 Open <http://127.0.0.1:8000/monitor> while the simulator runs. It displays source-labeled telemetry from the persistent per-device backend stream. The React Dashboard and Hardware Graph use the separate serial live snapshot API; simulator registration does not replace their hardware readings.
 
-The backend owns the serial port, rejects malformed/`nan` packets, persists timestamped NDJSON entries under `logs/`, and streams complete live snapshots over `/api/v1/live/ws`. These read-only live endpoints coexist with the SQLite device/session APIs. Transfer of serial snapshots into diagnosis history and physical command integration remain pending.
+The backend owns the serial port, rejects malformed/`nan` packets, persists timestamped NDJSON entries under `logs/`, and streams complete live snapshots over `/api/v1/live/ws`. These read-only live endpoints coexist with the SQLite device/session APIs. Setting `NEXUS_SERIAL_DEVICE_ID` explicitly binds fresh serial snapshots into the matching source=`device` diagnosis history; no device identity is inferred automatically.
 
 The [diagnosis lab](http://127.0.0.1:8000/doctor-lab) runs the H01/H04–H08 software. Simulation requires no model key. Live mode requires configured Nebius access and explicit enablement; its tools are read-only. Successful real NVIDIA calls and a read-only tool cycle are recorded in the [live acceptance evidence](docs/evidence/h01-h04-live-nebius.md); their inputs are synthetic, and physical acceptance remains separate. See the [H resource checklist](docs/h-resource-checklist.md), [model guide](docs/h01-h04.md), [orchestration/policy guide](docs/h05-h06.md), [evaluation guide](docs/h07-evaluation.md), and [Docker runbook](docs/h08-runbook.md).
 

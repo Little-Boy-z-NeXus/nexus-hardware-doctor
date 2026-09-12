@@ -24,12 +24,12 @@ Model and diagnosis support:
 - bounded read/plan/policy/execute/verify orchestration with an isolated simulator
 - persistent diagnosis outcomes/events and a browser lab at `/doctor-lab`
 - synthetic evaluation, container packaging and a reproducible runbook
+- an explicit `require_fresh_read` live gate for the U07 physical read-only vertical slice
 
 Still awaiting live acceptance/integration:
 
 - physical diagnosis acceptance beyond the [verified live calls on synthetic data](../docs/evidence/h01-h04-live-nebius.md)
 - actual device command transport and verified physical actions
-- transfer of serial snapshots into the persistent per-device history and diagnosis context
 - cloud telemetry storage and automatic retention policies
 
 Those capabilities are separate backlog items. Simulated/replayed samples carry an explicit source and do not prove physical hardware behavior. See the [H02/H03 API guide](../docs/backend-api.md) for endpoint semantics, limitations and acceptance checks.
@@ -128,6 +128,14 @@ python -m nexus_backend.mock_device --count 60 --interval 1
 The monitor receives the actual backend WebSocket stream. It supports device selection, reconnection and stale-data indication without requiring a board or model credential.
 
 The browser subscribes to `ws://127.0.0.1:8000/api/v1/live/ws`. The first message is a complete snapshot; subsequent messages replace it, which makes reconnect deterministic.
+
+For U07, `POST /api/devices/{device_id}/diagnoses` accepts
+`{"mode":"live","require_fresh_read":true,...}`. The request is rejected unless the registered
+device has source `device` and the server was started with the matching serial binding. The
+model receives no cached telemetry for its first plan and must use the policy-controlled
+`get_telemetry` tool to obtain a new serial measurement. Successful responses include only
+allowlisted model runtime metadata (model/response IDs, finish reason, latency/attempt count and
+token usage), never prompt or provider body content.
 
 ## Environment configuration
 

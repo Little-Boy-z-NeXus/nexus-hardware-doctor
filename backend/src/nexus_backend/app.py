@@ -6,6 +6,7 @@ import asyncio
 import os
 import time
 from contextlib import asynccontextmanager, suppress
+from copy import deepcopy
 from datetime import UTC, datetime
 from importlib.resources import files
 from pathlib import Path
@@ -95,6 +96,7 @@ class ContextRequest(NewSession):
 class DiagnosisRequest(NewSession):
     mode: Literal["mock", "live"] = "mock"
     max_steps: int = Field(default=6, ge=1, le=8, strict=True)
+    require_fresh_read: bool = Field(default=False, strict=True)
 
 
 class HealthCheckRequest(APIRequest):
@@ -249,6 +251,15 @@ def create_app(
             from nexus_backend.tool_adapter import SerialToolAdapter
 
             adapter = SerialToolAdapter(context, reads=serial_bridge.reads, history=history)
+        run_context = context
+        if body.require_fresh_read:
+            if body.mode != "live" or adapter is None:
+                raise HTTPException(
+                    409,
+                    "A fresh read requires live mode and a source=device serial binding",
+                )
+            run_context = deepcopy(context)
+            run_context["telemetry"] = []
         denied = request.app.state.run_limiter.acquire()
         if denied:
             raise HTTPException(429 if denied == "rate_limited" else 503,
@@ -260,7 +271,7 @@ def create_app(
             session = store.create_session(device_id, body.symptom)
             try:
                 result = await asyncio.wait_for(run_diagnosis(
-                    context, planner, mode="mock" if body.mode == "mock" else "real",
+                    run_context, planner, mode="mock" if body.mode == "mock" else "real",
                     adapter=adapter,
                     max_steps=body.max_steps,
                     timeout_seconds=25, trace_id=session["trace_id"],
@@ -284,8 +295,13 @@ def create_app(
             result["mode"] = body.mode
             result["physical_commands_enabled"] = False
             finished = store.finish_diagnosis(device_id, session["session_id"], result)
+            calls = result.get("model_runtime", {}).get("calls", [])
+            model = None
+            if calls:
+                model = calls[-1].get("response_model") or calls[-1].get("requested_model")
             log_run(trace_id=session["trace_id"], mode=body.mode, status=result["status"],
-                    steps=result.get("steps", 0), elapsed_ms=int((time.monotonic()-started)*1000))
+                    steps=result.get("steps", 0), elapsed_ms=int((time.monotonic()-started)*1000),
+                    model_calls=len(calls), model=model)
             return finished
         finally:
             request.app.state.run_limiter.release()

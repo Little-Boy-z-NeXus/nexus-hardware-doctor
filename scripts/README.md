@@ -13,6 +13,7 @@ These scripts provide fast, deterministic checks for repository structure and fr
 | [`nexus_n03_hardware_acceptance.py`](nexus_n03_hardware_acceptance.py) | `pyserial` + secured physical rig | Complete N03 real-board matrix, final failsafe stop and local NDJSON/Markdown evidence |
 | [`nexus_n05_fault_acceptance.py`](nexus_n05_fault_acceptance.py) | `pyserial` + secured physical rig | Five-cycle N05 software/manual fault checks, transport retry, safe reset and local evidence |
 | [`nexus_n06_auto_heal_acceptance.py`](nexus_n06_auto_heal_acceptance.py) | `pyserial` + secured physical rig | Five-cycle PWM fault → policy → recovery → motor-test loop with before/after audit evidence |
+| [`nexus_u07_vertical_slice.py`](nexus_u07_vertical_slice.py) | Running backend/frontend, physical ESP32 and configured Nebius model | Three strict physical telemetry → Dashboard/WebSocket → Nemotron → read-only serial-tool runs |
 
 `python -m nexus_backend.replay_server` is the N07 no-hardware replay entry point. It serves
 sanitized telemetry through the same live API/WebSocket consumed by the frontend.
@@ -119,6 +120,14 @@ disconnect within reach before uploading it.
 - Run the script on Windows and through GitHub Actions before merging.
 
 Do not put generated reports, private telemetry, keys, or raw model logs under `scripts/`.
+
+## U07 physical vertical slice
+
+`nexus_u07_vertical_slice.py` is normally launched by the root
+`nexus-run-u07-vertical-slice.cmd`. It refuses replay/simulator telemetry, missing live-model
+configuration, an unbound serial history, missing WebSocket data, ungrounded hypotheses, absent
+model-call metadata, or a run without the `get_telemetry` serial observation. Evidence is written
+under ignored `artifacts/U07/`. See [`../docs/u07-vertical-slice.md`](../docs/u07-vertical-slice.md).
 
 ## H01/H04 live model and H05 read-only smoke check
 
