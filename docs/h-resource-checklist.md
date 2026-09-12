@@ -8,6 +8,19 @@ The [12 September live-model evidence](evidence/h01-h04-live-nebius.md) records 
 
 - [x] **H02:** persistent backend/device sessions, streaming telemetry, audit and monitor.
 - [x] **H03:** validated hardware loader, missing-metadata detection and bounded context.
+- [x] **H04:** live Nemotron differential diagnosis evidence and strict final acceptance gate.
+- [x] **H05:** bounded orchestrator qualified against the real N03 serial adapter evidence.
+- [x] **H06:** default-deny safety policy and five verified physical before/after recovery cycles.
+- [x] **H07:** 12-case live top-2 evaluation, 5/5 golden paths and repeated physical faults.
+- [x] **H08:** clean Docker startup, offline fallback and controlled secret-safe model outage.
+
+H04-H08 were finalized as separate reviewed changes; their current evidence is
+[`h04-final-acceptance.md`](evidence/h04-final-acceptance.md),
+[`h05-final-acceptance.md`](evidence/h05-final-acceptance.md),
+[`h06-final-acceptance.md`](evidence/h06-final-acceptance.md),
+[`h07-final-acceptance.md`](evidence/h07-final-acceptance.md), and
+[`h08-final-acceptance.md`](evidence/h08-final-acceptance.md). Raw motor telemetry remains local
+and ignored; committed acceptance reports contain only bounded summaries and evidence digests.
 
 [PR #1](https://github.com/Little-Boy-z-NeXus/nexus-hardware-doctor/pull/1) contains these tasks and their [123-test acceptance evidence](evidence/h02-h03-acceptance.md). Partner approval/merge are separate from submitting the implementation.
 
@@ -22,7 +35,9 @@ The [12 September live-model evidence](evidence/h01-h04-live-nebius.md) records 
 | **H07 — Evaluation** | Ten labelled synthetic cases, runner/report, repeated simulated scenario checks | N05 physical fault profiles/ground truth or access to produce them; H04–H06 complete | ≥10 cases, top-2 ≥8/10, five consecutive golden-path passes and real reproducibility |
 | **H08 — Release** | Docker/Compose, dependency constraints, installed resources, lab/API, persistent results, rate/concurrency limits, structured logs and outage handling | H01–H07 acceptance; model configuration in clean validation environment | Fresh startup from runbook, controlled model-outage demo and no exposed secrets |
 
-These six tasks remain **in progress** until their live/physical prerequisites pass. Their prepared software is pushed and submitted in [PR #2](https://github.com/Little-Boy-z-NeXus/nexus-hardware-doctor/pull/2), with [software acceptance evidence](evidence/h-preemptive-acceptance.md). Simulation results are neither Nemotron accuracy evidence nor proof of real motor movement. The implementation has no physical command execution path.
+The table above is retained as the original preparation handoff. Its prerequisites were satisfied
+by the final task-specific evidence linked under **Finished and submitted**. Simulation results
+remain distinct from Nemotron accuracy and physical motor evidence.
 
 ## Checklist A — working model access → H01, then H04
 

@@ -60,6 +60,7 @@ No command typing is required after the prerequisite applications are installed.
 | `nexus-run-h05-acceptance.cmd` | Verify the bounded orchestrator and qualify the latest physical N03 adapter run |
 | `nexus-run-h06-acceptance.cmd` | Verify safety default-deny rules and qualify five physical Auto Heal cycles |
 | `nexus-run-h07-acceptance.cmd` | Run evaluation regression and qualify live scoring plus physical reproducibility |
+| `nexus-run-h08-acceptance.cmd` | Build a clean backend image and verify startup, offline fallback and controlled model outage |
 | `nexus-start-replay-demo.cmd` | Start backend/frontend with sanitized realtime telemetry and no board/COM port |
 | `nexus-prepare-n08-recovery-kit.cmd` | Build checksummed default-safe firmware backup and wiring bundle |
 | `nexus-run-n08-recovery-drill.cmd` | Time a safe firmware/INA226 recovery and save local evidence |

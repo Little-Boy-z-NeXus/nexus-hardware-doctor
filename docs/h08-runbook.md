@@ -1,6 +1,8 @@
 # H08 reproducible backend runbook
 
-This is preemptive release work. A local/container demonstration and controlled failure behavior can be checked now. H08's full release acceptance remains dependent on H01–H07 and their live/physical evidence. The task permits this reproducible runbook instead of a hosted URL.
+H08 is accepted for the reproducible local/container hackathon MVP path. H04-H07 retain separate
+live-model, software and physical evidence, while this runbook verifies the packaged runtime and
+controlled failure behavior. A hosted URL is not required by this selected release path.
 
 ## Start without credentials
 
@@ -73,7 +75,17 @@ The capability endpoint `/api/diagnosis/capabilities` reports whether live confi
 - `nexus.diagnosis` emits JSON summaries (trace, mode, status, step count and duration) without symptoms, prompts, telemetry or provider bodies. Uvicorn access logs are disabled in the container.
 - The lab displays failures and lets the user retry. It uses text rendering for model output, avoiding HTML interpretation.
 
-These are local controls; public multi-user authentication and distributed rate limiting are not claimed. Real model-outage rehearsal with the final demo still belongs to release acceptance after integration.
+These are local controls; public multi-user authentication and distributed rate limiting are not
+claimed. The clean-container release probe exercises the missing/disabled-model outage without a
+paid call. Mocked provider tests separately cover authentication, refusal, timeout, invalid response
+and rate-limit failures without exposing raw provider data.
+
+## One-click H08 acceptance on Windows
+
+Start Docker Desktop, then double-click `nexus-run-h08-acceptance.cmd` in the repository root. It
+builds a clean image, starts an isolated container with all model credentials empty, checks the
+runtime and removes only that named test container. The report is saved locally under
+`artifacts/H08/`. See the [final H08 evidence](evidence/h08-final-acceptance.md).
 
 ## Implementation references
 
