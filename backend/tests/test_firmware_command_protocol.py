@@ -64,3 +64,6 @@ def test_firmware_implements_protocol_allowlist_and_idempotency_guards() -> None
     assert "REQUEST_ID_CONFLICT" in source
     assert "duplicate" in source
     assert "NEXUS_ENABLE_COMMAND_WRITES" in source
+    assert 'root["request_id"].is<const char*>()' in source
+    assert 'root["request_id"].as<const char*>()' in source
+    assert 'root["request_id"] | nullptr' not in source

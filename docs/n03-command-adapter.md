@@ -70,6 +70,11 @@ repository root with the actual port:
 Save the terminal output under ignored local evidence/log storage. After physical cases pass,
 restore the default-safe build with `nexus-upload-firmware.cmd` before starting the full app.
 
+For the complete automated matrix, double-click `nexus-run-n03-hardware-acceptance.cmd`.
+It uploads the supervised command-test build, checks every allowlisted GPIO, invalid command and
+timeout default-deny behavior, duplicate replay, request-ID conflict, a brief physical load,
+bounded motor test, recalibration and final safe stop. Evidence is saved under `artifacts/N03/`.
+
 ## Scope boundary
 
 N03 supplies the firmware executor and a direct supervised serial client. H05 owns connecting

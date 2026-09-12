@@ -31,6 +31,7 @@ constexpr size_t kRequestCacheSize = 4;
 constexpr uint32_t kDefaultCommandTimeoutMs = 4000;
 constexpr uint32_t kMaxCommandTimeoutMs = 5000;
 constexpr uint32_t kMaxMotorTestDurationMs = 3000;
+constexpr uint32_t kCommandMeasurementSettleMs = 150;
 constexpr uint32_t kTelemetryIntervalMs = 1000;
 #ifdef NEXUS_ENABLE_BASELINE_CONTROL
 constexpr uint32_t kBaselineKeepaliveTimeoutMs = 4000;
@@ -310,7 +311,12 @@ bool parseCommand(const String& line, ParsedCommand& parsed, String& errorCode,
     return false;
   }
 
-  const char* requestId = root["request_id"] | nullptr;
+  if (!root["request_id"].is<const char*>()) {
+    errorCode = "INVALID_REQUEST_ID";
+    errorMessage = "request_id must be a string";
+    return false;
+  }
+  const char* requestId = root["request_id"].as<const char*>();
   if (!validRequestId(requestId)) {
     errorCode = "INVALID_REQUEST_ID";
     errorMessage = "request_id must be 1..64 safe ASCII characters";
@@ -318,7 +324,12 @@ bool parseCommand(const String& line, ParsedCommand& parsed, String& errorCode,
   }
   parsed.requestId = requestId;
 
-  const char* command = root["command"] | nullptr;
+  if (!root["command"].is<const char*>()) {
+    errorCode = "UNKNOWN_COMMAND";
+    errorMessage = "Command is not in the device allowlist";
+    return false;
+  }
+  const char* command = root["command"].as<const char*>();
   if (command == nullptr || !commandKnown(command)) {
     errorCode = "UNKNOWN_COMMAND";
     errorMessage = "Command is not in the device allowlist";
@@ -598,6 +609,9 @@ String executeCommand(const ParsedCommand& parsed) {
       document["hardware_effect"] = before.enabled && before.pwm != pwmPercent;
       result["pwm_percent"] = pwmPercent;
       result["driver_enabled"] = driverEnabled;
+      if (driverEnabled) {
+        delay(kCommandMeasurementSettleMs);
+      }
     } else if (parsed.command == "enable_driver") {
       if (parsed.enabledArgument && parsed.pwmPercent > 0) {
         applySafeMotorState(static_cast<uint8_t>(parsed.pwmPercent), true);
@@ -607,6 +621,9 @@ String executeCommand(const ParsedCommand& parsed) {
       document["hardware_effect"] = before.enabled != driverEnabled;
       result["driver_enabled"] = driverEnabled;
       result["pwm_percent"] = pwmPercent;
+      if (driverEnabled) {
+        delay(kCommandMeasurementSettleMs);
+      }
     } else if (parsed.command == "run_motor_test") {
       applySafeMotorState(static_cast<uint8_t>(parsed.pwmPercent), true);
       document["hardware_effect"] = true;
