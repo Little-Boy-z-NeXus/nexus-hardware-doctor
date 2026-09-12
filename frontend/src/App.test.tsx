@@ -1,4 +1,4 @@
-import { cleanup, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
@@ -110,7 +110,34 @@ const TEST_LIVE_SNAPSHOT = {
     },
     quality: { signal_quality_percent: 99, source: "device" },
   },
-  logs: [],
+  logs: [
+    {
+      id: "profile-ready",
+      occurred_at: "2026-09-13T00:00:01Z",
+      level: "info",
+      source: "firmware",
+      message: "[NEXUS][INFO][HARDWARE_PROFILE] profile_id=nexus-profile-test controller=test-esp32-s3 sensor=ina226",
+    },
+    {
+      id: "telemetry-42",
+      occurred_at: "2026-09-13T00:00:02Z",
+      level: "telemetry",
+      source: "firmware",
+      message: JSON.stringify({
+        schema_version: "1.0.0",
+        device_id: "nexus-live-from-board",
+        sequence: 42,
+        measurements: {
+          bus_voltage_v: 12.16,
+          current_ma: 81.2,
+          power_mw: 987.4,
+          pwm_percent: 0,
+          driver_enabled: false,
+          motor_rpm: null,
+        },
+      }),
+    },
+  ],
   diagnostics: [],
   health: { status: "healthy", active_issue_count: 0 },
   signal_health: {
@@ -285,10 +312,11 @@ describe("NeXus application routes", () => {
   it("shows separate firmware and physical sensor identity checks", async () => {
     renderAt("/hardware");
 
-    expect(
-      await screen.findByRole("heading", { name: "Đối chiếu firmware với BOM" }),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Firmware")).toBeInTheDocument();
+    const compatibilitySection = (
+      await screen.findByRole("heading", { name: "Đối chiếu firmware với BOM" })
+    ).closest("section");
+    expect(compatibilitySection).toBeInTheDocument();
+    expect(within(compatibilitySection as HTMLElement).getByText("Firmware")).toBeInTheDocument();
     expect(await screen.findByText("INA226 R100 từ profile · 0x40")).toBeInTheDocument();
     expect(
       screen.getByText("INA226 R100 từ profile đã khớp identity khai báo trong profile."),
@@ -307,5 +335,39 @@ describe("NeXus application routes", () => {
     expect(screen.getByRole("button", { name: "5. Test 12V supply, Ổn định" })).toBeInTheDocument();
     expect(screen.getByTestId("hardware-detail")).toHaveTextContent("Test 12V supply");
     expect(screen.getByTestId("hardware-detail")).toHaveTextContent("5/5");
+  });
+
+  it("shows the newest hardware log as a readable summary by default", async () => {
+    const user = userEvent.setup();
+    renderAt("/hardware");
+
+    expect(await screen.findByText("Đang theo dõi log mới nhất")).toBeInTheDocument();
+    const latestEntry = screen.getByText("Telemetry #42").closest(".terminal-line");
+    expect(latestEntry).toHaveAttribute("data-latest", "true");
+    expect(within(latestEntry as HTMLElement).getByText("12.160 V")).toBeInTheDocument();
+    expect(within(latestEntry as HTMLElement).getByText("81.2 mA")).toBeInTheDocument();
+    expect(within(latestEntry as HTMLElement).getByText("Tắt")).toBeInTheDocument();
+
+    await user.click(within(latestEntry as HTMLElement).getByText("Xem dữ liệu gốc"));
+    expect(within(latestEntry as HTMLElement).getByText(/"sequence": 42/)).toBeInTheDocument();
+  });
+
+  it("lets the user return to the newest log after browsing older entries", async () => {
+    const user = userEvent.setup();
+    renderAt("/hardware");
+
+    const feed = await screen.findByRole("log", { name: "Log realtime từ ESP32" });
+    Object.defineProperties(feed, {
+      clientHeight: { configurable: true, value: 300 },
+      scrollHeight: { configurable: true, value: 1000 },
+      scrollTop: { configurable: true, value: 0, writable: true },
+    });
+    Object.defineProperty(feed, "scrollTo", { configurable: true, value: vi.fn() });
+    fireEvent.wheel(feed);
+    fireEvent.scroll(feed);
+
+    expect(screen.getByText("Bạn đang xem log cũ")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Về log mới nhất" }));
+    expect(screen.getByText("Đang theo dõi log mới nhất")).toBeInTheDocument();
   });
 });

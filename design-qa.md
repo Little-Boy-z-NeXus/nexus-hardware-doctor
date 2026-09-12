@@ -1,43 +1,49 @@
-# Design QA — Compact hardware explorer
+# Design QA — Readable latest-first live log
 
 ## Evidence and state
 
-- Source visual truth: `C:\Users\lenovo\AppData\Local\Temp\codex-clipboard-b4ef546d-3d0e-4b58-84a0-78f9a594703c.png` (1463 × 615). This is the user-identified problem state, not a pixel-match target.
-- Rendered implementation: Codex in-app Browser tab 8 at `http://localhost:5173/hardware` (802 × 680 CSS viewport, density 1).
-- Focused implementation capture: the accepted in-app Browser capture with search value `INA226`, one result, and the INA226 detail panel selected automatically.
-- Runtime state: live COM8 telemetry, five profile components, zero active hardware issues.
+- Source visual truth path: `C:\Users\lenovo\AppData\Local\Temp\codex-clipboard-8adc025a-010e-4ef5-9f39-c19d5ee160a1.png`.
+- Source pixels: 901 × 566.
+- Rendered implementation: Codex in-app Browser tab 8 at `http://localhost:5173/hardware`.
+- Implementation capture: browser-rendered inline capture in the current task at 818 × 698 CSS px, device density 1.
+- Combined comparison evidence: Codex in-app Browser QA tab 9 rendered the source crop and the live implementation in the same 1280 × 720 comparison frame before handoff.
+- State: COM8 live, 160 buffered records, newest telemetry visible, no active hardware error.
+- Density normalization: source and implementation were compared at their native 1× browser density; the source is a focused crop while the implementation evidence includes the surrounding app for responsive context.
 
-## Full-view comparison
+## Full-view comparison evidence
 
-The problem state repeats the complete hardware path in the title and presents every component as a large card in one horizontal strip. The revised view keeps the section width bounded, replaces the strip with a fixed-height searchable index, and shows details for only one selected component. At 802 px, the document measured 802 px client width and 802 px scroll width, so the redesign does not introduce page-level horizontal overflow.
+The source shows raw JSON wrapping across most of each row and no reliable indication that the visible row is the latest. The implementation groups controls into a stable header, adds a live-follow status, keeps a bounded 360 px feed, converts telemetry into compact metric cells, and preserves the dark NeXus terminal visual language. At 818 px viewport width, the document and terminal both measured 0 px horizontal overflow.
 
-## Focused region comparison
+## Focused region comparison evidence
 
-The BOM region required a focused comparison because the user concern was scanability with long names and many components. The final capture shows one compact result row for `INA226` and a corresponding detail panel with status, live measurement, identity, connections, pins, capabilities, and immediate neighbors. Long names are ellipsized in the index and retained in accessible labels and title tooltips.
+The log feed required a focused comparison because readability and scroll state are the requested interaction. In the final capture, two recent telemetry entries fit inside the feed with clear time, level, sequence, four measurements, source, and an optional raw-data disclosure. A second interaction capture verified the `Bạn đang xem log cũ` state and sticky `Về log mới nhất` control after keyboard scrolling.
 
 ## Comparison history
 
-1. P1 — The horizontal card carousel scaled linearly with component count and hid later components. Fixed with a fixed-height searchable component index and one on-demand detail panel.
-2. P1 — The first redesign pass could show details for a component that no longer matched the search. Fixed by automatically selecting the first matching component as the query changes.
-3. P2 — The complete BOM path duplicated the same names already shown in the cards and dominated the header. Fixed with a short component count and a direct instruction.
-4. P2 — The old scrollbar was the only discovery mechanism for off-screen hardware. Fixed with visible search, result count, ordered rows, and native vertical list scrolling.
+1. P1 — Autoscroll depended on `visibleLogs.length`, which remains 160 after the buffer fills. Fixed by following `latestVisibleLog.id`; post-fix evidence showed the last visible sequence and `Mới nhất lúc` advancing together.
+2. P1 — Raw JSON dominated every row. Fixed with parsed telemetry summaries and collapsed raw data; post-fix evidence showed voltage, current, power and motor state without horizontal scanning.
+3. P2 — Initial responsive pass produced a horizontal scrollbar in the terminal at an 818 px viewport. Fixed with zero-minimum grid tracks and two-column metrics below 1000 px; post-fix measurement was 0 px horizontal overflow.
+4. P2 — Layout reflow could incorrectly switch the state to old logs. Fixed by distinguishing real wheel, touch, pointer-scrollbar and keyboard intent from programmatic scroll; post-fix reload remained in `Đang theo dõi log mới nhất`.
 
 ## Required fidelity surfaces
 
-- Fonts and typography: passed — the existing NeXus type scale is preserved; long component names truncate only in compact overview rows and remain available in the detail view.
-- Spacing and layout rhythm: passed — list and detail use bounded heights, consistent 8–18 px spacing, and stable alignment independent of BOM length.
-- Colors and visual tokens: passed — existing blue, teal, violet, orange, healthy, warning, and error tokens are preserved.
-- Image and icon quality: passed — no raster assets were required; existing Lucide component icons are reused consistently.
-- Copy and content: passed — English path duplication was removed; Vietnamese instructions explain the primary action in one sentence.
-- Responsiveness and accessibility: passed — no page overflow at the verified viewport; search is labelled, every component is a real button, selection uses `aria-pressed`, and the detail panel is live-announced.
+- Fonts and typography: passed — existing NeXus fonts remain; hierarchy now separates time, level, event title, source and measurements; long raw content is isolated in a monospaced disclosure.
+- Spacing and layout rhythm: passed — 7–18 px spacing, consistent row dividers and responsive two-column measurement layout prevent dense wrapping.
+- Colors and visual tokens: passed — the existing navy, teal, amber and red semantic tokens are retained with sufficient separation between live, warning and error states.
+- Image and icon quality: passed — no raster assets are required; existing Lucide icons are used for actions and disclosure.
+- Copy and content: passed — live-follow, browsing-history and paused states are written in direct Vietnamese; hardware messages are summarized without discarding raw evidence.
+- Responsiveness and accessibility: passed — no horizontal overflow at the verified viewport; the log region is keyboard focusable, filters are labelled, focus rings are visible, and live announcements are disabled for the high-frequency feed to avoid assistive-technology noise.
 
-## Interaction and regression evidence
+## Primary interactions tested
 
-- Search `INA226`: passed — result count changed from 5/5 to 1/5 and detail changed automatically to component 2/5.
-- Search with no match: passed — `Không có linh kiện phù hợp.` appeared.
-- Direct component selection: passed — selected state and detail content update from the profile data.
-- Browser console: passed — no warning or error entries; only Vite connection and React development information messages.
-- Automated frontend gate: passed — ESLint, 15 Vitest tests, TypeScript, and Vite production build.
+- Fresh reload follows the latest log by default.
+- Realtime updates continue while the buffer stays fixed at 160 records.
+- `Home`/manual browsing stops follow mode and reveals `Về log mới nhất`.
+- `Về log mới nhất` restores follow mode and scrolls to the latest record.
+- Raw JSON disclosure opens without losing the compact summary.
+- Search, level filter, pause/resume, clear and download controls remain present.
+- Browser console checked: no warnings or errors.
+- Automated frontend gate: ESLint, 17 Vitest tests, TypeScript and Vite production build passed.
 
 ## Final result
 
