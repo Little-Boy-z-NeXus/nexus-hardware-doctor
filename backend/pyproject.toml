@@ -36,3 +36,5 @@ packages = ["src/nexus_backend"]
 [tool.hatch.build.targets.wheel.force-include]
 "../nexus-contracts/v1/schemas" = "nexus_backend/schemas"
 "../nexus-contracts/v1/fixtures" = "nexus_backend/fixtures"
+"../nexus-hardware/v1" = "nexus_backend/profile_data/schema"
+"../nexus-hardware/profiles" = "nexus_backend/profile_data/profiles"

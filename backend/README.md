@@ -18,6 +18,7 @@ Available now:
 - realtime signal-wire diagnostics for INA226 SDA/SCL integrity and Hall encoder A/B liveness
 - pre-power Health Check rules for voltage, wiring, pin direction, supply and metadata
 - strict Python contract mirrors, JSON Schema/fixture validation, automated tests and Ruff linting
+- validated hardware-as-code profile loading for discovery, compatibility, UI metadata and safety limits
 
 Model and diagnosis support:
 
@@ -103,6 +104,7 @@ Browser links:
 
 - Health: <http://127.0.0.1:8000/health>
 - Live snapshot: <http://127.0.0.1:8000/api/v1/live>
+- Active machine-readable hardware profile: <http://127.0.0.1:8000/api/v1/hardware-profile>
 - Latest valid telemetry: <http://127.0.0.1:8000/api/v1/telemetry>
 - Recent serial log: <http://127.0.0.1:8000/api/v1/logs>
 - Active diagnostics: <http://127.0.0.1:8000/api/v1/diagnostics>
@@ -154,8 +156,9 @@ The root [`.env.example`](../.env.example) is the canonical backend/device templ
 | `NEXUS_NEBIUS_MAX_OUTPUT_TOKENS` | No | Reasoning plus answer budget, 256–8192; default 2048 |
 | `NEXUS_MQTT_URL` | Later | Device transport broker |
 | `NEXUS_DEVICE_ID` | Yes | Device identity matching contract v1 and the firmware default |
+| `NEXUS_HARDWARE_PROFILE_PATH` | No | Selected versioned JSON hardware profile; blank uses the certified ESP32 MVP profile |
 | `NEXUS_SERIAL_ENABLED` | Yes | Set `false` only for a software-only run |
-| `NEXUS_SERIAL_PORT` | No | Leave blank to auto-detect `303A:1001`; set `COM8` only to force one port |
+| `NEXUS_SERIAL_PORT` | No | Leave blank to use profile USB discovery; set `COM8` only to force one port |
 | `NEXUS_LOG_ENABLED` | Yes | Keep `true` to persist every backend/firmware log entry locally |
 | `NEXUS_LOG_DIR` | Yes | Log directory; relative paths resolve from the repository root |
 | `NEXUS_MAX_PWM_PERCENT` | Yes | Backend safety ceiling; firmware clamps independently too |

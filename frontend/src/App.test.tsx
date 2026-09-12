@@ -1,11 +1,60 @@
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 
 import { App } from "./App";
 
-afterEach(cleanup);
+const TEST_HARDWARE_PROFILE = {
+  profile_id: "nexus-profile-test",
+  roles: {
+    controller: "esp32",
+    power_monitor: "ina226",
+    motor_driver: "l298n",
+    actuator: "motor",
+    power: "power",
+  },
+  components: [
+    { component_id: "esp32", component_type: "controller", model: "Test ESP32-S3" },
+    {
+      component_id: "ina226",
+      component_type: "power_monitor",
+      model: "INA226 R100 từ profile",
+      address: "0x40",
+    },
+    { component_id: "l298n", component_type: "motor_driver", model: "Test L298N" },
+    { component_id: "motor", component_type: "actuator", model: "Test JGB37" },
+    { component_id: "power", component_type: "power_supply", model: "Test 12V supply" },
+  ],
+  firmware: {
+    pins: { i2c_sda: 1, i2c_scl: 2, encoder_a: 16, encoder_b: 17 },
+    sensor: { i2c_address: "0x40" },
+  },
+};
+
+beforeEach(() => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL) => {
+      const url = typeof input === "string" ? input : input.toString();
+      if (url.endsWith("/api/v1/hardware-profile")) {
+        return new Response(JSON.stringify(TEST_HARDWARE_PROFILE), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return new Response(JSON.stringify({ detail: "Test backend offline" }), {
+        status: 503,
+        headers: { "Content-Type": "application/json" },
+      });
+    }),
+  );
+});
+
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
 function renderAt(path: string) {
   return render(
@@ -85,7 +134,7 @@ describe("NeXus application routes", () => {
       await screen.findByRole("heading", { name: "Đối chiếu firmware với BOM" }),
     ).toBeInTheDocument();
     expect(screen.getByText("Firmware")).toBeInTheDocument();
-    expect(screen.getByText("Yêu cầu INA226 R100 · 0x40")).toBeInTheDocument();
+    expect(await screen.findByText("INA226 R100 từ profile · 0x40")).toBeInTheDocument();
     expect(
       screen.getByText("Chờ đọc identity; INA219 hoặc module gắn nhầm sẽ bị chặn tại đây."),
     ).toBeInTheDocument();

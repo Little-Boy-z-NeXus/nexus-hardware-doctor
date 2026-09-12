@@ -49,6 +49,9 @@ jobs:
           NEXUS_CONTRACT_BASE_REF: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: python scripts/validate_contracts.py --base-ref "$NEXUS_CONTRACT_BASE_REF"
 
+      - name: Validate machine-readable hardware profile
+        run: python -m nexus_backend.hardware_profile
+
       - name: Lint backend and validators
         run: ruff check backend scripts
 

@@ -20,15 +20,21 @@ from pydantic import ValidationError
 from serial.tools import list_ports
 
 from nexus_backend.contracts import TelemetrySample
+from nexus_backend.hardware_profile import (
+    load_hardware_profile,
+    profile_fingerprint,
+    profile_summary,
+)
 from nexus_backend.serial_reads import SerialReadChannel
 from nexus_backend.validation import validate_contract
 
-EXPECTED_HARDWARE_MODEL_ID = "nexus-s3-ina226-l298n-motor-rig-v1"
-EXPECTED_SENSOR_PROFILE = "ina226-r100"
+DEFAULT_HARDWARE_PROFILE = load_hardware_profile()
+EXPECTED_HARDWARE_MODEL_ID = DEFAULT_HARDWARE_PROFILE["hardware_model_id"]
+EXPECTED_SENSOR_PROFILE = DEFAULT_HARDWARE_PROFILE["firmware"]["sensor_profile"]
 DEFAULT_BAUD_RATE = 115_200
-MIN_BUS_VOLTAGE_V = 9.5
-MAX_CURRENT_MA = 1_500.0
-MAX_PWM_PERCENT = 80
+MIN_BUS_VOLTAGE_V = DEFAULT_HARDWARE_PROFILE["safety"]["min_bus_voltage_v"]
+MAX_CURRENT_MA = DEFAULT_HARDWARE_PROFILE["safety"]["max_current_ma"]
+MAX_PWM_PERCENT = DEFAULT_HARDWARE_PROFILE["safety"]["max_pwm_percent"]
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 MEASUREMENT_DIAGNOSTIC_CODES = (
     "INA226_REFERENCE_INVALID",
@@ -85,18 +91,39 @@ class SerialBridge:
         *,
         enabled: bool | None = None,
         configured_port: str | None = None,
-        baud_rate: int = DEFAULT_BAUD_RATE,
+        baud_rate: int | None = None,
         retry_seconds: float = 2.0,
         persist_logs: bool | None = None,
         log_directory: str | Path | None = None,
+        hardware_profile_path: str | Path | None = None,
     ) -> None:
+        self.hardware_profile = load_hardware_profile(hardware_profile_path)
+        self.hardware = profile_summary(self.hardware_profile)
+        self.expected_profile_id = self.hardware_profile["profile_id"]
+        self.expected_profile_sha256 = profile_fingerprint(self.hardware_profile)
+        self.expected_hardware_model_id = self.hardware_profile["hardware_model_id"]
+        self.expected_sensor_profile = self.hardware_profile["firmware"]["sensor_profile"]
+        self.controller_model = self.hardware_profile["controller"]["model"]
+        self.min_bus_voltage_v = self.hardware_profile["safety"]["min_bus_voltage_v"]
+        self.max_current_ma = self.hardware_profile["safety"]["max_current_ma"]
+        self.max_pwm_percent = self.hardware_profile["safety"]["max_pwm_percent"]
+        discovery = self.hardware_profile["transport"].get("discovery", {})
+        self.usb_identities = {
+            (int(item["vid"], 16), int(item["pid"], 16))
+            for item in discovery.get("usb", [])
+        }
+        self.discovery_descriptions = tuple(
+            value.lower() for value in discovery.get("description_contains", [])
+        )
         self.enabled = (
             enabled
             if enabled is not None
             else os.getenv("NEXUS_SERIAL_ENABLED", "true").lower() not in {"0", "false", "no"}
         )
         self.configured_port = configured_port or os.getenv("NEXUS_SERIAL_PORT")
-        self.baud_rate = baud_rate
+        self.baud_rate = baud_rate or self.hardware_profile["transport"].get(
+            "baud_rate", DEFAULT_BAUD_RATE
+        )
         self.retry_seconds = retry_seconds
         self.persist_logs = (
             persist_logs
@@ -126,7 +153,11 @@ class SerialBridge:
             "last_encoder_verified_at": None,
         }
         self._compatibility: dict[str, object] = {
-            "expected_hardware_model_id": EXPECTED_HARDWARE_MODEL_ID,
+            "expected_profile_id": self.expected_profile_id,
+            "reported_profile_id": None,
+            "expected_profile_sha256": self.expected_profile_sha256,
+            "reported_profile_sha256": None,
+            "expected_hardware_model_id": self.expected_hardware_model_id,
             "reported_hardware_model_id": None,
             "firmware_profile_version": None,
             "firmware_profile_verified": False,
@@ -145,7 +176,7 @@ class SerialBridge:
             "message": (
                 "Serial bridge đã tắt bằng cấu hình."
                 if not self.enabled
-                else "Đang tìm GOOUUU ESP32-S3 qua USB..."
+                else f"Đang tìm {self.controller_model} qua USB..."
             ),
         }
 
@@ -196,19 +227,7 @@ class SerialBridge:
                     },
                     "signal_health": self._signal_health,
                     "compatibility": self._compatibility,
-                    "hardware": {
-                        "hardware_model_id": EXPECTED_HARDWARE_MODEL_ID,
-                        "controller": "GOOUUU Tech ESP32-S3-N16R8",
-                        "sensor": "INA226 (R100 shunt)",
-                        "driver": "L298N",
-                        "motor": "JGB37-520 12V + Hall encoder",
-                        "power": "12V DC (không dùng pin vuông 9V)",
-                        "limits": {
-                            "min_bus_voltage_v": MIN_BUS_VOLTAGE_V,
-                            "max_current_ma": MAX_CURRENT_MA,
-                            "max_pwm_percent": MAX_PWM_PERCENT,
-                        },
-                    },
+                    "hardware": self.hardware,
                 }
             )
 
@@ -234,15 +253,21 @@ class SerialBridge:
             return
 
         if "HARDWARE_PROFILE" in line:
-            fields = dict(re.findall(r"\b([a-z_]+)=([^\s]+)", line))
+            fields = dict(re.findall(r"\b([a-z0-9_]+)=([^\s]+)", line))
+            reported_profile_id = fields.get("profile_id")
+            reported_profile_sha256 = fields.get("profile_sha256")
             reported_model = fields.get("hardware_model_id")
             reported_sensor = fields.get("sensor")
             profile_version = fields.get("profile_version")
             profile_matches = (
-                reported_model == EXPECTED_HARDWARE_MODEL_ID
-                and reported_sensor == EXPECTED_SENSOR_PROFILE
+                reported_profile_id == self.expected_profile_id
+                and reported_profile_sha256 == self.expected_profile_sha256
+                and reported_model == self.expected_hardware_model_id
+                and reported_sensor == self.expected_sensor_profile
             )
             self._update_compatibility(
+                reported_profile_id=reported_profile_id,
+                reported_profile_sha256=reported_profile_sha256,
                 reported_hardware_model_id=reported_model,
                 firmware_profile_version=profile_version,
                 firmware_profile_verified=profile_matches,
@@ -256,8 +281,16 @@ class SerialBridge:
                     "error",
                     "esp32",
                     "Firmware không khớp BOM đã chốt",
-                    f"Firmware khai báo model={reported_model or 'không có'} và sensor={reported_sensor or 'không có'}; cần model={EXPECTED_HARDWARE_MODEL_ID}, sensor={EXPECTED_SENSOR_PROFILE}.",
-                    "Không đổi dây để thử mò. Tắt nguồn motor, sau đó nạp firmware mới nhất bằng nexus-upload-firmware.cmd cho đúng GOOUUU ESP32-S3 + INA226 R100.",
+                    f"Firmware báo profile={reported_profile_id or 'không có'} / "
+                    f"sha256={reported_profile_sha256 or 'không có'} / "
+                    f"model={reported_model or 'không có'} / "
+                    f"sensor={reported_sensor or 'không có'}, nhưng BOM cần "
+                    f"profile={self.expected_profile_id} / "
+                    f"sha256={self.expected_profile_sha256} / "
+                    f"model={self.expected_hardware_model_id} / "
+                    f"sensor={self.expected_sensor_profile}.",
+                    "Không đổi dây để thử mò. Tắt nguồn motor, sau đó nạp firmware được "
+                    f"sinh từ {self.expected_profile_id} cho {self.controller_model}.",
                 )
             self._notify()
             return
@@ -450,7 +483,7 @@ class SerialBridge:
             self._notify()
             return
 
-        if sample.hardware_model_id != EXPECTED_HARDWARE_MODEL_ID:
+        if sample.hardware_model_id != self.expected_hardware_model_id:
             self.reads.invalidate()
             self._update_compatibility(
                 reported_hardware_model_id=sample.hardware_model_id,
@@ -461,8 +494,9 @@ class SerialBridge:
                 "error",
                 "esp32",
                 "Firmware không đúng bộ phần cứng MVP",
-                f"Nhận {sample.hardware_model_id}, cần {EXPECTED_HARDWARE_MODEL_ID}.",
-                "Nạp firmware trong thư mục firmware của repository này vào GOOUUU ESP32-S3-N16R8.",
+                f"Nhận {sample.hardware_model_id}, cần {self.expected_hardware_model_id}.",
+                f"Chọn {self.expected_profile_id}, sinh lại cấu hình rồi nạp firmware vào "
+                f"{self.controller_model}.",
             )
             self._notify()
             return
@@ -541,25 +575,27 @@ class SerialBridge:
         else:
             self._resolve("MOTOR_SUPPLY_NOT_DETECTED")
 
-        if values.driver_enabled and 0.1 < values.bus_voltage_v < MIN_BUS_VOLTAGE_V:
+        if values.driver_enabled and 0.1 < values.bus_voltage_v < self.min_bus_voltage_v:
             self._diagnose(
                 "MOTOR_UNDERVOLTAGE",
                 "error",
                 "power",
                 "Nguồn motor quá thấp để chạy an toàn",
-                f"Đang đo {values.bus_voltage_v:.2f} V, thấp hơn ngưỡng MVP {MIN_BUS_VOLTAGE_V:.1f} V.",
+                f"Đang đo {values.bus_voltage_v:.2f} V, thấp hơn ngưỡng profile "
+                f"{self.min_bus_voltage_v:.1f} V.",
                 "Tắt driver và dùng nguồn DC 12V đủ dòng; không dùng pin vuông 9V.",
             )
         else:
             self._resolve("MOTOR_UNDERVOLTAGE")
 
-        if abs(values.current_ma) > MAX_CURRENT_MA:
+        if abs(values.current_ma) > self.max_current_ma:
             self._diagnose(
                 "MOTOR_OVERCURRENT",
                 "error",
                 "motor",
                 "Dòng motor vượt giới hạn",
-                f"Đang đo {values.current_ma:.0f} mA, vượt ngưỡng {MAX_CURRENT_MA:.0f} mA.",
+                f"Đang đo {values.current_ma:.0f} mA, vượt ngưỡng profile "
+                f"{self.max_current_ma:.0f} mA.",
                 "Tắt motor ngay; kiểm tra kẹt trục, chập OUT1/OUT2 và khả năng cấp dòng của L298N.",
             )
         else:
@@ -577,13 +613,14 @@ class SerialBridge:
         else:
             self._resolve("INA226_POLARITY_REVERSED")
 
-        if values.pwm_percent > MAX_PWM_PERCENT:
+        if values.pwm_percent > self.max_pwm_percent:
             self._diagnose(
                 "PWM_SAFETY_LIMIT_EXCEEDED",
                 "error",
                 "l298n",
                 "PWM vượt giới hạn an toàn",
-                f"Firmware báo PWM {values.pwm_percent}%, giới hạn MVP là {MAX_PWM_PERCENT}%.",
+                f"Firmware báo PWM {values.pwm_percent}%, giới hạn profile là "
+                f"{self.max_pwm_percent}%.",
                 "Tắt driver và nạp lại firmware có safety clamp của NeXus.",
             )
         else:
@@ -596,7 +633,7 @@ class SerialBridge:
                 self._set_connection(
                     "searching",
                     None,
-                    "Chưa tìm thấy GOOUUU ESP32-S3. Đang tự động thử lại...",
+                    f"Chưa tìm thấy {self.controller_model}. Đang tự động thử lại...",
                 )
                 if not self._is_active("SERIAL_DEVICE_NOT_FOUND"):
                     self._diagnose(
@@ -604,7 +641,7 @@ class SerialBridge:
                         "warning",
                         "esp32",
                         "Chưa tìm thấy ESP32 qua USB",
-                        "Backend chưa thấy cổng USB VID:PID 303A:1001 của board.",
+                        "Backend chưa thấy USB identity được khai báo trong hardware profile.",
                         "Cắm cáp USB data vào board, chờ Windows tạo COM rồi giữ ứng dụng đang chạy để tự kết nối.",
                     )
                 self._notify()
@@ -679,11 +716,11 @@ class SerialBridge:
     def _detect_port(self) -> str | None:
         ports = list(list_ports.comports())
         for item in ports:
-            if item.vid == 0x303A and item.pid == 0x1001:
+            if (item.vid, item.pid) in self.usb_identities:
                 return item.device
         for item in ports:
             description = (item.description or "").lower()
-            if "ch343" in description or "usb serial" in description:
+            if any(marker in description for marker in self.discovery_descriptions):
                 return item.device
         return None
 
@@ -702,6 +739,8 @@ class SerialBridge:
                 last_encoder_verified_at=None,
             )
             self._update_compatibility(
+                reported_profile_id=None,
+                reported_profile_sha256=None,
                 reported_hardware_model_id=None,
                 firmware_profile_version=None,
                 firmware_profile_verified=False,

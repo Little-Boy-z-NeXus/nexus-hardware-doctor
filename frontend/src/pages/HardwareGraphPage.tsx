@@ -21,6 +21,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { PageHeader } from "../components/PageHeader";
+import { env } from "../config/env";
 import {
   useHardwareMonitor,
   type HardwareDiagnostic,
@@ -35,6 +36,29 @@ interface SignalCheck {
   pin: string;
   state: NodeState;
   detail: string;
+}
+
+interface HardwareProfileComponent {
+  component_id: string;
+  component_type: string;
+  model: string;
+  address?: string;
+}
+
+interface HardwareAsCodeProfile {
+  profile_id: string;
+  roles: {
+    controller: string;
+    power_monitor: string;
+    motor_driver: string;
+    actuator: string;
+    power: string;
+  };
+  components: HardwareProfileComponent[];
+  firmware: {
+    pins: Record<string, number>;
+    sensor: { i2c_address: string };
+  };
 }
 
 const timeLabel = (value: string | null) =>
@@ -82,6 +106,7 @@ export function HardwareGraphPage() {
   const [hiddenBefore, setHiddenBefore] = useState<string | null>(null);
   const [logQuery, setLogQuery] = useState("");
   const [logLevel, setLogLevel] = useState<"all" | LiveLog["level"]>("all");
+  const [hardwareProfile, setHardwareProfile] = useState<HardwareAsCodeProfile | null>(null);
   const terminalRef = useRef<HTMLDivElement>(null);
   const telemetry = snapshot.telemetry;
   const measurements = telemetry?.measurements;
@@ -98,6 +123,10 @@ export function HardwareGraphPage() {
     last_encoder_verified_at: null,
   };
   const compatibility = snapshot.compatibility ?? {
+    expected_profile_id: snapshot.hardware.profile_id,
+    reported_profile_id: null,
+    expected_profile_sha256: snapshot.hardware.profile_sha256,
+    reported_profile_sha256: null,
     expected_hardware_model_id: snapshot.hardware.hardware_model_id,
     reported_hardware_model_id: null,
     firmware_profile_version: null,
@@ -114,7 +143,7 @@ export function HardwareGraphPage() {
     {
       id: "firmware-profile",
       label: "Firmware",
-      pin: `Profile ${compatibility.firmware_profile_version ?? "chưa nhận"}`,
+      pin: compatibility.reported_profile_id ?? "Chưa nhận profile từ board",
       state: firmwareMismatch
         ? "error"
         : compatibility.firmware_profile_verified
@@ -123,13 +152,17 @@ export function HardwareGraphPage() {
       detail:
         firmwareMismatch?.action ??
         (compatibility.firmware_profile_verified
-          ? "Firmware đang chạy đúng profile đã build cho BOM MVP."
+          ? `Khớp hardware-as-code schema ${snapshot.hardware.profile_schema_version}, `
+            + `firmware ${compatibility.firmware_profile_version}, fingerprint `
+            + `${compatibility.reported_profile_sha256?.slice(0, 12)}.`
           : "Chờ heartbeat HARDWARE_PROFILE; nếu chờ lâu, hãy nạp firmware mới nhất."),
     },
     {
       id: "sensor-identity",
       label: "Chip cảm biến",
-      pin: "Yêu cầu INA226 R100 · 0x40",
+      pin: hardwareProfile
+        ? `${hardwareProfile.components.find((item) => item.component_id === hardwareProfile.roles.power_monitor)?.model ?? "Power monitor"} · ${hardwareProfile.firmware.sensor.i2c_address}`
+        : "Yêu cầu INA226 R100 · 0x40",
       state: sensorMismatch
         ? "error"
         : compatibility.sensor_identity_verified
@@ -166,7 +199,7 @@ export function HardwareGraphPage() {
     {
       id: "sda",
       label: "SDA",
-      pin: "INA226 → GPIO1",
+      pin: `I²C SDA → GPIO${hardwareProfile?.firmware.pins.i2c_sda ?? 1}`,
       state: activeSignalIssue(activeDiagnostics, ["I2C_SDA_STUCK_LOW", ...i2cSharedCodes])
         ? "error"
         : signalHealth.i2c_verified
@@ -181,7 +214,7 @@ export function HardwareGraphPage() {
     {
       id: "scl",
       label: "SCL",
-      pin: "INA226 → GPIO2",
+      pin: `I²C SCL → GPIO${hardwareProfile?.firmware.pins.i2c_scl ?? 2}`,
       state: activeSignalIssue(activeDiagnostics, ["I2C_SCL_STUCK_LOW", ...i2cSharedCodes])
         ? "error"
         : signalHealth.i2c_verified
@@ -196,7 +229,7 @@ export function HardwareGraphPage() {
     {
       id: "encoder-a",
       label: "Encoder A",
-      pin: "Dây vàng → GPIO16",
+      pin: `Dây vàng → GPIO${hardwareProfile?.firmware.pins.encoder_a ?? 16}`,
       state: activeSignalIssue(activeDiagnostics, [
         "ENCODER_CHANNEL_A_MISSING",
         "ENCODER_SIGNAL_MISSING",
@@ -219,7 +252,7 @@ export function HardwareGraphPage() {
     {
       id: "encoder-b",
       label: "Encoder B",
-      pin: "Dây xanh lá → GPIO17",
+      pin: `Dây xanh lá → GPIO${hardwareProfile?.firmware.pins.encoder_b ?? 17}`,
       state: activeSignalIssue(activeDiagnostics, [
         "ENCODER_CHANNEL_B_MISSING",
         "ENCODER_SIGNAL_MISSING",
@@ -255,53 +288,66 @@ export function HardwareGraphPage() {
     }
   }, [visibleLogs.length, pausedLogs]);
 
-  const nodes = [
-    {
-      id: "esp32",
-      name: "GOOUUU ESP32-S3",
-      type: "Controller · N16R8",
-      detail: deviceLive
-        ? `${snapshot.connection.port} · 115200 baud`
-        : "Chưa nhận USB serial",
-      icon: Cpu,
-      tone: "blue",
-      state: deviceLive
-        ? componentState("esp32", activeDiagnostics, Boolean(telemetry))
-        : ("waiting" as NodeState),
-    },
-    {
-      id: "ina226",
-      name: "INA226",
-      type: "Voltage + current sensor",
-      detail: `${valueOrDash(measurements?.bus_voltage_v)} V · ${valueOrDash(measurements?.current_ma, 1)} mA`,
-      icon: Activity,
-      tone: "teal",
-      state: componentState("ina226", activeDiagnostics, Boolean(telemetry)),
-    },
-    {
-      id: "l298n",
-      name: "L298N",
-      type: "Motor driver · Channel A",
-      detail: measurements
-        ? `${measurements.driver_enabled ? "Đang bật" : "Đang tắt"} · PWM ${measurements.pwm_percent}%`
-        : "Chờ telemetry",
-      icon: Zap,
-      tone: "violet",
-      state: componentState("l298n", activeDiagnostics, Boolean(telemetry)),
-    },
-    {
-      id: "motor",
-      name: "JGB37-520",
-      type: "12V motor + Hall encoder",
-      detail:
-        measurements?.motor_rpm == null
-          ? "RPM chờ hiệu chuẩn encoder"
-          : `${valueOrDash(measurements.motor_rpm, 0)} RPM`,
-      icon: RotateCcw,
-      tone: "orange",
-      state: componentState("motor", activeDiagnostics, Boolean(telemetry)),
-    },
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch(`${env.apiBaseUrl}/api/v1/hardware-profile`, { signal: controller.signal })
+      .then((response) => {
+        if (!response.ok) throw new Error(`Hardware profile HTTP ${response.status}`);
+        return response.json() as Promise<HardwareAsCodeProfile>;
+      })
+      .then(setHardwareProfile)
+      .catch((error: unknown) => {
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          setHardwareProfile(null);
+        }
+      });
+    return () => controller.abort();
+  }, []);
+
+  const flowRoles = ["controller", "power_monitor", "motor_driver", "actuator"] as const;
+  const flowPresentation = [
+    { icon: Cpu, tone: "blue" },
+    { icon: Activity, tone: "teal" },
+    { icon: Zap, tone: "violet" },
+    { icon: RotateCcw, tone: "orange" },
   ];
+  const fallbackIds = ["esp32", "ina226", "l298n", "motor"];
+  const fallbackNames = [
+    snapshot.hardware.controller,
+    snapshot.hardware.sensor,
+    snapshot.hardware.driver,
+    snapshot.hardware.motor,
+  ];
+  const nodeDetails = [
+    deviceLive
+      ? `${snapshot.connection.port} · ${snapshot.connection.baud_rate} baud`
+      : "Chưa nhận device transport",
+    `${valueOrDash(measurements?.bus_voltage_v)} V · ${valueOrDash(measurements?.current_ma, 1)} mA`,
+    measurements
+      ? `${measurements.driver_enabled ? "Đang bật" : "Đang tắt"} · PWM ${measurements.pwm_percent}%`
+      : "Chờ telemetry",
+    measurements?.motor_rpm == null
+      ? "RPM chờ hiệu chuẩn encoder"
+      : `${valueOrDash(measurements.motor_rpm, 0)} RPM`,
+  ];
+  const nodes = flowRoles.map((role, index) => {
+    const componentId = hardwareProfile?.roles[role] ?? fallbackIds[index];
+    const component = hardwareProfile?.components.find(
+      (item) => item.component_id === componentId,
+    );
+    return {
+      id: componentId,
+      name: component?.model ?? fallbackNames[index],
+      type: component?.component_type ?? role.replaceAll("_", " "),
+      detail: nodeDetails[index],
+      ...flowPresentation[index],
+      state:
+        role === "controller" && !deviceLive
+          ? ("waiting" as NodeState)
+          : componentState(componentId, activeDiagnostics, Boolean(telemetry)),
+    };
+  });
+  const hardwareFlowTitle = nodes.map((node) => node.name).join(" → ");
 
   const togglePause = () => setPausedLogs((current) => (current ? null : [...snapshot.logs]));
   const clearVisibleLogs = () => setHiddenBefore(new Date().toISOString());
@@ -359,7 +405,7 @@ export function HardwareGraphPage() {
         <div className="panel__header">
           <div>
             <p className="eyebrow">BOM signal path</p>
-            <h2>GOOUUU S3 → INA226 R100 → L298N → JGB37-520</h2>
+            <h2>{hardwareFlowTitle}</h2>
           </div>
           <span className={`status-pill status-pill--${snapshot.health.status}`}>
             {activeDiagnostics.length} lỗi đang mở
@@ -399,7 +445,7 @@ export function HardwareGraphPage() {
           </span>
           <span><i className="legend-line" /> Luồng tín hiệu</span>
           <span>
-            Schema {telemetry?.schema_version ?? "1.0.0"} · {snapshot.hardware.hardware_model_id}
+            Profile {snapshot.hardware.profile_schema_version} · {snapshot.hardware.profile_id}
           </span>
         </div>
       </section>

@@ -33,8 +33,21 @@ def test_live_snapshot_exposes_fixed_mvp_hardware() -> None:
     payload = response.json()
     assert payload["hardware"]["hardware_model_id"] == "nexus-s3-ina226-l298n-motor-rig-v1"
     assert payload["hardware"]["controller"] == "GOOUUU Tech ESP32-S3-N16R8"
-    assert payload["hardware"]["sensor"] == "INA226 (R100 shunt)"
-    assert payload["hardware"]["driver"] == "L298N"
+    assert payload["hardware"]["sensor"] == "INA226 with R100 0.1 ohm shunt"
+    assert payload["hardware"]["driver"] == "L298N dual H-bridge module"
+
+
+def test_active_hardware_profile_is_available_to_ui_and_agents() -> None:
+    response = client.get("/api/v1/hardware-profile")
+
+    assert response.status_code == 200
+    profile = response.json()
+    assert profile["profile_id"] == (
+        "nexus-profile-goouuu-esp32-s3-ina226-l298n-jgb37-v1"
+    )
+    assert profile["controller"]["family"] == "esp32"
+    assert profile["firmware"]["pins"]["i2c_sda"] == 1
+    assert profile["connections"][0]["from"]["component_id"] == "esp32"
 
 
 def test_telemetry_endpoint_does_not_invent_data_before_first_packet() -> None:

@@ -1,0 +1,198 @@
+{
+  "schema_version": "1.0.0",
+  "profile_id": "nexus-profile-goouuu-esp32-s3-ina226-l298n-jgb37-v1",
+  "hardware_model_id": "nexus-s3-ina226-l298n-motor-rig-v1",
+  "name": "NeXus ESP32-S3 INA226 motor rig",
+  "description": "Certified MVP profile for the GOOUUU ESP32-S3-N16R8, INA226 R100, L298N and JGB37-520 Hall encoder rig.",
+  "controller": {
+    "family": "esp32",
+    "model": "GOOUUU Tech ESP32-S3-N16R8",
+    "board_id": "goouuu-esp32-s3-n16r8",
+    "runtime": "arduino",
+    "logic_voltage_v": 3.3,
+    "firmware_target": "nexus-goouuu-esp32-s3-n16r8"
+  },
+  "transport": {
+    "type": "serial",
+    "baud_rate": 115200,
+    "discovery": {
+      "usb": [
+        {
+          "vid": "0x303A",
+          "pid": "0x1001",
+          "description": "ESP32-S3 native USB serial/JTAG"
+        }
+      ],
+      "description_contains": ["usb serial", "ch343"]
+    }
+  },
+  "roles": {
+    "controller": "esp32",
+    "power_monitor": "ina226",
+    "motor_driver": "l298n",
+    "actuator": "motor",
+    "power": "power"
+  },
+  "components": [
+    {
+      "component_id": "esp32",
+      "component_type": "controller",
+      "model": "GOOUUU Tech ESP32-S3-N16R8",
+      "driver": null,
+      "bus": "usb",
+      "capabilities": ["telemetry.publish", "gpio.read", "motor.control"],
+      "pins": [
+        { "pin_id": "3v3", "label": "3V3", "mode": "power", "logic_voltage_v": 3.3, "max_voltage_v": 3.3 },
+        { "pin_id": "gnd", "label": "GND", "mode": "ground", "logic_voltage_v": null },
+        { "pin_id": "gpio_1", "label": "SDA", "mode": "i2c", "logic_voltage_v": 3.3, "max_voltage_v": 3.3 },
+        { "pin_id": "gpio_2", "label": "SCL", "mode": "i2c", "logic_voltage_v": 3.3, "max_voltage_v": 3.3 },
+        { "pin_id": "gpio_12", "label": "ENA", "mode": "pwm", "logic_voltage_v": 3.3, "max_voltage_v": 3.3 },
+        { "pin_id": "gpio_13", "label": "IN1", "mode": "output", "logic_voltage_v": 3.3, "max_voltage_v": 3.3 },
+        { "pin_id": "gpio_14", "label": "IN2", "mode": "output", "logic_voltage_v": 3.3, "max_voltage_v": 3.3 },
+        { "pin_id": "gpio_16", "label": "Encoder A", "mode": "input", "logic_voltage_v": 3.3, "max_voltage_v": 3.3 },
+        { "pin_id": "gpio_17", "label": "Encoder B", "mode": "input", "logic_voltage_v": 3.3, "max_voltage_v": 3.3 }
+      ]
+    },
+    {
+      "component_id": "ina226",
+      "component_type": "sensor",
+      "model": "INA226 with R100 0.1 ohm shunt",
+      "driver": "nexus-driver-ina226",
+      "bus": "i2c",
+      "address": "0x40",
+      "identity": {
+        "manufacturer_id": "0x5449",
+        "die_id": "0x2260",
+        "die_id_mask": "0xFFF0"
+      },
+      "capabilities": ["power.voltage.read", "power.current.read", "power.power.read", "identity.verify"],
+      "pins": [
+        { "pin_id": "sda", "label": "SDA", "mode": "i2c", "logic_voltage_v": 3.3, "max_voltage_v": 3.3 },
+        { "pin_id": "scl", "label": "SCL", "mode": "i2c", "logic_voltage_v": 3.3, "max_voltage_v": 3.3 },
+        { "pin_id": "vcc", "label": "VCC", "mode": "power", "logic_voltage_v": 3.3, "max_voltage_v": 5.5 },
+        { "pin_id": "gnd", "label": "GND", "mode": "ground", "logic_voltage_v": null },
+        { "pin_id": "vin_plus", "label": "VIN+", "mode": "power", "logic_voltage_v": 12.0, "max_voltage_v": 36.0 },
+        { "pin_id": "vin_minus", "label": "VIN-", "mode": "power", "logic_voltage_v": 12.0, "max_voltage_v": 36.0 },
+        { "pin_id": "vbus", "label": "VBUS/VBS", "mode": "analog", "logic_voltage_v": 12.0, "max_voltage_v": 36.0 }
+      ]
+    },
+    {
+      "component_id": "l298n",
+      "component_type": "driver",
+      "model": "L298N dual H-bridge module",
+      "driver": "nexus-driver-l298n",
+      "bus": "gpio",
+      "capabilities": ["motor.enable", "motor.direction.set", "motor.pwm.set"],
+      "pins": [
+        { "pin_id": "ena", "label": "ENA", "mode": "pwm", "logic_voltage_v": 3.3, "max_voltage_v": 5.0 },
+        { "pin_id": "in1", "label": "IN1", "mode": "input", "logic_voltage_v": 3.3, "max_voltage_v": 5.0 },
+        { "pin_id": "in2", "label": "IN2", "mode": "input", "logic_voltage_v": 3.3, "max_voltage_v": 5.0 },
+        { "pin_id": "out1", "label": "OUT1", "mode": "power", "logic_voltage_v": 12.0, "max_voltage_v": 35.0 },
+        { "pin_id": "out2", "label": "OUT2", "mode": "power", "logic_voltage_v": 12.0, "max_voltage_v": 35.0 },
+        { "pin_id": "vs", "label": "+12V/VS", "mode": "power", "logic_voltage_v": 12.0, "max_voltage_v": 35.0 },
+        { "pin_id": "gnd", "label": "GND", "mode": "ground", "logic_voltage_v": null }
+      ]
+    },
+    {
+      "component_id": "motor",
+      "component_type": "actuator",
+      "model": "JGB37-520 12V DC gearmotor with Hall A/B encoder",
+      "driver": "nexus-driver-jgb37-hall-encoder",
+      "bus": "gpio",
+      "capabilities": ["motor.rotate", "motor.rpm.read", "encoder.health.read"],
+      "pins": [
+        { "pin_id": "motor_plus", "label": "Motor+ red", "mode": "power", "logic_voltage_v": 12.0, "max_voltage_v": 12.0 },
+        { "pin_id": "motor_minus", "label": "Motor- white", "mode": "power", "logic_voltage_v": 12.0, "max_voltage_v": 12.0 },
+        { "pin_id": "encoder_vcc", "label": "Encoder VCC blue", "mode": "power", "logic_voltage_v": 3.3, "max_voltage_v": 5.0 },
+        { "pin_id": "encoder_gnd", "label": "Encoder GND black", "mode": "ground", "logic_voltage_v": null },
+        { "pin_id": "encoder_a", "label": "Encoder A yellow", "mode": "output", "logic_voltage_v": 3.3, "max_voltage_v": 3.3 },
+        { "pin_id": "encoder_b", "label": "Encoder B green", "mode": "output", "logic_voltage_v": 3.3, "max_voltage_v": 3.3 }
+      ]
+    },
+    {
+      "component_id": "power",
+      "component_type": "power",
+      "model": "Regulated 12V DC adapter",
+      "driver": null,
+      "bus": "power",
+      "capabilities": ["power.supply"],
+      "pins": [
+        { "pin_id": "positive", "label": "+12V", "mode": "power", "logic_voltage_v": 12.0, "max_voltage_v": 13.0 },
+        { "pin_id": "ground", "label": "GND", "mode": "ground", "logic_voltage_v": null }
+      ]
+    }
+  ],
+  "connections": [
+    { "connection_id": "controller_3v3_to_monitor", "signal_type": "power", "wire_color": "configured", "from": { "component_id": "esp32", "pin_id": "3v3" }, "to": { "component_id": "ina226", "pin_id": "vcc" } },
+    { "connection_id": "controller_3v3_to_encoder", "signal_type": "power", "wire_color": "blue", "from": { "component_id": "esp32", "pin_id": "3v3" }, "to": { "component_id": "motor", "pin_id": "encoder_vcc" } },
+    { "connection_id": "i2c_sda", "signal_type": "i2c", "wire_color": "configured", "from": { "component_id": "esp32", "pin_id": "gpio_1" }, "to": { "component_id": "ina226", "pin_id": "sda" } },
+    { "connection_id": "i2c_scl", "signal_type": "i2c", "wire_color": "configured", "from": { "component_id": "esp32", "pin_id": "gpio_2" }, "to": { "component_id": "ina226", "pin_id": "scl" } },
+    { "connection_id": "motor_pwm", "signal_type": "pwm", "wire_color": "configured", "from": { "component_id": "esp32", "pin_id": "gpio_12" }, "to": { "component_id": "l298n", "pin_id": "ena" } },
+    { "connection_id": "motor_in1", "signal_type": "digital", "wire_color": "configured", "from": { "component_id": "esp32", "pin_id": "gpio_13" }, "to": { "component_id": "l298n", "pin_id": "in1" } },
+    { "connection_id": "motor_in2", "signal_type": "digital", "wire_color": "configured", "from": { "component_id": "esp32", "pin_id": "gpio_14" }, "to": { "component_id": "l298n", "pin_id": "in2" } },
+    { "connection_id": "encoder_a", "signal_type": "digital", "wire_color": "yellow", "from": { "component_id": "motor", "pin_id": "encoder_a" }, "to": { "component_id": "esp32", "pin_id": "gpio_16" } },
+    { "connection_id": "encoder_b", "signal_type": "digital", "wire_color": "green", "from": { "component_id": "motor", "pin_id": "encoder_b" }, "to": { "component_id": "esp32", "pin_id": "gpio_17" } },
+    { "connection_id": "supply_to_monitor", "signal_type": "power", "wire_color": "red", "from": { "component_id": "power", "pin_id": "positive" }, "to": { "component_id": "ina226", "pin_id": "vin_plus" } },
+    { "connection_id": "monitor_to_driver", "signal_type": "power", "wire_color": "red", "from": { "component_id": "ina226", "pin_id": "vin_minus" }, "to": { "component_id": "l298n", "pin_id": "vs" } },
+    { "connection_id": "vbus_reference", "signal_type": "analog", "wire_color": "jumper", "from": { "component_id": "ina226", "pin_id": "vin_minus" }, "to": { "component_id": "ina226", "pin_id": "vbus" } },
+    { "connection_id": "driver_out1_motor", "signal_type": "power", "wire_color": "red", "from": { "component_id": "l298n", "pin_id": "out1" }, "to": { "component_id": "motor", "pin_id": "motor_plus" } },
+    { "connection_id": "driver_out2_motor", "signal_type": "power", "wire_color": "white", "from": { "component_id": "l298n", "pin_id": "out2" }, "to": { "component_id": "motor", "pin_id": "motor_minus" } },
+    { "connection_id": "common_ground_driver", "signal_type": "ground", "wire_color": "black", "from": { "component_id": "power", "pin_id": "ground" }, "to": { "component_id": "l298n", "pin_id": "gnd" } },
+    { "connection_id": "common_ground_controller", "signal_type": "ground", "wire_color": "black", "from": { "component_id": "power", "pin_id": "ground" }, "to": { "component_id": "esp32", "pin_id": "gnd" } },
+    { "connection_id": "common_ground_monitor", "signal_type": "ground", "wire_color": "black", "from": { "component_id": "esp32", "pin_id": "gnd" }, "to": { "component_id": "ina226", "pin_id": "gnd" } },
+    { "connection_id": "common_ground_encoder", "signal_type": "ground", "wire_color": "black", "from": { "component_id": "esp32", "pin_id": "gnd" }, "to": { "component_id": "motor", "pin_id": "encoder_gnd" } }
+  ],
+  "capabilities": [
+    "telemetry.publish",
+    "power.voltage.read",
+    "power.current.read",
+    "motor.control",
+    "motor.rpm.read",
+    "signal.i2c.health",
+    "signal.encoder.health"
+  ],
+  "telemetry": {
+    "contract_version": "1.0.0",
+    "interval_ms": 1000,
+    "measurements": [
+      { "field": "bus_voltage_v", "metric_id": "power.bus_voltage", "component_id": "ina226", "unit": "V", "nullable": false },
+      { "field": "current_ma", "metric_id": "power.current", "component_id": "ina226", "unit": "mA", "nullable": false },
+      { "field": "power_mw", "metric_id": "power.consumption", "component_id": "ina226", "unit": "mW", "nullable": false },
+      { "field": "pwm_percent", "metric_id": "motor.pwm", "component_id": "l298n", "unit": "%", "nullable": false },
+      { "field": "driver_enabled", "metric_id": "motor.driver_enabled", "component_id": "l298n", "unit": "boolean", "nullable": false },
+      { "field": "motor_rpm", "metric_id": "motor.speed", "component_id": "motor", "unit": "rpm", "nullable": true }
+    ]
+  },
+  "safety": {
+    "min_bus_voltage_v": 9.5,
+    "max_bus_voltage_v": 13.0,
+    "max_current_ma": 1500,
+    "max_pwm_percent": 80,
+    "max_motor_test_duration_ms": 3000,
+    "emergency_stop": "Set PWM to 0, disable the driver and physically disconnect the 12V motor supply."
+  },
+  "firmware": {
+    "profile_version": "1.0.0",
+    "sensor_profile": "ina226-r100",
+    "driver_profile": "l298n",
+    "pins": {
+      "i2c_sda": 1,
+      "i2c_scl": 2,
+      "motor_enable": 12,
+      "motor_in1": 13,
+      "motor_in2": 14,
+      "encoder_a": 16,
+      "encoder_b": 17
+    },
+    "sensor": {
+      "i2c_address": "0x40",
+      "shunt_ohms": 0.1,
+      "current_lsb_ma": 0.1,
+      "identity": {
+        "manufacturer_id": "0x5449",
+        "die_id": "0x2260",
+        "die_id_mask": "0xFFF0"
+      }
+    }
+  }
+}

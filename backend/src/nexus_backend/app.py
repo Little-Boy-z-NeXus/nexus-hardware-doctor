@@ -315,6 +315,11 @@ def create_app(
         """Read the serial bridge without replacing persistent per-device APIs."""
         return serial_bridge.snapshot()
 
+    @application.get("/api/v1/hardware-profile", tags=["Live hardware"])
+    def active_hardware_profile() -> dict:
+        """Expose the validated machine-readable BOM selected by this backend."""
+        return deepcopy(serial_bridge.hardware_profile)
+
     @application.get("/api/v1/telemetry", tags=["Live hardware"])
     def live_telemetry() -> dict[str, object]:
         telemetry = serial_bridge.snapshot()["telemetry"]

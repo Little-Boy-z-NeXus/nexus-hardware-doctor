@@ -68,7 +68,9 @@ For L298N channel A, ENA receives PWM while IN1/IN2 choose direction. The curren
 
 This pin map assumes the GOOUUU camera, microSD slot, and display expansion are not used in the MVP. GPIO12, GPIO13, GPIO16, and GPIO17 overlap camera-interface signals on the camera-capable board. Do not attach a camera while using this wiring. GPIO0, GPIO3, GPIO19, GPIO20, GPIO26–GPIO37, GPIO45, and GPIO46 are intentionally avoided because of boot, USB, flash, or PSRAM restrictions.
 
-The machine-readable topology is [`nexus-contracts/v1/fixtures/hardware-model.example.json`](../nexus-contracts/v1/fixtures/hardware-model.example.json).
+The authoritative machine-readable BOM, topology, electrical constraints and firmware mapping
+are in [`nexus-hardware/profiles/nexus-profile-goouuu-esp32-s3-ina226-l298n-jgb37-v1.json`](../nexus-hardware/profiles/nexus-profile-goouuu-esp32-s3-ina226-l298n-jgb37-v1.json).
+The older contract fixture remains an API example rather than the build source of truth.
 
 ## Install PlatformIO
 
@@ -133,20 +135,28 @@ pio device monitor --port /dev/ttyUSB0 --baud 115200
 
 On Linux, serial access may require adding your account to the `dialout` group and signing in again. Follow your distribution's policy rather than running PlatformIO permanently as root.
 
-## Build-time configuration
+## Hardware-as-code build configuration
 
-The checked-in defaults are in [`platformio.ini`](platformio.ini):
+`platformio.ini` selects one `custom_nexus_hardware_profile`. Before every build, PlatformIO
+validates its required build fields and generates
+[`include/nexus_hardware_profile.generated.h`](include/nexus_hardware_profile.generated.h).
+Do not edit the generated header. Change the versioned JSON profile, run
+`nexus-validate-hardware-profile.cmd`, and rebuild.
+
+The current generated values are:
 
 | Flag | Default | Meaning |
 | --- | --- | --- |
-| `NEXUS_DEVICE_ID` | `nexus-demo-esp32` | Device identity in every payload |
+| `NEXUS_DEVICE_ID` | `nexus-demo-esp32` | Deployment-specific device identity in every payload |
 | `NEXUS_HARDWARE_MODEL_ID` | `nexus-s3-ina226-l298n-motor-rig-v1` | Frozen ESP32-S3/INA226/L298N hardware model identity |
 | `NEXUS_MAX_PWM_PERCENT` | `80` | Absolute firmware PWM ceiling |
 | `NEXUS_MAX_CURRENT_MA` | `1500` | Motion is stopped/rejected above this measured current |
 | `NEXUS_MIN_BUS_VOLTAGE_MV` | `9500` | Minimum measured motor bus for motion |
 | `NEXUS_MAX_BUS_VOLTAGE_MV` | `13000` | Maximum verified MVP motor bus for motion |
 
-Do not raise the PWM ceiling until the physical hardware baseline and temperature checks are complete. Never store Wi-Fi or broker credentials in `platformio.ini`.
+Except for the deployment-specific device ID, these values come from the JSON profile. Do not
+raise the PWM ceiling until the physical hardware baseline and temperature checks are complete.
+Never store Wi-Fi or broker credentials in the profile or `platformio.ini`.
 
 ## Telemetry output
 
@@ -279,7 +289,9 @@ The 30-minute baseline, temperature result, supply rating, and photos belong to 
 - Encoder fault appears: do not test continuity with motor power on. Power off, reseat the named
   A/B/VCC/GND wire, then use a short supervised motor test to verify recovery.
 - `INA226_ID_MISMATCH`: confirm the IC is really INA226 rather than INA219/INA260 and reset the board.
-- `HARDWARE_PROFILE`: must report `nexus-s3-ina226-l298n-motor-rig-v1`, `ina226-r100`, `l298n`, and `jgb37-520-12v-encoder`. A different value means the board was flashed with firmware for another hardware build.
+- `HARDWARE_PROFILE`: must report the same `profile_id`, `hardware_model_id`, sensor and driver
+  declared by the selected JSON profile. A different value means the board was flashed with a
+  binary generated from another hardware build.
 - Current is correct but bus voltage stays at 0 V: connect the INA226 `VBUS` input to `VIN−`; measuring 12 V at the screw terminal alone does not prove that the IC's VBUS pin is connected.
 - Readings are negative: verify INA226 current direction and `VIN+`/`VIN-` orientation.
 - Current is exactly eight times too high: the board still has INA219-calibrated firmware; upload this repository's INA226 build.

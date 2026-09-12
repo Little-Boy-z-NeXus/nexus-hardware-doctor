@@ -1,0 +1,243 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:nexus:hardware:v1:profile",
+  "title": "NeXus Hardware-as-Code Profile v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "profile_id",
+    "hardware_model_id",
+    "name",
+    "controller",
+    "transport",
+    "roles",
+    "components",
+    "connections",
+    "capabilities",
+    "telemetry",
+    "safety",
+    "firmware"
+  ],
+  "properties": {
+    "schema_version": { "const": "1.0.0" },
+    "profile_id": { "$ref": "#/$defs/nexusId" },
+    "hardware_model_id": { "$ref": "#/$defs/nexusId" },
+    "name": { "type": "string", "minLength": 1 },
+    "description": { "type": "string" },
+    "controller": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "family",
+        "model",
+        "board_id",
+        "runtime",
+        "logic_voltage_v",
+        "firmware_target"
+      ],
+      "properties": {
+        "family": { "type": "string", "minLength": 1 },
+        "model": { "type": "string", "minLength": 1 },
+        "board_id": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+        "runtime": { "type": "string", "enum": ["arduino", "linux", "bare-metal", "rtos"] },
+        "logic_voltage_v": { "type": "number", "exclusiveMinimum": 0 },
+        "firmware_target": { "type": "string", "pattern": "^nexus-[a-z0-9-]+$" }
+      }
+    },
+    "transport": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": { "type": "string", "enum": ["serial", "mqtt", "websocket", "http"] },
+        "baud_rate": { "type": "integer", "minimum": 1200 },
+        "discovery": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "usb": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["vid", "pid"],
+                "properties": {
+                  "vid": { "$ref": "#/$defs/hex16" },
+                  "pid": { "$ref": "#/$defs/hex16" },
+                  "description": { "type": "string" }
+                }
+              }
+            },
+            "description_contains": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 1 },
+              "uniqueItems": true
+            }
+          }
+        }
+      }
+    },
+    "roles": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["controller", "power_monitor", "motor_driver", "actuator", "power"],
+      "properties": {
+        "controller": { "$ref": "#/$defs/componentId" },
+        "power_monitor": { "$ref": "#/$defs/componentId" },
+        "motor_driver": { "$ref": "#/$defs/componentId" },
+        "actuator": { "$ref": "#/$defs/componentId" },
+        "power": { "$ref": "#/$defs/componentId" }
+      }
+    },
+    "components": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/component" }
+    },
+    "connections": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/connection" }
+    },
+    "capabilities": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[a-z][a-z0-9_.-]+$" },
+      "uniqueItems": true
+    },
+    "telemetry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contract_version", "interval_ms", "measurements"],
+      "properties": {
+        "contract_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+        "interval_ms": { "type": "integer", "minimum": 10 },
+        "measurements": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["field", "metric_id", "component_id", "unit", "nullable"],
+            "properties": {
+              "field": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+              "metric_id": { "type": "string", "pattern": "^[a-z][a-z0-9_.-]+$" },
+              "component_id": { "$ref": "#/$defs/componentId" },
+              "unit": { "type": "string", "minLength": 1 },
+              "nullable": { "type": "boolean" }
+            }
+          }
+        }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "min_bus_voltage_v",
+        "max_bus_voltage_v",
+        "max_current_ma",
+        "max_pwm_percent",
+        "max_motor_test_duration_ms",
+        "emergency_stop"
+      ],
+      "properties": {
+        "min_bus_voltage_v": { "type": "number", "minimum": 0 },
+        "max_bus_voltage_v": { "type": "number", "exclusiveMinimum": 0 },
+        "max_current_ma": { "type": "number", "exclusiveMinimum": 0 },
+        "max_pwm_percent": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "max_motor_test_duration_ms": { "type": "integer", "minimum": 100, "maximum": 10000 },
+        "emergency_stop": { "type": "string", "minLength": 1 }
+      }
+    },
+    "firmware": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profile_version", "sensor_profile", "driver_profile", "pins", "sensor"],
+      "properties": {
+        "profile_version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$" },
+        "sensor_profile": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+        "driver_profile": { "type": "string", "pattern": "^[a-z0-9-]+$" },
+        "pins": {
+          "type": "object",
+          "additionalProperties": { "type": "integer", "minimum": 0 },
+          "required": ["i2c_sda", "i2c_scl", "motor_enable", "motor_in1", "motor_in2", "encoder_a", "encoder_b"]
+        },
+        "sensor": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["i2c_address", "shunt_ohms", "current_lsb_ma", "identity"],
+          "properties": {
+            "i2c_address": { "$ref": "#/$defs/hex8" },
+            "shunt_ohms": { "type": "number", "exclusiveMinimum": 0 },
+            "current_lsb_ma": { "type": "number", "exclusiveMinimum": 0 },
+            "identity": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["manufacturer_id", "die_id", "die_id_mask"],
+              "properties": {
+                "manufacturer_id": { "$ref": "#/$defs/hex16" },
+                "die_id": { "$ref": "#/$defs/hex16" },
+                "die_id_mask": { "$ref": "#/$defs/hex16" }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "nexusId": { "type": "string", "pattern": "^nexus-[a-z0-9-]+$" },
+    "componentId": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+    "hex8": { "type": "string", "pattern": "^0x[0-9A-Fa-f]{2}$" },
+    "hex16": { "type": "string", "pattern": "^0x[0-9A-Fa-f]{4}$" },
+    "pin": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["pin_id", "label", "mode", "logic_voltage_v"],
+      "properties": {
+        "pin_id": { "type": "string", "minLength": 1 },
+        "label": { "type": "string", "minLength": 1 },
+        "mode": { "type": "string", "enum": ["input", "output", "i2c", "spi", "uart", "pwm", "analog", "power", "ground"] },
+        "logic_voltage_v": { "type": ["number", "null"], "exclusiveMinimum": 0 },
+        "max_voltage_v": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "component": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["component_id", "component_type", "model", "driver", "capabilities", "pins"],
+      "properties": {
+        "component_id": { "$ref": "#/$defs/componentId" },
+        "component_type": { "type": "string", "enum": ["controller", "sensor", "driver", "actuator", "power", "compute", "communication", "other"] },
+        "model": { "type": "string", "minLength": 1 },
+        "driver": { "type": ["string", "null"], "pattern": "^nexus-[a-z0-9-]+$" },
+        "bus": { "type": "string", "enum": ["gpio", "i2c", "spi", "uart", "usb", "csi", "ethernet", "virtual", "power"] },
+        "address": { "type": "string" },
+        "identity": { "type": "object", "additionalProperties": { "type": ["string", "number", "boolean"] } },
+        "capabilities": { "type": "array", "items": { "type": "string", "minLength": 1 }, "uniqueItems": true },
+        "pins": { "type": "array", "items": { "$ref": "#/$defs/pin" } }
+      }
+    },
+    "endpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["component_id", "pin_id"],
+      "properties": {
+        "component_id": { "$ref": "#/$defs/componentId" },
+        "pin_id": { "type": "string", "minLength": 1 }
+      }
+    },
+    "connection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["connection_id", "signal_type", "from", "to"],
+      "properties": {
+        "connection_id": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+        "signal_type": { "type": "string", "enum": ["i2c", "digital", "pwm", "analog", "spi", "uart", "usb", "power", "ground"] },
+        "wire_color": { "type": "string" },
+        "from": { "$ref": "#/$defs/endpoint" },
+        "to": { "$ref": "#/$defs/endpoint" }
+      }
+    }
+  }
+}
