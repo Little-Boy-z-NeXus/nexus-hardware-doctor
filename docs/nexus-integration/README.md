@@ -47,4 +47,3 @@ Hiếu owns the final merge decision. Hoàng reviews backend/model and architect
 ## Decision record format
 
 Use a stable ID such as `U06-DEC-001` and record context, decision, consequence, owner and review date. A decision that changes scope must also update `docs/mvp-scope.md`; one that changes a frozen interface must include a migration note.
-
