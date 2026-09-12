@@ -11,7 +11,7 @@ The INA226 `VBUS` input must be bridged to `VIN−` (the load side of the R100 s
 | Area | What works now | Next integration |
 | --- | --- | --- |
 | Frontend | Realtime Dashboard/Hardware Graph, ESP32 live log, reconnect and human-readable fault cards | Connect AI Doctor to the same evidence stream |
-| Backend | Persistent sessions/telemetry, serial live snapshots/logs, hardware context, configurable Nebius client, simulated diagnosis/policy/evaluation and Docker runbook | Verify live model calls and integrate serial evidence plus real commands |
+| Backend | Persistent sessions/telemetry, serial snapshots/logs, hardware context, verified live Nebius client, diagnosis/policy/evaluation and Docker runbook | Integrate serial evidence and policy-controlled device commands |
 | Firmware | Safe PWM clamp, strict telemetry v1, calibrated INA226 logs, bounded device command protocol | Connect the physical adapter through H05 policy; add encoder calibration |
 | Contracts | Four frozen JSON Schemas, fixtures and migration enforcement | Change only through a reviewed migration note or v2 |
 
@@ -84,7 +84,7 @@ py -3.11 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -e ".\backend[dev]"
 Copy-Item .env.example .env
-uvicorn nexus_backend.app:app --reload
+uvicorn nexus_backend.app:app --reload --env-file .env
 ```
 
 If PowerShell blocks environment activation, run `Set-ExecutionPolicy -Scope Process Bypass` in that terminal and activate again. This changes policy only for the current process.
@@ -96,7 +96,7 @@ python3.11 -m venv .venv
 source .venv/bin/activate
 python -m pip install -e "./backend[dev]"
 cp .env.example .env
-uvicorn nexus_backend.app:app --reload
+uvicorn nexus_backend.app:app --reload --env-file .env
 ```
 
 Open:
@@ -116,9 +116,11 @@ python -m nexus_backend.mock_device --count 60
 
 Open <http://127.0.0.1:8000/monitor> while the simulator runs. It displays source-labeled telemetry from the persistent per-device backend stream. The React Dashboard and Hardware Graph use the separate serial live snapshot API; simulator registration does not replace their hardware readings.
 
-The backend owns the serial port, rejects malformed/`nan` packets, persists timestamped NDJSON entries under `logs/`, and streams complete live snapshots over `/api/v1/live/ws`. These read-only live endpoints coexist with the SQLite device/session APIs. Live model acceptance, transfer of serial snapshots into diagnosis history and physical command integration remain pending.
+The backend owns the serial port, rejects malformed/`nan` packets, persists timestamped NDJSON entries under `logs/`, and streams complete live snapshots over `/api/v1/live/ws`. These read-only live endpoints coexist with the SQLite device/session APIs. Transfer of serial snapshots into diagnosis history and physical command integration remain pending.
 
-The [diagnosis lab](http://127.0.0.1:8000/doctor-lab) runs the preemptive H01/H04–H08 software. Simulation requires no model key. Live mode requires configured Nebius access and explicit enablement; its tools are read-only. Real model/physical acceptance has not been claimed. See the [H resource checklist](docs/h-resource-checklist.md), [model guide](docs/h01-h04.md), [orchestration/policy guide](docs/h05-h06.md), [evaluation guide](docs/h07-evaluation.md), and [Docker runbook](docs/h08-runbook.md).
+The [diagnosis lab](http://127.0.0.1:8000/doctor-lab) runs the H01/H04–H08 software. Simulation requires no model key. Live mode requires configured Nebius access and explicit enablement; its tools are read-only. Successful real NVIDIA calls and a read-only tool cycle are recorded in the [live acceptance evidence](docs/evidence/h01-h04-live-nebius.md); their inputs are synthetic, and physical acceptance remains separate. See the [H resource checklist](docs/h-resource-checklist.md), [model guide](docs/h01-h04.md), [orchestration/policy guide](docs/h05-h06.md), [evaluation guide](docs/h07-evaluation.md), and [Docker runbook](docs/h08-runbook.md).
+
+With a local ignored `.env` configured, run `python -m nexus_backend.evaluation --live --env-file .env --output artifacts/h07-live.json` to score the real model, or `python scripts/check_live_model.py --live --env-file .env` to verify a model-selected telemetry read. Both commands incur bounded model usage and never actuate hardware. The default evaluation command below stays offline.
 
 Run all synthetic diagnosis checks with `python -m nexus_backend.evaluation --output artifacts/h07-evaluation.json`. This scores the deterministic mock planner, not Nemotron or real hardware. `docker compose up --build -d` provides an isolated backend with persistent data and no model access enabled by default.
 

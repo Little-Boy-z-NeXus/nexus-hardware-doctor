@@ -108,3 +108,19 @@ integrated live diagnosis against at least ten known cases and retain a report
 showing top-2 accuracy of at least 8/10. Clearly identify any unavailable or
 synthetic case instead of counting it as a physical test. Human-observed motor
 movement and safe manual wiring repair remain external evidence.
+
+## Local configuration and live evidence
+
+Use `--live --env-file .env` to explicitly load the project's ignored configuration. Process
+environment values take precedence; file values are not interpolated or executed as shell
+code. A missing file fails instead of silently switching configuration. `--env-file` without
+`--live` is rejected, so the default offline evaluation remains independent of credentials.
+
+Live reports include the prompt version/digest, model configuration without its key, safe
+provider error codes, and allowlisted identity/usage/latency for completed model attempts.
+`model_attempts` includes a completed correction request when one was needed; timeouts may
+incur usage that the provider did not return, so reports are not billing statements.
+
+The [12 September live acceptance](evidence/h01-h04-live-nebius.md) records 10/10 top-2
+predictions and valid evidence/plans on the INA226 development set. `h07_complete` remains
+false because the physical gates above have not been performed.

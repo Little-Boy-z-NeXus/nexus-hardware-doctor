@@ -6,6 +6,8 @@ import asyncio
 import json
 import math
 import os
+import re
+import time
 from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass, field
 from typing import ClassVar
@@ -15,6 +17,20 @@ import httpx
 
 MAX_RESPONSE_BYTES = 65_536
 MAX_REQUEST_BYTES = 131_072
+
+
+def generation_schema(value: object) -> object:
+    """Project constraints supported by Nebius's grammar compiler.
+
+    Its live endpoint rejects uniqueItems. Keep that constraint in PLAN_SCHEMA
+    for local validation; removing it here does not authorize invalid plans.
+    """
+    if isinstance(value, dict):
+        return {key: generation_schema(item) for key, item in value.items()
+                if key != "uniqueItems"}
+    if isinstance(value, list):
+        return [generation_schema(item) for item in value]
+    return value
 
 
 class ProviderError(Exception):
@@ -45,6 +61,8 @@ class ProviderConfig:
     timeout_seconds: float = 20
     max_retries: int = 2
     backoff_seconds: float = 0.25
+    enable_thinking: bool | None = None
+    max_output_tokens: int = 2048
 
     def __post_init__(self):
         try:
@@ -65,6 +83,8 @@ class ProviderConfig:
                 and math.isfinite(self.timeout_seconds) and 0 < self.timeout_seconds <= 60
                 and type(self.backoff_seconds) in (int, float)
                 and math.isfinite(self.backoff_seconds) and 0 <= self.backoff_seconds <= 2
+                and (self.enable_thinking is None or type(self.enable_thinking) is bool)
+                and type(self.max_output_tokens) is int and 256 <= self.max_output_tokens <= 8192
             )
         except (TypeError, ValueError, AttributeError):
             raise ProviderError("invalid_config") from None
@@ -79,7 +99,18 @@ class ProviderConfig:
         )]
         if not all(values):
             raise ProviderError("not_configured")
-        return cls(*values)
+        thinking = env.get("NEXUS_NEBIUS_ENABLE_THINKING") or ""
+        if not isinstance(thinking, str):
+            raise ProviderError("invalid_config")
+        thinking = thinking.lower()
+        if thinking not in ("", "true", "false"):
+            raise ProviderError("invalid_config")
+        try:
+            max_tokens = int(env.get("NEXUS_NEBIUS_MAX_OUTPUT_TOKENS") or "2048")
+        except (TypeError, ValueError):
+            raise ProviderError("invalid_config") from None
+        return cls(*values, enable_thinking=None if not thinking else thinking == "true",
+                   max_output_tokens=max_tokens)
 
 
 class NebiusProvider:
@@ -92,6 +123,7 @@ class NebiusProvider:
         self.config = config
         self._transport = transport
         self._sleep = sleep
+        self.last_completion: dict | None = None
 
     def reject_secret_echo(self, value: object, *, code: str = "invalid_response") -> None:
         """Inspect decoded JSON strings so escaping cannot hide an echoed credential."""
@@ -107,14 +139,19 @@ class NebiusProvider:
                 pending.extend(item)
 
     async def complete(self, messages: list[dict], schema: dict) -> str:
+        self.last_completion = None
+        started = time.monotonic()
         body = {
             "model": self.config.model, "messages": messages, "temperature": 0,
-            "max_tokens": 2048, "stream": False,
+            "max_tokens": self.config.max_output_tokens, "stream": False,
             "response_format": {
                 "type": "json_schema",
-                "json_schema": {"name": "nexus_diagnosis_v1", "strict": True, "schema": schema},
+                "json_schema": {"name": "nexus_diagnosis_v1", "strict": True,
+                                "schema": generation_schema(schema)},
             },
         }
+        if self.config.enable_thinking is not None:
+            body["chat_template_kwargs"] = {"enable_thinking": self.config.enable_thinking}
         try:
             encoded = json.dumps(body, allow_nan=False).encode()
         except (TypeError, ValueError, RecursionError):
@@ -157,7 +194,12 @@ class NebiusProvider:
                                     chunks.extend(chunk)
                                     if len(chunks) > MAX_RESPONSE_BYTES:
                                         raise ProviderError("invalid_response")
-                                return self._content(bytes(chunks))
+                                content = self._content(bytes(chunks))
+                                self.last_completion["elapsed_ms"] = round(
+                                    (time.monotonic() - started) * 1000
+                                )
+                                self.last_completion["attempts"] = attempt + 1
+                                return content
                 except (httpx.TimeoutException, TimeoutError):
                     last_code = "timeout"
                 except httpx.RequestError:
@@ -183,6 +225,19 @@ class NebiusProvider:
                 raise ValueError
             if self.config.api_key in content or len(content.encode()) > 32_768:
                 raise ValueError
+            # Evidence records are an allowlisted projection, never a raw response.
+            metadata = {"requested_model": self.config.model, "finish_reason": "stop"}
+            for source, target in (("model", "response_model"), ("id", "response_id")):
+                value = payload.get(source)
+                if (isinstance(value, str) and re.fullmatch(r"[A-Za-z0-9_./:-]{1,256}", value)
+                        and self.config.api_key not in value):
+                    metadata[target] = value
+            usage = payload.get("usage")
+            if isinstance(usage, dict):
+                metadata["usage"] = {key: usage[key] for key in
+                                     ("prompt_tokens", "completion_tokens", "total_tokens")
+                                     if type(usage.get(key)) is int and usage[key] >= 0}
+            self.last_completion = metadata
             return content
         except (ValueError, KeyError, IndexError, TypeError, AttributeError, RecursionError):
             raise ProviderError("invalid_response") from None

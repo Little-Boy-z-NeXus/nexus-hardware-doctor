@@ -42,6 +42,73 @@ def test_structured_request_auth_and_never_returns_reasoning_metadata():
     assert CONFIG.api_key not in repr(CONFIG)
 
 
+def test_live_grammar_omits_unique_items_but_local_plan_still_rejects_duplicates():
+    from copy import deepcopy
+
+    from nexus_backend.diagnosis import PLAN_SCHEMA, PlanValidationError, validate_plan
+
+    original = deepcopy(PLAN_SCHEMA)
+    requests = []
+
+    def handler(req):
+        requests.append(json.loads(req.content))
+        return httpx.Response(200, json=completion())
+
+    provider = NebiusProvider(CONFIG, transport=httpx.MockTransport(handler))
+    asyncio.run(provider.complete([{"role": "user", "content": "diagnose"}], PLAN_SCHEMA))
+    wire_schema = requests[0]["response_format"]["json_schema"]["schema"]
+    assert "uniqueItems" not in json.dumps(wire_schema)
+    assert PLAN_SCHEMA == original
+    with pytest.raises(PlanValidationError):
+        validate_plan({
+            "hypotheses": [{"id": "pwm", "label": "Zero PWM", "confidence": 0.9,
+                            "evidence_ids": ["sample-1", "sample-1"]}],
+            "next_tool": None, "confidence": 0.9, "user_message": "PWM is zero.",
+            "stop_condition": "needs_manual",
+        })
+
+
+def test_template_control_is_explicit_and_does_not_change_other_models_by_default():
+    requests = []
+
+    def handler(req):
+        requests.append(json.loads(req.content))
+        return httpx.Response(200, json=completion())
+
+    request(handler)
+    request(handler, config=replace(CONFIG, enable_thinking=False))
+    assert "chat_template_kwargs" not in requests[0]
+    assert requests[1]["chat_template_kwargs"] == {"enable_thinking": False}
+    assert requests[1]["max_tokens"] == 2048
+    env = {"NEXUS_NEBIUS_BASE_URL": CONFIG.base_url, "NEXUS_NEBIUS_API_KEY": CONFIG.api_key,
+           "NEXUS_NVIDIA_MODEL": CONFIG.model, "NEXUS_NEBIUS_ENABLE_THINKING": "false"}
+    assert ProviderConfig.from_env(env).enable_thinking is False
+    with pytest.raises(ProviderError):
+        ProviderConfig.from_env({**env, "NEXUS_NEBIUS_ENABLE_THINKING": "invalid"})
+    with pytest.raises(ProviderError):
+        replace(CONFIG, enable_thinking=0)
+
+
+def test_completion_evidence_is_allowlisted_and_reset_after_a_failed_call():
+    payload = {**completion(reasoning_content="NEVER_RECORD_REASONING"),
+               "model": CONFIG.model, "id": "chatcmpl-test",
+               "usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15,
+                         "other": CONFIG.api_key}, "headers": CONFIG.api_key}
+    replies = [httpx.Response(200, json=payload), httpx.Response(401, text=CONFIG.api_key)]
+    provider = NebiusProvider(CONFIG, transport=httpx.MockTransport(lambda req: replies.pop(0)))
+    asyncio.run(provider.complete([{"content": "diagnose"}], {}))
+    recorded = provider.last_completion
+    assert recorded["response_model"] == CONFIG.model
+    assert recorded["response_id"] == "chatcmpl-test"
+    assert recorded["usage"] == {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15}
+    assert recorded["attempts"] == 1 and recorded["elapsed_ms"] >= 0
+    assert CONFIG.api_key not in json.dumps(recorded)
+    assert "NEVER_RECORD_REASONING" not in json.dumps(recorded)
+    with pytest.raises(ProviderError):
+        asyncio.run(provider.complete([{"content": "diagnose"}], {}))
+    assert provider.last_completion is None
+
+
 @pytest.mark.parametrize("env", [{}, {"NEXUS_NEBIUS_API_KEY": "secret"}])
 def test_missing_configuration_never_invents_provider_defaults(env):
     with pytest.raises(ProviderError, match="not configured") as caught:
@@ -66,6 +133,7 @@ def test_configuration_rejects_insecure_or_ambiguous_secret_destinations(url):
     {"max_retries": 4}, {"max_retries": True}, {"timeout_seconds": float("nan")},
     {"backoff_seconds": 10}, {"api_key": "line\nbreak"}, {"api_key": "secret\x00"},
     {"model": ""},
+    {"max_output_tokens": 8193}, {"max_output_tokens": 255}, {"max_output_tokens": True},
 ])
 def test_configuration_bounds_runtime_and_headers(kwargs):
     with pytest.raises(ProviderError):

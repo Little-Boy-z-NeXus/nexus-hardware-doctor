@@ -19,7 +19,9 @@ if errorlevel 1 (
 
 echo [NeXus] Backend: http://127.0.0.1:8000
 echo [NeXus] API docs: http://127.0.0.1:8000/docs
-"%NEXUS_PYTHON%" -m uvicorn nexus_backend.app:app --reload --reload-dir "%CD%\backend\src" --host 127.0.0.1 --port 8000
+set "NEXUS_ENV_FILE_OPTION="
+if exist ".env" set "NEXUS_ENV_FILE_OPTION=--env-file .env"
+"%NEXUS_PYTHON%" -m uvicorn nexus_backend.app:app --reload --reload-dir "%CD%\backend\src" --host 127.0.0.1 --port 8000 %NEXUS_ENV_FILE_OPTION%
 exit /b %errorlevel%
 
 :failed

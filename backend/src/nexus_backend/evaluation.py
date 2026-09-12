@@ -5,11 +5,15 @@ from __future__ import annotations
 import argparse
 import asyncio
 import copy
+import hashlib
 import json
 import math
+import os
 from datetime import UTC, datetime
 from importlib.resources import files
 from pathlib import Path
+
+from dotenv import dotenv_values
 
 from .context import build_context
 from .mock_device import load_fixtures
@@ -124,10 +128,15 @@ def assess_plan(plan: object, context: dict, observations: list[dict], *, no_wri
 
 async def evaluate_cases(planner, cases: list[dict] | None = None) -> dict:
     """Expected answers are read only after the planner has returned a prediction."""
+    from .diagnosis import NebiusPlanner
+    from .provider import ProviderError
+
     cases = load_cases() if cases is None else cases
     results = []
     for case in cases:
         context, observations = case_inputs(case, recorded_at=datetime.now(UTC).isoformat())
+        if isinstance(planner, NebiusPlanner):
+            planner.provider.last_completion = None
         try:
             plan = await asyncio.wait_for(
                 planner.plan(copy.deepcopy(context), copy.deepcopy(observations)), timeout=60
@@ -136,6 +145,12 @@ async def evaluate_cases(planner, cases: list[dict] | None = None) -> dict:
         except Exception as error:  # noqa: BLE001 - Each failed planner must produce a failed case.
             # Exception messages can include provider bodies or credentials; do not persist them.
             assessment = {"valid": False, "top2": [], "errors": [type(error).__name__]}
+            if isinstance(error, ProviderError):
+                assessment["error_code"] = error.code
+        if isinstance(planner, NebiusPlanner) and planner.provider.last_completion:
+            assessment["completion"] = copy.deepcopy(planner.provider.last_completion)
+        if isinstance(planner, NebiusPlanner):
+            assessment["model_attempts"] = copy.deepcopy(planner.last_attempts)
         correct = bool(set(assessment["top2"]) & set(case["expected_top2"]))
         results.append({
             "case_id": case["case_id"], "name": case["name"],
@@ -302,12 +317,13 @@ async def evaluate_simulated_paths(repetitions: int = 5) -> dict:
             )}
 
 
-async def run_evaluation(*, live: bool = False, repetitions: int = 5) -> dict:
-    from .diagnosis import MockPlanner, NebiusPlanner
+async def run_evaluation(*, live: bool = False, repetitions: int = 5,
+                         environ: dict | None = None) -> dict:
+    from .diagnosis import PROMPT_VERSION, MockPlanner, NebiusPlanner
 
     if live:
         from .provider import NebiusProvider, ProviderConfig
-        planner = NebiusPlanner(NebiusProvider(ProviderConfig.from_env()))
+        planner = NebiusPlanner(NebiusProvider(ProviderConfig.from_env(environ)))
     else:
         planner = MockPlanner()
     cases = await evaluate_cases(planner)
@@ -315,7 +331,17 @@ async def run_evaluation(*, live: bool = False, repetitions: int = 5) -> dict:
     passed = (cases["accuracy_gate_passed"] and cases["safety_and_evidence_gate_passed"]
               and paths["gate_passed"])
     return {
-        "report_version": "1.0.0", "dataset_version": "h07-synthetic-v1",
+        "report_version": "1.1.0", "dataset_version": "h07-synthetic-v1",
+        "prompt_version": PROMPT_VERSION,
+        "prompt_sha256": hashlib.sha256(files("nexus_backend").joinpath(
+            f"prompts/{PROMPT_VERSION}.txt"
+        ).read_bytes()).hexdigest(),
+        "model_configuration": {
+            "base_url": planner.provider.config.base_url,
+            "model": planner.provider.config.model,
+            "enable_thinking": planner.provider.config.enable_thinking,
+            "max_output_tokens": planner.provider.config.max_output_tokens,
+        } if live else None,
         "recorded_at": datetime.now(UTC).isoformat(),
         "planner_mode": "live_model_synthetic_inputs" if live else "deterministic_mock",
         "measurement_source": "simulator", "cases": cases, "simulated_paths": paths,
@@ -340,11 +366,21 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--live", action="store_true",
                         help="Explicitly allow billed Nebius calls on synthetic cases; never actuates hardware")
+    parser.add_argument("--env-file", type=Path,
+                        help="Explicit local configuration file, used only with --live")
     parser.add_argument("--repetitions", type=int, choices=range(1, 21), default=5)
     parser.add_argument("--output", type=Path, default=Path("artifacts/h07-evaluation.json"))
     args = parser.parse_args(argv)
+    if args.env_file and not args.live:
+        parser.error("--env-file requires --live")
     try:
-        report = asyncio.run(run_evaluation(live=args.live, repetitions=args.repetitions))
+        environ = None
+        if args.env_file:
+            if not args.env_file.is_file():
+                raise FileNotFoundError
+            environ = {**dotenv_values(args.env_file, interpolate=False), **os.environ}
+        report = asyncio.run(run_evaluation(live=args.live, repetitions=args.repetitions,
+                                            environ=environ))
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     except Exception as error:  # noqa: BLE001 - CLI boundary must not print provider secrets.

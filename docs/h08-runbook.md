@@ -78,3 +78,21 @@ These are local controls; public multi-user authentication and distributed rate 
 ## Implementation references
 
 [Docker build guidance](https://docs.docker.com/build/building/best-practices/) and [Compose environment configuration](https://docs.docker.com/compose/how-tos/environment-variables/set-environment-variables/).
+
+## Tested model setup and local checks
+
+The [live acceptance record](evidence/h01-h04-live-nebius.md) provides the verified NVIDIA
+model profile and its limitations. Compose passes both optional Nemotron controls,
+`NEXUS_NEBIUS_ENABLE_THINKING` and `NEXUS_NEBIUS_MAX_OUTPUT_TOKENS`, through to the
+backend. Recreate the service after changing local configuration. On Windows,
+`nexus-start-backend.cmd` loads `.env` automatically if it exists; starting without the file
+continues to work in offline mode.
+
+```bash
+python -m nexus_backend.evaluation --live --env-file .env --output artifacts/h07-live.json
+python scripts/check_live_model.py --live --env-file .env
+```
+
+The repository validator allows an ignored `.env` as documented. It fails if `.env`,
+`secrets.json` or `credentials.json` is tracked, or if a present local credential file is not
+ignored. The opt-in model commands retain the backend's bounds and physical-write restrictions.

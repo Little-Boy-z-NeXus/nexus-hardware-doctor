@@ -2,6 +2,8 @@
 
 H-only handoff, 10 September 2026. The [shared sheet](https://docs.google.com/spreadsheets/d/1EOCmOg-qVQ_2OJV1DkeH9ULjkR7oT8kNMNGyrTKTUFs/edit?gid=86110275#gid=86110275) remains the status tracker. Inputs are cumulative: I supply the implementation, tests, documentation and PR; you supply account access, verified hardware facts or physical evidence. Providing inputs enables the remaining work, not automatic acceptance.
 
+The [12 September live-model evidence](evidence/h01-h04-live-nebius.md) records working local API access, NVIDIA diagnosis results and read-only orchestration. The checklists below remain the resource requirements for each environment; the shared sheet remains the status tracker.
+
 ## Finished and submitted
 
 - [x] **H02:** persistent backend/device sessions, streaming telemetry, audit and monitor.
