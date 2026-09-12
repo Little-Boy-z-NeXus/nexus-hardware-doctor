@@ -268,45 +268,53 @@ export function HardwareGraphPage() {
     }
   }, [visibleLogs.length, pausedLogs]);
 
-  const flowRoles = ["controller", "power_monitor", "motor_driver", "actuator"] as const;
-  const flowPresentation = [
-    { icon: Cpu, tone: "blue" },
-    { icon: Activity, tone: "teal" },
-    { icon: Zap, tone: "violet" },
-    { icon: RotateCcw, tone: "orange" },
-  ];
-  const nodeDetails = [
-    deviceLive
-      ? `${snapshot?.connection.port} · ${snapshot?.connection.baud_rate} baud`
-      : "Chưa nhận device transport",
-    `${valueOrDash(measurements?.bus_voltage_v)} V · ${valueOrDash(measurements?.current_ma, 1)} mA`,
-    measurements
-      ? `${measurements.driver_enabled ? "Đang bật" : "Đang tắt"} · PWM ${measurements.pwm_percent}%`
-      : "Chờ telemetry",
-    measurements?.motor_rpm == null
-      ? "RPM chờ hiệu chuẩn encoder"
-      : `${valueOrDash(measurements.motor_rpm, 0)} RPM`,
-  ];
-  const nodes = hardwareProfile ? flowRoles.map((role, index) => {
-    const componentId = hardwareProfile.roles[role];
-    const component = hardwareProfile.components.find(
-      (item) => item.component_id === componentId,
-    );
+  const componentPresentation = {
+    controller: { icon: Cpu, tone: "blue" },
+    sensor: { icon: Activity, tone: "teal" },
+    driver: { icon: Zap, tone: "violet" },
+    actuator: { icon: RotateCcw, tone: "orange" },
+    power: { icon: Gauge, tone: "orange" },
+    compute: { icon: Cpu, tone: "blue" },
+    communication: { icon: Cable, tone: "teal" },
+    other: { icon: Activity, tone: "teal" },
+  } as const;
+  const nodes = hardwareProfile ? hardwareProfile.components.map((component) => {
+    const detail = component.component_id === hardwareProfile.roles.controller
+      ? deviceLive
+        ? `${snapshot?.connection.port} · ${snapshot?.connection.baud_rate} baud`
+        : "Chưa nhận device transport"
+      : component.component_id === hardwareProfile.roles.power_monitor
+        ? `${valueOrDash(measurements?.bus_voltage_v)} V · ${valueOrDash(measurements?.current_ma, 1)} mA`
+        : component.component_id === hardwareProfile.roles.motor_driver
+          ? measurements
+            ? `${measurements.driver_enabled ? "Đang bật" : "Đang tắt"} · PWM ${measurements.pwm_percent}%`
+            : "Chờ telemetry"
+          : component.component_id === hardwareProfile.roles.actuator
+            ? measurements?.motor_rpm == null
+              ? "RPM chờ hiệu chuẩn encoder"
+              : `${valueOrDash(measurements.motor_rpm, 0)} RPM`
+            : component.component_id === hardwareProfile.roles.power
+              ? "Nguồn cấp cho hệ thống"
+              : `${component.capabilities.length} khả năng đã khai báo`;
+    const presentation = componentPresentation[
+      component.component_type as keyof typeof componentPresentation
+    ] ?? componentPresentation.other;
     return {
-      id: componentId,
-      name: component?.model ?? componentId,
-      type: component?.component_type ?? role.replaceAll("_", " "),
-      detail: nodeDetails[index],
-      ...flowPresentation[index],
+      id: component.component_id,
+      name: component.model,
+      type: component.component_type.replaceAll("_", " "),
+      detail,
+      ...presentation,
       state:
-        role === "controller" && !deviceLive
+        component.component_id === hardwareProfile.roles.controller && !deviceLive
           ? ("waiting" as NodeState)
-          : componentState(componentId, activeDiagnostics, Boolean(telemetry)),
+          : componentState(component.component_id, activeDiagnostics, Boolean(telemetry)),
     };
   }) : [];
   const hardwareFlowTitle = nodes.length
     ? nodes.map((node) => node.name).join(" → ")
     : "Đang tải hardware profile từ backend";
+  const profileLabel = `Profile ${snapshot?.hardware.profile_schema_version ?? hardwareProfile?.schema_version ?? "--"} · ${snapshot?.hardware.profile_id ?? hardwareProfile?.profile_id ?? "đang tải"}`;
 
   const togglePause = () => setPausedLogs((current) => (current ? null : [...(snapshot?.logs ?? [])]));
   const clearVisibleLogs = () => setHiddenBefore(new Date().toISOString());
@@ -361,39 +369,48 @@ export function HardwareGraphPage() {
       </section>
 
       <section className="card graph-card">
-        <div className="panel__header">
-          <div>
+        <div className="panel__header graph-card__header">
+          <div className="graph-card__heading">
             <p className="eyebrow">BOM signal path</p>
-            <h2>{hardwareFlowTitle}</h2>
+            <h2 className="graph-card__title" title={hardwareFlowTitle}>{hardwareFlowTitle}</h2>
           </div>
           <span className={`status-pill status-pill--${snapshot?.health.status ?? "warning"}`}>
             {activeDiagnostics.length} lỗi đang mở
           </span>
         </div>
-        <div className="hardware-flow">
-          {nodes.map(({ id, name, type, detail, icon: Icon, tone, state }, index) => (
-            <div className="hardware-step" key={id}>
-              <div
-                className={`hardware-node hardware-node--${tone} hardware-node--state-${state}`}
-              >
-                <span className="hardware-node__icon">
-                  <Icon size={24} />
-                </span>
-                <span>
-                  <small>{type}</small>
-                  <strong>{name}</strong>
-                  <em>{detail}</em>
-                </span>
-                <span className={`node-state node-state--${state}`}>{stateLabel(state)}</span>
+        <div
+          className="hardware-flow"
+          data-testid="hardware-flow-scroll"
+          role="region"
+          aria-label={`Chuỗi ${nodes.length} thành phần phần cứng. Có thể cuộn ngang để xem đầy đủ.`}
+          tabIndex={0}
+        >
+          <div className="hardware-flow__track">
+            {nodes.map(({ id, name, type, detail, icon: Icon, tone, state }, index) => (
+              <div className="hardware-step" key={id}>
+                <article
+                  className={`hardware-node hardware-node--${tone} hardware-node--state-${state}`}
+                  aria-label={`${type}: ${name}, ${stateLabel(state)}`}
+                >
+                  <span className="hardware-node__icon">
+                    <Icon size={24} />
+                  </span>
+                  <span className="hardware-node__content">
+                    <small title={type}>{type}</small>
+                    <strong title={name}>{name}</strong>
+                    <em title={detail}>{detail}</em>
+                  </span>
+                  <span className={`node-state node-state--${state}`}>{stateLabel(state)}</span>
+                </article>
+                {index < nodes.length - 1 && (
+                  <span className="hardware-edge" aria-hidden="true">
+                    <i />
+                    <ArrowRight size={17} />
+                  </span>
+                )}
               </div>
-              {index < nodes.length - 1 && (
-                <span className="hardware-edge" aria-hidden="true">
-                  <i />
-                  <ArrowRight size={17} />
-                </span>
-              )}
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
         <div className="graph-legend">
           <span>
@@ -403,9 +420,7 @@ export function HardwareGraphPage() {
             {deviceLive ? "Live telemetry" : "Đang chờ dữ liệu"}
           </span>
           <span><i className="legend-line" /> Luồng tín hiệu</span>
-          <span>
-            Profile {snapshot?.hardware.profile_schema_version ?? hardwareProfile?.schema_version ?? "--"} · {snapshot?.hardware.profile_id ?? hardwareProfile?.profile_id ?? "đang tải"}
-          </span>
+          <span className="graph-legend__profile" title={profileLabel}>{profileLabel}</span>
         </div>
       </section>
 
