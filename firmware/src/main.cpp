@@ -33,6 +33,11 @@ constexpr uint32_t kMaxCommandTimeoutMs = 5000;
 constexpr uint32_t kMaxMotorTestDurationMs = 3000;
 constexpr uint32_t kCommandMeasurementSettleMs = 150;
 constexpr uint32_t kTelemetryIntervalMs = 1000;
+constexpr float kIna226ConsistencyAbsoluteToleranceMa = 5.0f;
+constexpr float kIna226ConsistencyRelativeTolerance = 0.20f;
+constexpr uint32_t kEncoderMinimumObservationMs = 250;
+constexpr uint32_t kEncoderObservationWindowMs = 1000;
+constexpr uint32_t kEncoderInvalidTransitionFloor = 3;
 #ifdef NEXUS_ENABLE_FAULT_INJECTION
 constexpr uint32_t kNormalPwmFrequencyHz = 1000;
 constexpr uint32_t kFaultPwmFrequencyHz = 100;
@@ -76,6 +81,12 @@ bool currentSensorReady = false;
 uint32_t telemetrySequence = 0;
 uint32_t lastSensorInitAttemptMs = 0;
 uint32_t lastTelemetryMs = 0;
+volatile uint32_t encoderAEdges = 0;
+volatile uint32_t encoderBEdges = 0;
+volatile uint32_t encoderInvalidTransitions = 0;
+volatile uint8_t encoderLastState = 0;
+uint32_t encoderWindowStartedMs = 0;
+bool encoderFaultReported = false;
 String serialCommandBuffer;
 bool discardOversizedCommand = false;
 CachedResponse responseCache[kRequestCacheSize];
@@ -89,6 +100,93 @@ uint32_t activePwmFrequencyHz = kNormalPwmFrequencyHz;
 uint32_t lastBaselineKeepaliveMs = 0;
 #endif
 
+void IRAM_ATTR handleEncoderChange() {
+  const uint8_t state = (digitalRead(kEncoderAPin) == HIGH ? 0x02 : 0x00) |
+                        (digitalRead(kEncoderBPin) == HIGH ? 0x01 : 0x00);
+  const uint8_t changed = state ^ encoderLastState;
+  if ((changed & 0x02) != 0) {
+    ++encoderAEdges;
+  }
+  if ((changed & 0x01) != 0) {
+    ++encoderBEdges;
+  }
+  if (changed == 0x03) {
+    ++encoderInvalidTransitions;
+  }
+  encoderLastState = state;
+}
+
+void resetEncoderObservation() {
+  noInterrupts();
+  encoderAEdges = 0;
+  encoderBEdges = 0;
+  encoderInvalidTransitions = 0;
+  encoderLastState = (digitalRead(kEncoderAPin) == HIGH ? 0x02 : 0x00) |
+                     (digitalRead(kEncoderBPin) == HIGH ? 0x01 : 0x00);
+  interrupts();
+  encoderWindowStartedMs = millis();
+}
+
+void inspectEncoderSignals(bool force = false) {
+  if (!driverEnabled) {
+    return;
+  }
+  const uint32_t elapsed = millis() - encoderWindowStartedMs;
+  if (elapsed < kEncoderMinimumObservationMs ||
+      (!force && elapsed < kEncoderObservationWindowMs)) {
+    return;
+  }
+
+  noInterrupts();
+  const uint32_t aEdges = encoderAEdges;
+  const uint32_t bEdges = encoderBEdges;
+  const uint32_t invalidTransitions = encoderInvalidTransitions;
+  interrupts();
+
+  if (aEdges == 0 && bEdges == 0) {
+    Serial.printf(
+        "[NEXUS][ERROR][ENCODER_SIGNAL_MISSING] No Hall edges while driver is enabled; "
+        "A=GPIO16 edges=%lu B=GPIO17 edges=%lu elapsed_ms=%lu\n",
+        static_cast<unsigned long>(aEdges),
+        static_cast<unsigned long>(bEdges),
+        static_cast<unsigned long>(elapsed));
+    encoderFaultReported = true;
+  } else if (aEdges == 0) {
+    Serial.printf(
+        "[NEXUS][ERROR][ENCODER_CHANNEL_A_MISSING] B has %lu edges but A=GPIO16 has none; "
+        "elapsed_ms=%lu\n",
+        static_cast<unsigned long>(bEdges),
+        static_cast<unsigned long>(elapsed));
+    encoderFaultReported = true;
+  } else if (bEdges == 0) {
+    Serial.printf(
+        "[NEXUS][ERROR][ENCODER_CHANNEL_B_MISSING] A has %lu edges but B=GPIO17 has none; "
+        "elapsed_ms=%lu\n",
+        static_cast<unsigned long>(aEdges),
+        static_cast<unsigned long>(elapsed));
+    encoderFaultReported = true;
+  } else if (invalidTransitions >= kEncoderInvalidTransitionFloor &&
+             invalidTransitions * 4 > aEdges + bEdges) {
+    Serial.printf(
+        "[NEXUS][ERROR][ENCODER_SIGNAL_INVALID] Excess invalid A/B transitions; "
+        "A_edges=%lu B_edges=%lu invalid=%lu elapsed_ms=%lu\n",
+        static_cast<unsigned long>(aEdges),
+        static_cast<unsigned long>(bEdges),
+        static_cast<unsigned long>(invalidTransitions),
+        static_cast<unsigned long>(elapsed));
+    encoderFaultReported = true;
+  } else if (encoderFaultReported) {
+    Serial.printf(
+        "[NEXUS][INFO][ENCODER_SIGNAL_OK] Hall A/B recovered; A_edges=%lu B_edges=%lu "
+        "elapsed_ms=%lu\n",
+        static_cast<unsigned long>(aEdges),
+        static_cast<unsigned long>(bEdges),
+        static_cast<unsigned long>(elapsed));
+    encoderFaultReported = false;
+  }
+  resetEncoderObservation();
+}
+
 void applySafeMotorState(uint8_t requestedPercent, bool enable) {
 #ifdef NEXUS_ENABLE_FAULT_INJECTION
   if (activeFaultProfile == "pwm_zero" && enable) {
@@ -96,16 +194,87 @@ void applySafeMotorState(uint8_t requestedPercent, bool enable) {
     enable = false;
   }
 #endif
+  const bool wasEnabled = driverEnabled;
   pwmPercent = min(requestedPercent, kMaxPwmPercent);
   driverEnabled = enable && pwmPercent > 0;
 
   digitalWrite(kMotorIn1Pin, driverEnabled ? HIGH : LOW);
   digitalWrite(kMotorIn2Pin, LOW);
   analogWrite(kMotorEnablePin, driverEnabled ? map(pwmPercent, 0, 100, 0, 255) : 0);
+  if (driverEnabled && !wasEnabled) {
+    resetEncoderObservation();
+  }
+}
+
+bool probeIna226Signal(bool logFailure = true) {
+  const bool sdaHigh = digitalRead(kInaSdaPin) == HIGH;
+  const bool sclHigh = digitalRead(kInaSclPin) == HIGH;
+  if (!sdaHigh || !sclHigh) {
+    if (logFailure) {
+      if (!sdaHigh) {
+        Serial.println(
+            "[NEXUS][ERROR][I2C_SDA_STUCK_LOW] SDA=GPIO1 is LOW while I2C is idle; "
+            "power off and inspect the SDA wire/pull-up");
+      }
+      if (!sclHigh) {
+        Serial.println(
+            "[NEXUS][ERROR][I2C_SCL_STUCK_LOW] SCL=GPIO2 is LOW while I2C is idle; "
+            "power off and inspect the SCL wire/pull-up");
+      }
+    }
+    return false;
+  }
+
+  Wire.beginTransmission(kIna226Address);
+  const uint8_t ackError = Wire.endTransmission(true);
+  if (ackError != 0) {
+    if (logFailure) {
+      Serial.printf(
+          "[NEXUS][ERROR][INA226_I2C_NO_ACK] address=0x40 ack_error=%u "
+          "SDA=GPIO1:%s SCL=GPIO2:%s; check sensor power, GND and both signal wires\n",
+          ackError,
+          sdaHigh ? "HIGH" : "LOW",
+          sclHigh ? "HIGH" : "LOW");
+    }
+    return false;
+  }
+  return true;
+}
+
+bool verifyIna226Identity(bool logFailure = true) {
+  const uint16_t manufacturerId = currentSensor.getManufacturerID();
+  const bool manufacturerReadOk = currentSensor.getLastError() == 0;
+  const uint16_t dieId = currentSensor.getDieID();
+  const bool dieReadOk = currentSensor.getLastError() == 0;
+  if (!manufacturerReadOk || !dieReadOk) {
+    if (logFailure) {
+      Serial.println(
+          "[NEXUS][ERROR][INA226_I2C_READ_FAILED] Identity heartbeat failed; "
+          "sample discarded");
+    }
+    return false;
+  }
+  if (manufacturerId != kIna226ManufacturerId ||
+      (dieId & kIna226DieIdMask) != kIna226DieId) {
+    if (logFailure) {
+      Serial.printf(
+          "[NEXUS][ERROR][INA226_ID_MISMATCH] Expected manufacturer=0x%04X die=0x226x; "
+          "received manufacturer=0x%04X die=0x%04X\n",
+          kIna226ManufacturerId,
+          manufacturerId,
+          dieId);
+    }
+    return false;
+  }
+  return true;
 }
 
 bool initializeCurrentSensor() {
   lastSensorInitAttemptMs = millis();
+  if (!probeIna226Signal()) {
+    currentSensorReady = false;
+    return false;
+  }
   currentSensorReady = currentSensor.begin();
   if (!currentSensorReady) {
     Serial.println(
@@ -113,18 +282,7 @@ bool initializeCurrentSensor() {
     return false;
   }
 
-  const uint16_t manufacturerId = currentSensor.getManufacturerID();
-  const bool manufacturerReadOk = currentSensor.getLastError() == 0;
-  const uint16_t dieId = currentSensor.getDieID();
-  const bool dieReadOk = currentSensor.getLastError() == 0;
-  if (!manufacturerReadOk || !dieReadOk || manufacturerId != kIna226ManufacturerId ||
-      (dieId & kIna226DieIdMask) != kIna226DieId) {
-    Serial.printf(
-        "[NEXUS][ERROR][INA226_ID_MISMATCH] Expected manufacturer=0x%04X die=0x226x; "
-        "received manufacturer=0x%04X die=0x%04X\n",
-        kIna226ManufacturerId,
-        manufacturerId,
-        dieId);
+  if (!verifyIna226Identity()) {
     currentSensorReady = false;
     return false;
   }
@@ -165,6 +323,10 @@ bool readMeasurements(MeasurementSnapshot& snapshot, bool logFailure = true) {
   if (!currentSensorReady) {
     return false;
   }
+  if (!probeIna226Signal(logFailure) || !verifyIna226Identity(logFailure)) {
+    currentSensorReady = false;
+    return false;
+  }
 
   const float busVoltageV = currentSensor.getBusVoltage();
   const bool busReadOk = currentSensor.getLastError() == 0;
@@ -197,6 +359,23 @@ bool readMeasurements(MeasurementSnapshot& snapshot, bool logFailure = true) {
     if (logFailure) {
       Serial.println(
           "[NEXUS][ERROR][INA226_INVALID_READING] Non-finite reading; sample discarded");
+    }
+    currentSensorReady = false;
+    return false;
+  }
+
+  const float currentFromShuntMa = shuntVoltageMv / kIna226ShuntOhms;
+  const float consistencyToleranceMa =
+      fmaxf(kIna226ConsistencyAbsoluteToleranceMa,
+            fabsf(currentFromShuntMa) * kIna226ConsistencyRelativeTolerance);
+  if (fabsf(measuredCurrentMa - currentFromShuntMa) > consistencyToleranceMa) {
+    if (logFailure) {
+      Serial.printf(
+          "[NEXUS][ERROR][INA226_SIGNAL_INCONSISTENT] current_register=%.2fmA "
+          "shunt_derived=%.2fmA tolerance=%.2fmA; sample discarded\n",
+          measuredCurrentMa,
+          currentFromShuntMa,
+          consistencyToleranceMa);
     }
     currentSensorReady = false;
     return false;
@@ -672,8 +851,10 @@ String executeCommand(const ParsedCommand& parsed) {
             break;
           }
         }
+        inspectEncoderSignals();
         delay(5);
       }
+      inspectEncoderSignals(true);
       applySafeMotorState(0, false);
       if (failed) {
         return buildErrorResponse(parsed, failureCode, failureMessage, true);
@@ -919,8 +1100,15 @@ void setup() {
   pinMode(kMotorEnablePin, OUTPUT);
   pinMode(kMotorIn1Pin, OUTPUT);
   pinMode(kMotorIn2Pin, OUTPUT);
-  pinMode(kEncoderAPin, INPUT);
-  pinMode(kEncoderBPin, INPUT);
+  pinMode(kEncoderAPin, INPUT_PULLUP);
+  pinMode(kEncoderBPin, INPUT_PULLUP);
+  encoderLastState = (digitalRead(kEncoderAPin) == HIGH ? 0x02 : 0x00) |
+                     (digitalRead(kEncoderBPin) == HIGH ? 0x01 : 0x00);
+  attachInterrupt(digitalPinToInterrupt(kEncoderAPin), handleEncoderChange, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(kEncoderBPin), handleEncoderChange, CHANGE);
+  Serial.println(
+      "[NEXUS][INFO][SIGNAL_MONITOR_READY] I2C SDA/SCL checked every sample; "
+      "encoder A/B checked whenever the driver runs");
 #ifdef NEXUS_ENABLE_FAULT_INJECTION
   analogWriteFrequency(kNormalPwmFrequencyHz);
 #endif
@@ -942,5 +1130,6 @@ void loop() {
     lastTelemetryMs = millis();
     emitTelemetry();
   }
+  inspectEncoderSignals();
   delay(5);
 }
