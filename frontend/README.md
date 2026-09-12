@@ -10,12 +10,16 @@ Available now:
 - React Router navigation for all three screens
 - typed v1 contract mirrors
 - REST bootstrap and WebSocket realtime snapshots with automatic reconnect
+- manual reconnect, retry state, latest-update age and a 24-sample telemetry history
+- real metric trend bars generated from incoming voltage, current and power samples
 - real ESP32 terminal log with pause/hide-old-log controls
+- searchable, level-filtered and downloadable live logs
 - component-level fault cards with a direct repair action
+- route-level code splitting, local system fonts and Vietnamese SEO metadata
 - Vite environment configuration
 - ESLint and production build checks
 
-Dashboard and Hardware Graph use the backend's real serial stream. Missing hardware values render as `--`; the UI never substitutes demo readings. The AI Doctor conversation is still presentation-only until its dedicated backend integration.
+Dashboard and Hardware Graph use the backend's real serial stream. Missing hardware values render as `--`; the UI never substitutes demo readings. Live AI model access remains controlled by the backend.
 
 ## Prerequisites
 
@@ -105,7 +109,7 @@ Run these inside `frontend`, or prefix them with `npm --prefix frontend` from th
 npm run check
 ```
 
-Expected result: ESLint exits without errors, ten unit tests pass, and Vite creates `dist/index.html` plus hashed assets. `dist/` and `node_modules/` are generated locally and must not be committed.
+Expected result: ESLint exits without errors, eleven unit tests pass, and Vite creates `dist/index.html` plus hashed, route-split assets. `dist/` and `node_modules/` are generated locally and must not be committed.
 
 Run only the unit tests or keep them in watch mode:
 

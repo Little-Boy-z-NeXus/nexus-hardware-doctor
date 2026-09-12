@@ -5,10 +5,13 @@ import {
   CheckCircle2,
   CircleOff,
   Cpu,
+  Download,
   Gauge,
   Pause,
   Play,
+  RefreshCw,
   RotateCcw,
+  Search,
   TerminalSquare,
   Trash2,
   Zap,
@@ -57,9 +60,11 @@ function stateLabel(state: NodeState) {
 }
 
 export function HardwareGraphPage() {
-  const { snapshot, streamStatus } = useHardwareMonitor();
+  const { snapshot, streamStatus, reconnect } = useHardwareMonitor();
   const [pausedLogs, setPausedLogs] = useState<LiveLog[] | null>(null);
   const [hiddenBefore, setHiddenBefore] = useState<string | null>(null);
+  const [logQuery, setLogQuery] = useState("");
+  const [logLevel, setLogLevel] = useState<"all" | LiveLog["level"]>("all");
   const terminalRef = useRef<HTMLDivElement>(null);
   const telemetry = snapshot.telemetry;
   const measurements = telemetry?.measurements;
@@ -67,9 +72,12 @@ export function HardwareGraphPage() {
     () => snapshot.diagnostics.filter((item) => item.active),
     [snapshot.diagnostics],
   );
-  const visibleLogs = (pausedLogs ?? snapshot.logs).filter(
-    (item) => !hiddenBefore || item.occurred_at > hiddenBefore,
-  );
+  const visibleLogs = (pausedLogs ?? snapshot.logs).filter((item) => {
+    const afterClear = !hiddenBefore || item.occurred_at > hiddenBefore;
+    const levelMatches = logLevel === "all" || item.level === logLevel;
+    const queryMatches = item.message.toLocaleLowerCase("vi").includes(logQuery.trim().toLocaleLowerCase("vi"));
+    return afterClear && levelMatches && queryMatches;
+  });
   const deviceLive = streamStatus === "live" && snapshot.connection.status === "connected";
   const savedLogName = snapshot.connection.log_file?.split(/[\\/]/).pop() ?? "đang chờ log";
 
@@ -129,12 +137,23 @@ export function HardwareGraphPage() {
 
   const togglePause = () => setPausedLogs((current) => (current ? null : [...snapshot.logs]));
   const clearVisibleLogs = () => setHiddenBefore(new Date().toISOString());
+  const downloadLogs = () => {
+    const body = visibleLogs
+      .map((item) => `[${item.occurred_at}] [${item.level.toUpperCase()}] [${item.source}] ${item.message}`)
+      .join("\n");
+    const url = URL.createObjectURL(new Blob([body], { type: "text/plain;charset=utf-8" }));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `nexus-live-log-${new Date().toISOString().replaceAll(":", "-")}.txt`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="page-stack">
       <PageHeader
-        eyebrow="Realtime hardware doctor"
-        title="Hardware Graph"
+        eyebrow="Bác sĩ phần cứng realtime"
+        title="Sơ đồ phần cứng"
         description="Theo dõi đúng bộ MVP đã chốt, xem log từ ESP32 và nhận hướng dẫn xử lý lỗi mà không cần mở CMD."
         action={
           <span className={`status-pill status-pill--${deviceLive ? "healthy" : "warning"}`}>
@@ -146,6 +165,8 @@ export function HardwareGraphPage() {
 
       <section
         className={`connection-banner connection-banner--${deviceLive ? "healthy" : snapshot.connection.status === "error" ? "error" : "warning"}`}
+        role="status"
+        aria-live="polite"
       >
         <span className="connection-banner__icon">
           {deviceLive ? <CheckCircle2 size={20} /> : <AlertTriangle size={20} />}
@@ -163,6 +184,7 @@ export function HardwareGraphPage() {
         <span className="connection-banner__meta">
           Gói cuối: {timeLabel(snapshot.connection.last_seen_at)}
         </span>
+        {!deviceLive && <button className="button button--secondary connection-banner__action" type="button" onClick={reconnect}><RefreshCw size={15} /> Thử nối lại</button>}
       </section>
 
       <section className="card graph-card">
@@ -222,7 +244,7 @@ export function HardwareGraphPage() {
           </div>
           <div className="diagnostic-list">
             {streamStatus !== "live" && (
-              <div className="diagnostic-item diagnostic-item--error">
+              <div className="diagnostic-item diagnostic-item--error" role="alert">
                 <div><strong>Không kết nối được backend</strong><span>UI không thể nhận log realtime.</span></div>
                 <p><b>Làm ngay:</b> Double-click <code>nexus-start-app.cmd</code> và giữ cửa sổ Backend mở.</p>
               </div>
@@ -256,7 +278,23 @@ export function HardwareGraphPage() {
                 {pausedLogs ? "Tiếp tục" : "Tạm dừng"}
               </button>
               <button type="button" onClick={clearVisibleLogs}><Trash2 size={14} />Ẩn log cũ</button>
+              <button type="button" onClick={downloadLogs} disabled={!visibleLogs.length}><Download size={14} />Tải log</button>
             </div>
+          </div>
+          <div className="terminal-toolbar">
+            <label>
+              <Search size={15} aria-hidden="true" />
+              <span className="sr-only">Tìm trong log</span>
+              <input value={logQuery} onChange={(event) => setLogQuery(event.target.value)} placeholder="Tìm mã lỗi hoặc giá trị…" />
+            </label>
+            <select value={logLevel} onChange={(event) => setLogLevel(event.target.value as typeof logLevel)} aria-label="Lọc log theo mức">
+              <option value="all">Tất cả mức</option>
+              <option value="error">Lỗi</option>
+              <option value="warning">Cảnh báo</option>
+              <option value="telemetry">Telemetry</option>
+              <option value="info">Thông tin</option>
+            </select>
+            <span>{visibleLogs.length} dòng</span>
           </div>
           <div className="terminal-feed" ref={terminalRef} role="log" aria-live="polite">
             {visibleLogs.length === 0 && (
