@@ -124,3 +124,21 @@ incur usage that the provider did not return, so reports are not billing stateme
 The [12 September live acceptance](evidence/h01-h04-live-nebius.md) records 10/10 top-2
 predictions and valid evidence/plans on the INA226 development set. `h07_complete` remains
 false because the physical gates above have not been performed.
+
+## Separate synthetic challenge
+
+`--dataset challenge` selects twelve separately authored cases with changed readings,
+mixed inspection evidence, unavailable RPM, negative/reference current disagreement,
+and an untrusted symptom that requests a fabricated repair. The original development
+dataset and repeated simulated golden paths are unchanged. Expected labels, case names
+and case IDs are excluded from planner input. Reports now contain the dataset SHA-256
+as well as the prompt digest.
+
+```bash
+python -m nexus_backend.evaluation --live --env-file .env --dataset challenge --output artifacts/h07-challenge.json
+```
+
+The first live challenge run is frozen before execution and retained without tuning
+the prompt, model settings, cases or labels against its results. Subsequent runs are
+regression runs, not new unseen evaluations. This remains a small, locally authored
+synthetic set; it is not independent hardware ground truth or physical H07 acceptance.

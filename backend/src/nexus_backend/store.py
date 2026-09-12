@@ -166,7 +166,8 @@ class SQLiteStore:
         with self._lock:
             return json.loads(self._device_row(device_id)["hardware_model_json"])
 
-    def append_telemetry(self, payload: dict) -> tuple[dict, dict, bool]:
+    def append_telemetry(self, payload: dict, *, provenance: dict | None = None
+                         ) -> tuple[dict, dict, bool]:
         body_json = _json(payload)
         device_id = payload["device_id"]
         sample_id = payload["sample_id"]
@@ -210,6 +211,8 @@ class SQLiteStore:
                 "payload": {"sample_id": sample_id, "source": source},
                 "related_tool_call_id": None,
             }
+            if provenance is not None:
+                event["payload"]["provenance"] = provenance
             self._connection.execute(
                 """INSERT INTO events (event_id, device_id, telemetry_id, payload_json)
                    VALUES (?, ?, ?, ?)""",

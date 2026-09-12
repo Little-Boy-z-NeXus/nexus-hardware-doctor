@@ -102,8 +102,8 @@ class SafetyPolicy:
         if tool_name not in WRITE_TOOLS:
             return decision("blocked", "This tool has no implemented adapter")
         if mode == "real":
-            return decision("manual_required", "Physical writes are unavailable: no device adapter "
-                            "or verified electrical ratings exist")
+            return decision("manual_required", "Physical writes are disabled; the device adapter "
+                            "only supports reads and electrical ratings remain unverified")
         try:
             checked = validate_contract("telemetry", sample)
         except (ContractValidationError, TypeError):
