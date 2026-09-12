@@ -8,7 +8,7 @@ const routeMetadata: Record<string, { title: string; description: string }> = {
   },
   "/hardware": {
     title: "Sơ đồ và log phần cứng | NeXus",
-    description: "Xem luồng GOOUUU ESP32-S3, INA226, L298N, JGB37-520 và log chẩn đoán realtime.",
+    description: "Xem hardware profile đang chọn, kết nối, tín hiệu và log chẩn đoán realtime.",
   },
   "/doctor": {
     title: "Bác sĩ AI | NeXus",
