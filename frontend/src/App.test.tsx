@@ -77,4 +77,17 @@ describe("NeXus application routes", () => {
       screen.getAllByText("Chỉ kiểm chứng được khi motor chạy trong bài test có giám sát."),
     ).toHaveLength(2);
   });
+
+  it("shows separate firmware and physical sensor identity checks", async () => {
+    renderAt("/hardware");
+
+    expect(
+      await screen.findByRole("heading", { name: "Đối chiếu firmware với BOM" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Firmware")).toBeInTheDocument();
+    expect(screen.getByText("Yêu cầu INA226 R100 · 0x40")).toBeInTheDocument();
+    expect(
+      screen.getByText("Chờ đọc identity; INA219 hoặc module gắn nhầm sẽ bị chặn tại đây."),
+    ).toBeInTheDocument();
+  });
 });

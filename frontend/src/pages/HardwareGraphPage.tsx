@@ -13,6 +13,7 @@ import {
   RefreshCw,
   RotateCcw,
   Search,
+  ShieldCheck,
   TerminalSquare,
   Trash2,
   Zap,
@@ -96,6 +97,65 @@ export function HardwareGraphPage() {
     last_i2c_verified_at: null,
     last_encoder_verified_at: null,
   };
+  const compatibility = snapshot.compatibility ?? {
+    expected_hardware_model_id: snapshot.hardware.hardware_model_id,
+    reported_hardware_model_id: null,
+    firmware_profile_version: null,
+    firmware_profile_verified: false,
+    sensor_identity_verified: false,
+    last_verified_at: null,
+  };
+  const firmwareMismatch = activeSignalIssue(activeDiagnostics, [
+    "FIRMWARE_PROFILE_MISMATCH",
+    "HARDWARE_MODEL_MISMATCH",
+  ]);
+  const sensorMismatch = activeSignalIssue(activeDiagnostics, ["INA226_ID_MISMATCH"]);
+  const compatibilityChecks: SignalCheck[] = [
+    {
+      id: "firmware-profile",
+      label: "Firmware",
+      pin: `Profile ${compatibility.firmware_profile_version ?? "chưa nhận"}`,
+      state: firmwareMismatch
+        ? "error"
+        : compatibility.firmware_profile_verified
+          ? "healthy"
+          : "waiting",
+      detail:
+        firmwareMismatch?.action ??
+        (compatibility.firmware_profile_verified
+          ? "Firmware đang chạy đúng profile đã build cho BOM MVP."
+          : "Chờ heartbeat HARDWARE_PROFILE; nếu chờ lâu, hãy nạp firmware mới nhất."),
+    },
+    {
+      id: "sensor-identity",
+      label: "Chip cảm biến",
+      pin: "Yêu cầu INA226 R100 · 0x40",
+      state: sensorMismatch
+        ? "error"
+        : compatibility.sensor_identity_verified
+          ? "healthy"
+          : "waiting",
+      detail:
+        sensorMismatch?.action ??
+        (compatibility.sensor_identity_verified
+          ? "Manufacturer ID 0x5449 và die ID 0x226x đã khớp."
+          : "Chờ đọc identity; INA219 hoặc module gắn nhầm sẽ bị chặn tại đây."),
+    },
+    {
+      id: "reported-model",
+      label: "BOM đang báo",
+      pin: compatibility.reported_hardware_model_id ?? "Chưa nhận model từ board",
+      state: firmwareMismatch
+        ? "error"
+        : compatibility.reported_hardware_model_id === compatibility.expected_hardware_model_id
+          ? "healthy"
+          : "waiting",
+      detail:
+        compatibility.reported_hardware_model_id === compatibility.expected_hardware_model_id
+          ? "Khớp GOOUUU S3 + INA226 R100 + L298N + JGB37-520."
+          : `Cần ${compatibility.expected_hardware_model_id}.`,
+    },
+  ];
   const i2cSharedCodes = [
     "INA226_I2C_NO_ACK",
     "INA226_I2C_FAILURE",
@@ -341,6 +401,32 @@ export function HardwareGraphPage() {
           <span>
             Schema {telemetry?.schema_version ?? "1.0.0"} · {snapshot.hardware.hardware_model_id}
           </span>
+        </div>
+      </section>
+
+      <section className="card signal-card" aria-labelledby="compatibility-title">
+        <div className="panel__header">
+          <div>
+            <p className="eyebrow">Hardware fingerprint</p>
+            <h2 id="compatibility-title">Đối chiếu firmware với BOM</h2>
+          </div>
+          <ShieldCheck size={21} />
+        </div>
+        <p className="signal-card__intro">
+          NeXus kiểm tra firmware khai báo đúng bộ phần cứng và xác minh identity của chip trước khi
+          tin số đo. Sai firmware và sai cảm biến được báo thành hai lỗi riêng.
+        </p>
+        <div className="signal-grid compatibility-grid" aria-live="polite">
+          {compatibilityChecks.map((check) => (
+            <article className={`signal-item signal-item--${check.state}`} key={check.id}>
+              <span className={`node-state node-state--${check.state}`}>
+                {stateLabel(check.state)}
+              </span>
+              <strong>{check.label}</strong>
+              <small>{check.pin}</small>
+              <p>{check.detail}</p>
+            </article>
+          ))}
         </div>
       </section>
 

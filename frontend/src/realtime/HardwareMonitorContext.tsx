@@ -58,6 +58,14 @@ export interface HardwareSnapshot {
     last_i2c_verified_at: string | null;
     last_encoder_verified_at: string | null;
   };
+  compatibility?: {
+    expected_hardware_model_id: string;
+    reported_hardware_model_id: string | null;
+    firmware_profile_version: string | null;
+    firmware_profile_verified: boolean;
+    sensor_identity_verified: boolean;
+    last_verified_at: string | null;
+  };
   hardware: {
     hardware_model_id: string;
     controller: string;
@@ -89,6 +97,14 @@ const initialSnapshot: HardwareSnapshot = {
     encoder_b_verified: false,
     last_i2c_verified_at: null,
     last_encoder_verified_at: null,
+  },
+  compatibility: {
+    expected_hardware_model_id: "nexus-s3-ina226-l298n-motor-rig-v1",
+    reported_hardware_model_id: null,
+    firmware_profile_version: null,
+    firmware_profile_verified: false,
+    sensor_identity_verified: false,
+    last_verified_at: null,
   },
   hardware: {
     hardware_model_id: "nexus-s3-ina226-l298n-motor-rig-v1",
