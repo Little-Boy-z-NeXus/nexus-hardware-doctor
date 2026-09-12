@@ -15,11 +15,12 @@ Available now:
 - real ESP32 terminal log with pause/hide-old-log controls
 - searchable, level-filtered and downloadable live logs
 - component-level fault cards with a direct repair action
+- interactive Vietnamese AI Doctor fallback grounded in the current snapshot and safety rules
 - route-level code splitting, local system fonts and Vietnamese SEO metadata
 - Vite environment configuration
 - ESLint and production build checks
 
-Dashboard and Hardware Graph use the backend's real serial stream. Missing hardware values render as `--`; the UI never substitutes demo readings. Live AI model access remains controlled by the backend.
+Dashboard and Hardware Graph use the backend's real serial stream. Missing hardware values render as `--`; the UI never substitutes demo readings. The AI Doctor can answer immediately from the current deterministic snapshot; it labels replay data and never presents browser-side answers as a physical command or a Nemotron call. Live model access remains controlled by the backend.
 
 ## Prerequisites
 
@@ -109,7 +110,7 @@ Run these inside `frontend`, or prefix them with `npm --prefix frontend` from th
 npm run check
 ```
 
-Expected result: ESLint exits without errors, eleven unit tests pass, and Vite creates `dist/index.html` plus hashed, route-split assets. `dist/` and `node_modules/` are generated locally and must not be committed.
+Expected result: ESLint exits without errors, twelve unit tests pass, and Vite creates `dist/index.html` plus hashed, route-split assets. `dist/` and `node_modules/` are generated locally and must not be committed.
 
 Run only the unit tests or keep them in watch mode:
 
