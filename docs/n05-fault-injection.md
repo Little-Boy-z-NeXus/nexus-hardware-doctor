@@ -11,7 +11,7 @@ firmware.
 | `PWM_ZERO` | Test build forces requested motor motion to PWM 0/off | Five requests remain at PWM 0/off |
 | `PWM_FREQUENCY_LOW` | Test build changes PWM carrier from 1 kHz to 100 Hz | Status reports 100 Hz and physical current rises 5/5 |
 | `CURRENT_OFFSET` | Test build adds exactly +200 mA after a valid INA226 read | Shift and reset to real reading reproduce 5/5 |
-| `OUT2_OPEN_MANUAL` | Operator turns off 12 V and disconnects only L298N OUT2/M− | Driver is commanded on but current stays at idle 5/5 |
+| `OUT2_OPEN_MANUAL` | Operator turns off 12 V and disconnects only L298N OUT2/M− | Driver is commanded on but current remains within 10 mA of idle 5/5; this allows L298N enable-state quiescent current while remaining far below the connected-motor baseline |
 
 Every profile starts with PWM 0/off. `NEXUS FAULT RESET` restores the normal 1 kHz PWM,
 zero measurement offset and safe motor state. The runner also retries a timed-out serial result

@@ -32,3 +32,7 @@ def test_fault_acceptance_requires_real_manual_out2_confirmation() -> None:
     assert "--manual-out2-confirmed" in launcher
     assert "Turn OFF 12 V" in launcher
     assert "reconnect OUT2/M-" in launcher
+    assert "OUT2-open preflight failed" in runner
+    assert 'result.terminal.get("response_type") != "result"' in runner
+    assert "OPEN_OUTPUT_MAX_DELTA_MA = 10.0" in runner
+    assert "for _attempt in range(2)" in runner
