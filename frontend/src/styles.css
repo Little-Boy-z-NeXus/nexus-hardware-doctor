@@ -162,6 +162,17 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 .legend-dot { width: 7px; height: 7px; background: #5bc4a8; border-radius: 50%; }
 .legend-dot--offline { background: #d99b43; }
 .legend-line { width: 18px; border-top: 1px dashed #9cabb3; }
+.signal-card { padding: 23px; }
+.signal-card__intro { max-width: 760px; margin: 10px 0 0; color: #71848f; font-size: 12px; line-height: 1.6; }
+.signal-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 18px; }
+.signal-item { min-width: 0; padding: 15px; background: #f8fafb; border: 1px solid #dfe7ea; border-radius: 11px; }
+.signal-item--healthy { background: #f1faf7; border-color: #cfe9df; }
+.signal-item--waiting, .signal-item--warning { background: #fffaf2; border-color: #efd8b2; }
+.signal-item--error { background: #fff3f2; border-color: #e9bebb; box-shadow: inset 3px 0 #c94d47; }
+.signal-item strong, .signal-item small { display: block; }
+.signal-item strong { margin-top: 8px; color: #29424e; font-size: 13px; }
+.signal-item small { margin-top: 3px; color: #7e919b; font-size: 11px; }
+.signal-item p { margin: 11px 0 0; color: #617681; font-size: 11px; line-height: 1.55; overflow-wrap: anywhere; }
 .detail-list { margin: 17px 0 0; }
 .detail-list div { display: flex; justify-content: space-between; gap: 15px; padding: 12px 0; border-bottom: 1px solid #edf1f3; }
 .detail-list div:last-child { border: 0; }
@@ -288,6 +299,7 @@ button:disabled { cursor: not-allowed; opacity: .5; }
 
 @media (max-width: 1000px) {
   .hardware-flow { flex-wrap: wrap; gap: 18px; }
+  .signal-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .hardware-edge { width: 32px; }
   .hardware-edge i { width: 18px; }
   .doctor-layout { grid-template-columns: 1fr; }
@@ -324,6 +336,7 @@ button:disabled { cursor: not-allowed; opacity: .5; }
   .hardware-step { flex-direction: column; }
   .hardware-edge { width: auto; height: 40px; flex-direction: column; transform: rotate(90deg); }
   .hardware-node { width: min(300px, 78vw); }
+  .signal-grid { grid-template-columns: 1fr; }
   .graph-legend { flex-wrap: wrap; }
   .graph-legend span:last-child { width: 100%; margin-left: 0; }
   .connection-banner { grid-template-columns: auto 1fr; }

@@ -2,6 +2,7 @@ import {
   Activity,
   AlertTriangle,
   ArrowRight,
+  Cable,
   CheckCircle2,
   CircleOff,
   Cpu,
@@ -26,6 +27,14 @@ import {
 } from "../realtime/HardwareMonitorContext";
 
 type NodeState = "healthy" | "warning" | "error" | "waiting";
+
+interface SignalCheck {
+  id: string;
+  label: string;
+  pin: string;
+  state: NodeState;
+  detail: string;
+}
 
 const timeLabel = (value: string | null) =>
   value
@@ -59,6 +68,13 @@ function stateLabel(state: NodeState) {
   }[state];
 }
 
+function activeSignalIssue(
+  diagnostics: HardwareDiagnostic[],
+  codes: string[],
+): HardwareDiagnostic | undefined {
+  return diagnostics.find((item) => codes.includes(item.code));
+}
+
 export function HardwareGraphPage() {
   const { snapshot, streamStatus, reconnect } = useHardwareMonitor();
   const [pausedLogs, setPausedLogs] = useState<LiveLog[] | null>(null);
@@ -72,6 +88,93 @@ export function HardwareGraphPage() {
     () => snapshot.diagnostics.filter((item) => item.active),
     [snapshot.diagnostics],
   );
+  const hasVerifiedEncoderWindow = snapshot.logs.some((item) =>
+    item.message.includes("ENCODER_SIGNAL_OK"),
+  );
+  const i2cSharedCodes = [
+    "INA226_I2C_NO_ACK",
+    "INA226_I2C_FAILURE",
+    "INA226_ID_MISMATCH",
+    "INA226_SIGNAL_INCONSISTENT",
+  ];
+  const signalChecks: SignalCheck[] = [
+    {
+      id: "sda",
+      label: "SDA",
+      pin: "INA226 → GPIO1",
+      state: activeSignalIssue(activeDiagnostics, ["I2C_SDA_STUCK_LOW", ...i2cSharedCodes])
+        ? "error"
+        : telemetry?.quality.source === "device"
+          ? "healthy"
+          : "waiting",
+      detail:
+        activeSignalIssue(activeDiagnostics, ["I2C_SDA_STUCK_LOW", ...i2cSharedCodes])?.action ??
+        (telemetry?.quality.source === "device"
+          ? "ACK, chip ID và dữ liệu R100 hợp lệ ở gói mới nhất."
+          : "Chờ INA226 vượt qua kiểm tra ACK và chip ID."),
+    },
+    {
+      id: "scl",
+      label: "SCL",
+      pin: "INA226 → GPIO2",
+      state: activeSignalIssue(activeDiagnostics, ["I2C_SCL_STUCK_LOW", ...i2cSharedCodes])
+        ? "error"
+        : telemetry?.quality.source === "device"
+          ? "healthy"
+          : "waiting",
+      detail:
+        activeSignalIssue(activeDiagnostics, ["I2C_SCL_STUCK_LOW", ...i2cSharedCodes])?.action ??
+        (telemetry?.quality.source === "device"
+          ? "Bus idle HIGH và giao dịch I²C hợp lệ ở gói mới nhất."
+          : "Chờ INA226 vượt qua kiểm tra bus I²C."),
+    },
+    {
+      id: "encoder-a",
+      label: "Encoder A",
+      pin: "Dây vàng → GPIO16",
+      state: activeSignalIssue(activeDiagnostics, [
+        "ENCODER_CHANNEL_A_MISSING",
+        "ENCODER_SIGNAL_MISSING",
+        "ENCODER_SIGNAL_INVALID",
+      ])
+        ? "error"
+        : hasVerifiedEncoderWindow
+          ? "healthy"
+          : "waiting",
+      detail:
+        activeSignalIssue(activeDiagnostics, [
+          "ENCODER_CHANNEL_A_MISSING",
+          "ENCODER_SIGNAL_MISSING",
+          "ENCODER_SIGNAL_INVALID",
+        ])?.action ??
+        (hasVerifiedEncoderWindow
+          ? "Đã thấy cạnh tín hiệu trong lần motor chạy gần nhất."
+          : "Chỉ kiểm chứng được khi motor chạy trong bài test có giám sát."),
+    },
+    {
+      id: "encoder-b",
+      label: "Encoder B",
+      pin: "Dây xanh lá → GPIO17",
+      state: activeSignalIssue(activeDiagnostics, [
+        "ENCODER_CHANNEL_B_MISSING",
+        "ENCODER_SIGNAL_MISSING",
+        "ENCODER_SIGNAL_INVALID",
+      ])
+        ? "error"
+        : hasVerifiedEncoderWindow
+          ? "healthy"
+          : "waiting",
+      detail:
+        activeSignalIssue(activeDiagnostics, [
+          "ENCODER_CHANNEL_B_MISSING",
+          "ENCODER_SIGNAL_MISSING",
+          "ENCODER_SIGNAL_INVALID",
+        ])?.action ??
+        (hasVerifiedEncoderWindow
+          ? "Đã thấy cạnh tín hiệu trong lần motor chạy gần nhất."
+          : "Chỉ kiểm chứng được khi motor chạy trong bài test có giám sát."),
+    },
+  ];
   const visibleLogs = (pausedLogs ?? snapshot.logs).filter((item) => {
     const afterClear = !hiddenBefore || item.occurred_at > hiddenBefore;
     const levelMatches = logLevel === "all" || item.level === logLevel;
@@ -233,6 +336,32 @@ export function HardwareGraphPage() {
           <span>
             Schema {telemetry?.schema_version ?? "1.0.0"} · {snapshot.hardware.hardware_model_id}
           </span>
+        </div>
+      </section>
+
+      <section className="card signal-card" aria-labelledby="signal-health-title">
+        <div className="panel__header">
+          <div>
+            <p className="eyebrow">Signal wire watchdog</p>
+            <h2 id="signal-health-title">Tình trạng dây tín hiệu</h2>
+          </div>
+          <Cable size={21} />
+        </div>
+        <p className="signal-card__intro">
+          SDA/SCL được kiểm tra ở từng gói. Encoder chỉ được xác nhận khi motor thực sự được lệnh
+          chạy; trạng thái chờ không có nghĩa là dây đã hỏng.
+        </p>
+        <div className="signal-grid" aria-live="polite">
+          {signalChecks.map((signal) => (
+            <article className={`signal-item signal-item--${signal.state}`} key={signal.id}>
+              <span className={`node-state node-state--${signal.state}`}>
+                {stateLabel(signal.state)}
+              </span>
+              <strong>{signal.label}</strong>
+              <small>{signal.pin}</small>
+              <p>{signal.detail}</p>
+            </article>
+          ))}
         </div>
       </section>
 
