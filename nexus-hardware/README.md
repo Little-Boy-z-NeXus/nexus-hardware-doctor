@@ -18,10 +18,11 @@ Canonical color names (`red`, `black`, `yellow`, `green`, `blue`, `white`, `oran
 `gray`, `brown`) are drawn literally. Legacy placeholders such as `configured` or `jumper` are
 shown as a dashed **Chưa chốt màu** wire: the UI and an agent must never guess a physical color.
 
-For the JGB37-520 harness in this profile, the fixed manufacturer lead order remains:
-red = Motor+, white = Motor-, blue = encoder VCC, black = encoder GND, yellow = encoder A,
-green = encoder B. For every other jumper, record the color that is physically installed; a
-general convention is only a setup default and must not override the real harness.
+For the JGB37-520 harness in this profile, the fixed lead sequence remains **red, black, yellow,
+green, blue, white**. The mapping is red = Motor+, black = encoder GND, yellow = encoder A,
+green = encoder B, blue = encoder VCC and white = Motor-. For every other jumper, record the color
+that is physically installed; a general convention is only a setup default and must not override
+the real harness.
 
 ## What the profile controls
 
