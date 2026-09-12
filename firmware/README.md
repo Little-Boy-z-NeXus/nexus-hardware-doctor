@@ -190,6 +190,7 @@ the UI immediately:
 | `I2C_SCL_STUCK_LOW` | SCL/GPIO2 is electrically held LOW while the bus should be idle | Power off; inspect SCL and pull-up |
 | `INA226_I2C_NO_ACK` | Lines are idle-high but address `0x40` does not answer | Check sensor 3V3, GND, SDA/SCL order and address straps |
 | `INA226_ID_MISMATCH` | A device answered, but it is not the expected INA226 | Check the module/IC and address |
+| `HARDWARE_PROFILE` | Firmware declares its compiled BOM fingerprint every 10 seconds | Backend compares it with the locked MVP BOM before trusting the profile |
 | `INA226_I2C_READ_FAILED` | A register transaction failed after detection | Reseat SDA/SCL and shorten/noise-proof the leads |
 | `INA226_SIGNAL_INCONSISTENT` | Current register disagrees with `shunt_mV / 0.1 Ω` | Check SDA/SCL noise, R100 marking and calibration |
 | `ENCODER_CHANNEL_A_MISSING` | B has edges during motion but A/GPIO16 does not | Check the yellow A wire |
@@ -278,6 +279,7 @@ The 30-minute baseline, temperature result, supply rating, and photos belong to 
 - Encoder fault appears: do not test continuity with motor power on. Power off, reseat the named
   A/B/VCC/GND wire, then use a short supervised motor test to verify recovery.
 - `INA226_ID_MISMATCH`: confirm the IC is really INA226 rather than INA219/INA260 and reset the board.
+- `HARDWARE_PROFILE`: must report `nexus-s3-ina226-l298n-motor-rig-v1`, `ina226-r100`, `l298n`, and `jgb37-520-12v-encoder`. A different value means the board was flashed with firmware for another hardware build.
 - Current is correct but bus voltage stays at 0 V: connect the INA226 `VBUS` input to `VIN−`; measuring 12 V at the screw terminal alone does not prove that the IC's VBUS pin is connected.
 - Readings are negative: verify INA226 current direction and `VIN+`/`VIN-` orientation.
 - Current is exactly eight times too high: the board still has INA219-calibrated firmware; upload this repository's INA226 build.
