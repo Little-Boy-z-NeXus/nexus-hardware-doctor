@@ -12,8 +12,9 @@ This directory records the decisions required to build and demonstrate the hacka
 6. [`n03-command-adapter.md`](n03-command-adapter.md) — firmware command protocol, safety gates and physical acceptance cases.
 7. [`n04-health-check.md`](n04-health-check.md) — deterministic pre-power rule checks that can run without hardware.
 8. [`n05-fault-injection.md`](n05-fault-injection.md) — supervised repeatable hardware faults and reset procedure.
-9. [`security.md`](security.md) — secret handling, redaction, model/tool boundaries, and incident basics.
-10. [`backlog.md`](backlog.md) — link to the live Google Sheet and local working rules.
+9. [`n06-auto-heal-acceptance.md`](n06-auto-heal-acceptance.md) — physical PWM fault-to-recovery loop and evidence gate.
+10. [`security.md`](security.md) — secret handling, redaction, model/tool boundaries, and incident basics.
+11. [`backlog.md`](backlog.md) — link to the live Google Sheet and local working rules.
 
 ## Document index
 
@@ -27,6 +28,7 @@ This directory records the decisions required to build and demonstrate the hacka
 | [`n03-command-adapter.md`](n03-command-adapter.md) | Building or physically accepting the N03 serial command layer | Nguyễn |
 | [`n04-health-check.md`](n04-health-check.md) | Running deterministic pre-power rule checks without hardware | Nguyễn |
 | [`n05-fault-injection.md`](n05-fault-injection.md) | Reproducing and resetting supervised fault profiles | Nguyễn |
+| [`n06-auto-heal-acceptance.md`](n06-auto-heal-acceptance.md) | Running and evidencing the bounded physical Auto Heal acceptance | Nguyễn |
 | [`security.md`](security.md) | Handling keys, telemetry, logs, prompts, or device commands | Hoàng + Hiếu |
 | [`backlog.md`](backlog.md) | Finding the live plan or mapping a commit to a task ID | Entire team |
 | [`h-resource-checklist.md`](h-resource-checklist.md) | Supplying resources to finish H tasks; remaining live acceptance gates | Hoàng |
