@@ -17,6 +17,7 @@ This directory records the decisions required to build and demonstrate the hacka
 11. [`n08-demo-kit-recovery.md`](n08-demo-kit-recovery.md) — backup firmware, spare kit and timed recovery runbook.
 12. [`security.md`](security.md) — secret handling, redaction, model/tool boundaries, and incident basics.
 13. [`backlog.md`](backlog.md) — link to the live Google Sheet and local working rules.
+14. [`nexus-integration/README.md`](nexus-integration/README.md) — U06 daily integration cadence, blocker SLA, merge gate and decision format.
 
 ## Document index
 
@@ -40,6 +41,7 @@ This directory records the decisions required to build and demonstrate the hacka
 | [`h05-h06.md`](h05-h06.md) | Reviewing bounded orchestration and default-deny policy | Hoàng |
 | [`h07-evaluation.md`](h07-evaluation.md) | Running labelled synthetic evaluation and understanding its limits | Hoàng |
 | [`h08-runbook.md`](h08-runbook.md) | Starting an isolated backend and testing controlled failures | Hoàng |
+| [`nexus-integration/README.md`](nexus-integration/README.md) | Running the daily U06 integration check and deciding whether a PR may merge | Hiếu |
 
 ## Source-of-truth rules
 

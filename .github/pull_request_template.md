@@ -10,8 +10,10 @@
 
 - [ ] `python scripts/validate_repo.py` passes
 - [ ] `python scripts/validate_contracts.py` passes
+- [ ] `nexus-ci` is green at the current PR head
 - [ ] Relevant component checks pass
 - [ ] Acceptance criteria from the backlog are demonstrated
+- [ ] The affected Prevent, Manual Diagnose, or Auto Heal path has smoke evidence
 - [ ] No credentials, private telemetry, or unredacted model logs are committed
 - [ ] Contract changes include a migration note under `nexus-contracts/migrations/`
 
