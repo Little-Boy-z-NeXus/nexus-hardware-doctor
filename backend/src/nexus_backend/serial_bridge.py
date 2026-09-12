@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import math
 import os
+import re
 import threading
 from collections import deque
 from collections.abc import Callable
@@ -23,6 +24,7 @@ from nexus_backend.serial_reads import SerialReadChannel
 from nexus_backend.validation import validate_contract
 
 EXPECTED_HARDWARE_MODEL_ID = "nexus-s3-ina226-l298n-motor-rig-v1"
+EXPECTED_SENSOR_PROFILE = "ina226-r100"
 DEFAULT_BAUD_RATE = 115_200
 MIN_BUS_VOLTAGE_V = 9.5
 MAX_CURRENT_MA = 1_500.0
@@ -49,6 +51,10 @@ ENCODER_SIGNAL_DIAGNOSTIC_CODES = (
     "ENCODER_CHANNEL_B_MISSING",
     "ENCODER_SIGNAL_MISSING",
     "ENCODER_SIGNAL_INVALID",
+)
+COMPATIBILITY_DIAGNOSTIC_CODES = (
+    "FIRMWARE_PROFILE_MISMATCH",
+    "HARDWARE_MODEL_MISMATCH",
 )
 
 SnapshotSink = Callable[[dict[str, object]], None]
@@ -119,6 +125,14 @@ class SerialBridge:
             "last_i2c_verified_at": None,
             "last_encoder_verified_at": None,
         }
+        self._compatibility: dict[str, object] = {
+            "expected_hardware_model_id": EXPECTED_HARDWARE_MODEL_ID,
+            "reported_hardware_model_id": None,
+            "firmware_profile_version": None,
+            "firmware_profile_verified": False,
+            "sensor_identity_verified": False,
+            "last_verified_at": None,
+        }
         self._log_sequence = 0
         self._log_file: TextIO | None = None
         self._log_path: Path | None = None
@@ -181,6 +195,7 @@ class SerialBridge:
                         "active_issue_count": len(active),
                     },
                     "signal_health": self._signal_health,
+                    "compatibility": self._compatibility,
                     "hardware": {
                         "hardware_model_id": EXPECTED_HARDWARE_MODEL_ID,
                         "controller": "GOOUUU Tech ESP32-S3-N16R8",
@@ -215,6 +230,44 @@ class SerialBridge:
 
         if "SIGNAL_MONITOR_READY" in line:
             self._update_signal_health(monitor_ready=True)
+            self._notify()
+            return
+
+        if "HARDWARE_PROFILE" in line:
+            fields = dict(re.findall(r"\b([a-z_]+)=([^\s]+)", line))
+            reported_model = fields.get("hardware_model_id")
+            reported_sensor = fields.get("sensor")
+            profile_version = fields.get("profile_version")
+            profile_matches = (
+                reported_model == EXPECTED_HARDWARE_MODEL_ID
+                and reported_sensor == EXPECTED_SENSOR_PROFILE
+            )
+            self._update_compatibility(
+                reported_hardware_model_id=reported_model,
+                firmware_profile_version=profile_version,
+                firmware_profile_verified=profile_matches,
+                last_verified_at=utc_now() if profile_matches else None,
+            )
+            if profile_matches:
+                self._resolve("FIRMWARE_PROFILE_MISMATCH")
+            else:
+                self._diagnose(
+                    "FIRMWARE_PROFILE_MISMATCH",
+                    "error",
+                    "esp32",
+                    "Firmware không khớp BOM đã chốt",
+                    f"Firmware khai báo model={reported_model or 'không có'} và sensor={reported_sensor or 'không có'}; cần model={EXPECTED_HARDWARE_MODEL_ID}, sensor={EXPECTED_SENSOR_PROFILE}.",
+                    "Không đổi dây để thử mò. Tắt nguồn motor, sau đó nạp firmware mới nhất bằng nexus-upload-firmware.cmd cho đúng GOOUUU ESP32-S3 + INA226 R100.",
+                )
+            self._notify()
+            return
+
+        if "INA226_READY" in line:
+            self._update_compatibility(
+                sensor_identity_verified=True,
+                last_verified_at=utc_now(),
+            )
+            self._resolve("INA226_ID_MISMATCH")
             self._notify()
             return
 
@@ -351,13 +404,14 @@ class SerialBridge:
 
         if "INA226_ID_MISMATCH" in line:
             self._update_signal_health(i2c_verified=False)
+            self._update_compatibility(sensor_identity_verified=False)
             self._diagnose(
                 "INA226_ID_MISMATCH",
                 "error",
                 "ina226",
-                "Module không phản hồi như INA226",
-                "ESP32 nhận I2C ACK nhưng mã nhà sản xuất hoặc mã chip không đúng INA226.",
-                "Đọc mã in trên IC; dùng đúng module INA226 tại địa chỉ 0x40 rồi reset board.",
+                "Cảm biến thực tế không phải INA226",
+                "ESP32 nhận I2C ACK nhưng manufacturer/die ID không đúng INA226; đây thường là INA219, INA260, module gắn nhầm hoặc chip không đúng nhãn.",
+                "Không sửa calibration để che lỗi. Tắt nguồn, đọc mã in trên IC và thay bằng INA226 R100 tại địa chỉ 0x40 rồi reset board.",
             )
             self._notify()
             return
@@ -398,6 +452,10 @@ class SerialBridge:
 
         if sample.hardware_model_id != EXPECTED_HARDWARE_MODEL_ID:
             self.reads.invalidate()
+            self._update_compatibility(
+                reported_hardware_model_id=sample.hardware_model_id,
+                firmware_profile_verified=False,
+            )
             self._diagnose(
                 "HARDWARE_MODEL_MISMATCH",
                 "error",
@@ -422,6 +480,7 @@ class SerialBridge:
                     i2c_verified=True,
                     last_i2c_verified_at=utc_now(),
                 )
+            self._compatibility["reported_hardware_model_id"] = sample.hardware_model_id
 
         record = self.reads.observe(sample.model_dump(mode="json"))
         if record is not None and self._sample_sink is not None:
@@ -627,7 +686,7 @@ class SerialBridge:
         with self._lock:
             self._connection.update(status=status, port=port, message=message)
         if status in {"searching", "error", "disconnected"}:
-            for code in MEASUREMENT_DIAGNOSTIC_CODES + I2C_SIGNAL_DIAGNOSTIC_CODES + ENCODER_SIGNAL_DIAGNOSTIC_CODES:
+            for code in MEASUREMENT_DIAGNOSTIC_CODES + I2C_SIGNAL_DIAGNOSTIC_CODES + ENCODER_SIGNAL_DIAGNOSTIC_CODES + COMPATIBILITY_DIAGNOSTIC_CODES:
                 self._resolve(code)
             self._update_signal_health(
                 monitor_ready=False,
@@ -637,11 +696,22 @@ class SerialBridge:
                 last_i2c_verified_at=None,
                 last_encoder_verified_at=None,
             )
+            self._update_compatibility(
+                reported_hardware_model_id=None,
+                firmware_profile_version=None,
+                firmware_profile_verified=False,
+                sensor_identity_verified=False,
+                last_verified_at=None,
+            )
         self._notify()
 
     def _update_signal_health(self, **changes: object) -> None:
         with self._lock:
             self._signal_health.update(changes)
+
+    def _update_compatibility(self, **changes: object) -> None:
+        with self._lock:
+            self._compatibility.update(changes)
 
     def _append_log(self, level: str, message: str, *, source: str) -> None:
         with self._lock:

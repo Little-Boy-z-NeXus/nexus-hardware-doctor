@@ -26,6 +26,7 @@ constexpr uint16_t kIna226ManufacturerId = 0x5449;
 constexpr uint16_t kIna226DieIdMask = 0xFFF0;
 constexpr uint16_t kIna226DieId = 0x2260;
 constexpr char kDeviceProtocolVersion[] = "1.0.0";
+constexpr char kHardwareProfileVersion[] = "1.0.0";
 constexpr size_t kMaxCommandLength = 512;
 constexpr size_t kRequestCacheSize = 4;
 constexpr uint32_t kDefaultCommandTimeoutMs = 4000;
@@ -410,6 +411,15 @@ void addSnapshot(JsonObject target, const MeasurementSnapshot& snapshot) {
   target["driver_enabled"] = snapshot.enabled;
 }
 
+void emitHardwareProfile() {
+  Serial.printf(
+      "[NEXUS][INFO][HARDWARE_PROFILE] profile_version=%s hardware_model_id=%s "
+      "controller=goouuu-esp32-s3-n16r8 sensor=ina226-r100 driver=l298n "
+      "motor=jgb37-520-12v-encoder pins=sda1,scl2,ena12,in1-13,in2-14,a16,b17\n",
+      kHardwareProfileVersion,
+      NEXUS_HARDWARE_MODEL_ID);
+}
+
 void emitTelemetry() {
   MeasurementSnapshot snapshot;
   if (!readMeasurements(snapshot)) {
@@ -437,6 +447,7 @@ void emitTelemetry() {
       snapshot.enabled ? "true" : "false");
   if (millis() - lastSignalMonitorHeartbeatMs >= kSignalMonitorHeartbeatMs) {
     lastSignalMonitorHeartbeatMs = millis();
+    emitHardwareProfile();
     Serial.println(
         "[NEXUS][INFO][SIGNAL_MONITOR_READY] I2C SDA/SCL checked every sample; "
         "encoder A/B checked whenever the driver runs");
@@ -1094,6 +1105,7 @@ void setup() {
   delay(300);
   Serial.println(
       "[NEXUS][INFO][BOOT] GOOUUU ESP32-S3-N16R8 / INA226 R100 / L298N / JGB37-520");
+  emitHardwareProfile();
   Serial.printf(
       "[NEXUS][INFO][DEVICE_COMMAND_PROTOCOL] version=%s writes_enabled=%s\n",
       kDeviceProtocolVersion,

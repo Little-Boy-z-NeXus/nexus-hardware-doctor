@@ -53,6 +53,56 @@ def test_signal_monitor_handshake_allows_latest_i2c_sample_to_be_verified() -> N
     assert status["last_i2c_verified_at"] is not None
 
 
+def test_locked_hardware_profile_is_verified_before_measurements() -> None:
+    bridge = SerialBridge(enabled=False, persist_logs=False)
+    bridge.ingest_line(
+        "[NEXUS][INFO][HARDWARE_PROFILE] profile_version=1.0.0 "
+        "hardware_model_id=nexus-s3-ina226-l298n-motor-rig-v1 "
+        "controller=goouuu-esp32-s3-n16r8 sensor=ina226-r100 driver=l298n"
+    )
+    bridge.ingest_line("[NEXUS][INFO][INA226_READY] identity verified")
+
+    compatibility = bridge.snapshot()["compatibility"]
+    assert compatibility["firmware_profile_verified"] is True
+    assert compatibility["sensor_identity_verified"] is True
+    assert compatibility["firmware_profile_version"] == "1.0.0"
+    assert active_codes(bridge) == set()
+
+
+def test_wrong_firmware_profile_is_named_without_trusting_telemetry() -> None:
+    bridge = SerialBridge(enabled=False, persist_logs=False)
+    bridge.ingest_line(
+        "[NEXUS][INFO][HARDWARE_PROFILE] profile_version=0.8.0 "
+        "hardware_model_id=nexus-s3-ina219-l298n-motor-rig-v1 "
+        "controller=esp32 sensor=ina219 driver=l298n"
+    )
+
+    compatibility = bridge.snapshot()["compatibility"]
+    finding = next(
+        item for item in bridge.snapshot()["diagnostics"]
+        if item["code"] == "FIRMWARE_PROFILE_MISMATCH"
+    )
+    assert compatibility["firmware_profile_verified"] is False
+    assert compatibility["reported_hardware_model_id"] == "nexus-s3-ina219-l298n-motor-rig-v1"
+    assert "nạp firmware" in finding["action"].lower()
+
+
+def test_ina219_like_identity_is_reported_as_wrong_physical_sensor() -> None:
+    bridge = SerialBridge(enabled=False, persist_logs=False)
+    bridge.ingest_line(
+        "[NEXUS][ERROR][INA226_ID_MISMATCH] Expected manufacturer=0x5449 "
+        "die=0x226x; received manufacturer=0x0000 die=0x0000"
+    )
+
+    snapshot = bridge.snapshot()
+    finding = next(
+        item for item in snapshot["diagnostics"] if item["code"] == "INA226_ID_MISMATCH"
+    )
+    assert snapshot["compatibility"]["sensor_identity_verified"] is False
+    assert "INA219" in finding["message"]
+    assert "INA226 R100" in finding["action"]
+
+
 def test_i2c_error_explains_ina226_wiring_repair() -> None:
     bridge = SerialBridge(enabled=False, persist_logs=False)
     bridge.ingest_line("[133521][E][Wire.cpp:499] requestFrom(): i2cWriteReadNonStop returned Error -1")
@@ -209,6 +259,7 @@ def test_wrong_hardware_model_is_never_accepted_as_mvp_data() -> None:
 
     assert bridge.snapshot()["telemetry"] is None
     assert "HARDWARE_MODEL_MISMATCH" in active_codes(bridge)
+    assert bridge.snapshot()["compatibility"]["reported_hardware_model_id"] == "nexus-other-board-v1"
 
 
 def test_live_log_is_persisted_as_timestamped_ndjson(tmp_path: Path) -> None:
