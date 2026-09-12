@@ -74,9 +74,15 @@ updating without reload, and the report's three `status`/`hypotheses` entries. D
 `.env`, API key, raw provider response or private telemetry logs. Keep the video in the team's
 private Drive during development; add only a reviewed share link to the Sheet.
 
-## Current acceptance status — 12 September 2026
+## Acceptance result — 12 September 2026
 
-The software gate and one-click runner are implemented. The current local app was running the
-explicit telemetry replay and had no live model configuration, so no new physical 3/3 report or
-video was claimed. Existing H01 evidence proves earlier real Nemotron calls on synthetic data;
-it does not replace this U07 physical vertical-slice run.
+U07 passed 3/3 against the physical GOOUUU ESP32-S3 on `COM8`. The backend persisted fresh
+`source=device` telemetry, the Dashboard loaded, the live WebSocket delivered the snapshot
+envelope, and all three Nebius runs returned an evidence-linked hypothesis after a successful
+policy-approved `get_telemetry` read and matching audit event. Physical commands remained off.
+
+During acceptance, the runner exposed and fixed a mismatch between the documented live
+WebSocket envelope (`type=snapshot`, payload under `data`) and the parser's old direct-payload
+assumption. A regression test now rejects malformed and replay envelopes. See the redacted
+[final acceptance evidence](evidence/u07-final-acceptance.md); detailed JSON and video evidence
+remain local and Git-ignored.

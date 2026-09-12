@@ -141,7 +141,15 @@ def check_live_websocket(base_url: str, frontend_url: str, timeout_seconds: floa
             payload = json.loads(socket.recv(timeout=timeout_seconds))
     except Exception as exc:
         raise AcceptanceError("WEBSOCKET_UNAVAILABLE", "WebSocket realtime không trả snapshot.") from exc
-    telemetry = payload.get("telemetry") if isinstance(payload, dict) else None
+    telemetry = telemetry_from_live_message(payload)
+    return telemetry
+
+
+def telemetry_from_live_message(payload: object) -> dict:
+    if (not isinstance(payload, dict) or payload.get("type") != "snapshot"
+            or not isinstance(payload.get("data"), dict)):
+        raise AcceptanceError("WEBSOCKET_INVALID", "WebSocket không trả snapshot hợp lệ.")
+    telemetry = payload["data"].get("telemetry")
     if not isinstance(telemetry, dict) or telemetry.get("quality", {}).get("source") != "device":
         raise AcceptanceError("WEBSOCKET_NOT_DEVICE", "WebSocket không mang telemetry device thật.")
     return telemetry
