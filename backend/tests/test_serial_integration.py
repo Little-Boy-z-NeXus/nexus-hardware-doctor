@@ -149,10 +149,10 @@ class ReadThenStop:
     async def plan(self, context, observations):
         self.inputs.append(deepcopy((context, observations)))
         tool = {"tool_name": "get_telemetry", "arguments": {}} if not observations else self.next_action
-        evidence = (observations[-1]["evidence_id"] if observations else
-                    context["telemetry"][-1]["sample_id"])
+        evidence = ([observations[-1]["evidence_id"]] if observations else
+                    [context["telemetry"][-1]["sample_id"]] if context["telemetry"] else [])
         return {"hypotheses": [{"id": "pwm", "label": "PWM needs inspection", "confidence": 0.6,
-                                "evidence_ids": [evidence]}],
+                                "evidence_ids": evidence}],
                 "next_tool": tool, "confidence": 0.6, "user_message": "Check PWM measurements",
                 "stop_condition": "continue" if tool else "needs_manual"}
 
@@ -207,6 +207,61 @@ def test_api_uses_one_shared_port_and_correlates_policy_read_measurement_and_his
     assert len(opens) == 1 and port.closed
     with TestClient(create_app(tmp_path / "nexus.sqlite3")) as client:
         assert client.get(session_path).json() == session
+
+
+def test_u07_requires_a_fresh_serial_read_before_live_hypothesis(tmp_path, monkeypatch):
+    app, _bridge, port, _opens = configured_app(tmp_path, monkeypatch)
+    planner = ReadThenStop()
+    planner.source = "nebius"
+    planner.last_attempts = []
+    original_plan = planner.plan
+
+    async def plan_with_runtime(context, observations):
+        result = await original_plan(context, observations)
+        planner.last_attempts = [{
+            "requested_model": "nvidia/test-nemotron",
+            "response_model": "nvidia/test-nemotron",
+            "response_id": f"chatcmpl-{len(planner.inputs)}",
+            "finish_reason": "stop",
+            "usage": {"prompt_tokens": 10, "completion_tokens": 5, "total_tokens": 15},
+            "private": "must-not-be-persisted",
+        }]
+        return result
+
+    planner.plan = plan_with_runtime
+    live_stub(monkeypatch, planner)
+    path = f"/api/devices/{model()['device_id']}"
+    with TestClient(app) as client:
+        wait_until(lambda: client.get(path + "/telemetry").status_code == 200)
+        response = client.post(path + "/diagnoses", json={
+            "symptom": "Read fresh telemetry before diagnosing", "mode": "live",
+            "require_fresh_read": True,
+        })
+        assert response.status_code == 200, response.text
+        result = response.json()["result"]
+        assert planner.inputs[0][0]["telemetry"] == []
+        assert result["source"] == "device"
+        assert result["observations"][0]["tool_name"] == "get_telemetry"
+        assert result["observations"][0]["status"] == "succeeded"
+        assert len(port.requests) == 1
+        assert [item["response_id"] for item in result["model_runtime"]["calls"]] == [
+            "chatcmpl-1", "chatcmpl-2",
+        ]
+        assert "private" not in json.dumps(result["model_runtime"])
+
+
+def test_fresh_read_gate_rejects_an_unbound_device_before_creating_a_session(
+    tmp_path, monkeypatch,
+):
+    app, _bridge, _port, _opens = configured_app(tmp_path, monkeypatch, bind=False)
+    live_stub(monkeypatch, ReadThenStop())
+    path = f"/api/devices/{model()['device_id']}"
+    with TestClient(app) as client:
+        response = client.post(path + "/diagnoses", json={
+            "symptom": "Read fresh telemetry", "mode": "live", "require_fresh_read": True,
+        })
+        assert response.status_code == 409
+        assert client.get(path + "/sessions").json() == []
 
 
 def test_history_failure_is_not_a_successful_tool_measurement(tmp_path):

@@ -22,7 +22,8 @@ for _ in range(2):
                if line.startswith('{"event":')]
     assert len(records) == 2
     assert records[0] == {"event": "diagnosis.completed", "trace_id": "trace-123",
-                          "mode": "mock", "status": "diagnosed", "steps": 1, "elapsed_ms": 2}
+                          "mode": "mock", "status": "diagnosed", "steps": 1,
+                          "elapsed_ms": 2, "model_calls": 0}
 
 
 def test_concurrency_slot_is_released_without_consuming_admission_on_busy():

@@ -90,6 +90,13 @@ The loader checks the canonical schema, formats, finite numeric values, unique c
 
 Only `get_hardware_graph` and `get_telemetry` are advertised as available backend read operations. Firmware capabilities in a hardware document do not imply that a runnable command adapter exists. Context performs no model call. Text from symptoms and declared hardware remains data for any future model prompt.
 
+U07 may set `require_fresh_read=true` on a live diagnosis. This mode is rejected unless the
+registered source is `device` and `NEXUS_SERIAL_DEVICE_ID` explicitly binds the same device.
+The first model plan receives no cached telemetry, so a passing run must select the
+policy-approved `get_telemetry` tool and ground its next hypothesis in the new serial sample.
+The result stores allowlisted model-call metadata for audit; prompts, provider bodies and secrets
+are never included.
+
 The frozen v1 schema has no per-pin electrical ratings or maximum bus voltage, and its example has no explicit supply component. Context reports these gaps rather than inventing ratings. A null device timestamp remains unknown. Histories preserve receipt order even when device clocks move backward or sequence counters reset; no age or boot identity is inferred from those counters.
 
 Canonical schemas and fixtures are included in the backend wheel directly from `nexus-contracts/v1`, with no independently maintained schema copy. H02/H03 do not modify frozen schemas.

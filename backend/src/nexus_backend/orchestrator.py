@@ -175,16 +175,51 @@ async def run_diagnosis(context: dict, planner, *, mode: str = "mock", max_steps
     verified_changes = 0
     attempted_writes = 0
     requests = {}
+    model_calls: list[dict] = []
     deadline = asyncio.get_running_loop().time() + timeout_seconds
+
+    def capture_model_calls() -> None:
+        """Keep only provider metadata that proves a call without storing model content."""
+        attempts = getattr(planner, "last_attempts", None)
+        if not isinstance(attempts, list):
+            return
+        allowed_text = {"requested_model", "response_model", "response_id", "finish_reason"}
+        allowed_numbers = {"elapsed_ms", "attempts"}
+        for attempt in attempts:
+            if not isinstance(attempt, dict):
+                continue
+            record = {
+                key: value for key, value in attempt.items()
+                if key in allowed_text and isinstance(value, str) and 1 <= len(value) <= 256
+            }
+            record.update({
+                key: value for key, value in attempt.items()
+                if key in allowed_numbers and type(value) is int and value >= 0
+            })
+            usage = attempt.get("usage")
+            if isinstance(usage, dict):
+                safe_usage = {
+                    key: usage[key] for key in
+                    ("prompt_tokens", "completion_tokens", "total_tokens")
+                    if type(usage.get(key)) is int and usage[key] >= 0
+                }
+                if safe_usage:
+                    record["usage"] = safe_usage
+            if record:
+                model_calls.append(record)
 
     def finish(status: str, reason: str) -> dict:
         serial_reads = isinstance(executor, SerialToolAdapter) and any(
             item.get("data", {}).get("scope") == "serial_read" for item in observations
         )
+        provider = getattr(planner, "source", "unknown")
+        if not isinstance(provider, str) or not 1 <= len(provider) <= 64:
+            provider = "unknown"
         return {"status": status, "plan": plan, "observations": observations, "events": events,
                 "steps": steps, "trace_id": identity, "device_id": device_id, "mode": mode,
                 "source": "simulator" if mode == "mock" else (
                     "device" if serial_reads else "context_snapshot"),
+                "model_runtime": {"provider": provider, "calls": deepcopy(model_calls)},
                 "summary": reason, "verified_simulated_changes": verified_changes,
                 "physical_operation_verified": False,
                 "limitations": ["Device transport permits reads only; motor commands remain disabled"
@@ -206,6 +241,8 @@ async def run_diagnosis(context: dict, planner, *, mode: str = "mock", max_steps
             except Exception:  # noqa: BLE001 - provider boundary fails closed without leaking details
                 if retry == max_retries:
                     return finish("planner_failed", "The planner failed after bounded retries")
+            finally:
+                capture_model_calls()
         try:
             candidate = validate_plan(raw_plan)
             if not _evidence_valid(candidate, task_context, observations):

@@ -52,9 +52,14 @@ class RunLimiter:
             self._active = max(0, self._active - 1)
 
 
-def log_run(*, trace_id: str, mode: str, status: str, steps: int, elapsed_ms: int) -> None:
+def log_run(*, trace_id: str, mode: str, status: str, steps: int, elapsed_ms: int,
+            model_calls: int = 0, model: str | None = None) -> None:
     """Never log prompts, symptoms, API keys, telemetry, provider bodies or exceptions."""
-    logger.info(json.dumps({
+    record = {
         "event": "diagnosis.completed", "trace_id": trace_id, "mode": mode,
         "status": status, "steps": steps, "elapsed_ms": elapsed_ms,
-    }, separators=(",", ":")))
+        "model_calls": model_calls,
+    }
+    if isinstance(model, str) and 1 <= len(model) <= 256:
+        record["model"] = model
+    logger.info(json.dumps(record, separators=(",", ":")))
