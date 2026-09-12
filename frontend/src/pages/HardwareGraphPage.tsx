@@ -88,9 +88,14 @@ export function HardwareGraphPage() {
     () => snapshot.diagnostics.filter((item) => item.active),
     [snapshot.diagnostics],
   );
-  const hasVerifiedEncoderWindow = snapshot.logs.some((item) =>
-    item.message.includes("ENCODER_SIGNAL_OK"),
-  );
+  const signalHealth = snapshot.signal_health ?? {
+    monitor_ready: false,
+    i2c_verified: false,
+    encoder_a_verified: false,
+    encoder_b_verified: false,
+    last_i2c_verified_at: null,
+    last_encoder_verified_at: null,
+  };
   const i2cSharedCodes = [
     "INA226_I2C_NO_ACK",
     "INA226_I2C_FAILURE",
@@ -104,12 +109,12 @@ export function HardwareGraphPage() {
       pin: "INA226 → GPIO1",
       state: activeSignalIssue(activeDiagnostics, ["I2C_SDA_STUCK_LOW", ...i2cSharedCodes])
         ? "error"
-        : telemetry?.quality.source === "device"
+        : signalHealth.i2c_verified
           ? "healthy"
           : "waiting",
       detail:
         activeSignalIssue(activeDiagnostics, ["I2C_SDA_STUCK_LOW", ...i2cSharedCodes])?.action ??
-        (telemetry?.quality.source === "device"
+        (signalHealth.i2c_verified
           ? "ACK, chip ID và dữ liệu R100 hợp lệ ở gói mới nhất."
           : "Chờ INA226 vượt qua kiểm tra ACK và chip ID."),
     },
@@ -119,12 +124,12 @@ export function HardwareGraphPage() {
       pin: "INA226 → GPIO2",
       state: activeSignalIssue(activeDiagnostics, ["I2C_SCL_STUCK_LOW", ...i2cSharedCodes])
         ? "error"
-        : telemetry?.quality.source === "device"
+        : signalHealth.i2c_verified
           ? "healthy"
           : "waiting",
       detail:
         activeSignalIssue(activeDiagnostics, ["I2C_SCL_STUCK_LOW", ...i2cSharedCodes])?.action ??
-        (telemetry?.quality.source === "device"
+        (signalHealth.i2c_verified
           ? "Bus idle HIGH và giao dịch I²C hợp lệ ở gói mới nhất."
           : "Chờ INA226 vượt qua kiểm tra bus I²C."),
     },
@@ -138,7 +143,7 @@ export function HardwareGraphPage() {
         "ENCODER_SIGNAL_INVALID",
       ])
         ? "error"
-        : hasVerifiedEncoderWindow
+        : signalHealth.encoder_a_verified
           ? "healthy"
           : "waiting",
       detail:
@@ -147,7 +152,7 @@ export function HardwareGraphPage() {
           "ENCODER_SIGNAL_MISSING",
           "ENCODER_SIGNAL_INVALID",
         ])?.action ??
-        (hasVerifiedEncoderWindow
+        (signalHealth.encoder_a_verified
           ? "Đã thấy cạnh tín hiệu trong lần motor chạy gần nhất."
           : "Chỉ kiểm chứng được khi motor chạy trong bài test có giám sát."),
     },
@@ -161,7 +166,7 @@ export function HardwareGraphPage() {
         "ENCODER_SIGNAL_INVALID",
       ])
         ? "error"
-        : hasVerifiedEncoderWindow
+        : signalHealth.encoder_b_verified
           ? "healthy"
           : "waiting",
       detail:
@@ -170,7 +175,7 @@ export function HardwareGraphPage() {
           "ENCODER_SIGNAL_MISSING",
           "ENCODER_SIGNAL_INVALID",
         ])?.action ??
-        (hasVerifiedEncoderWindow
+        (signalHealth.encoder_b_verified
           ? "Đã thấy cạnh tín hiệu trong lần motor chạy gần nhất."
           : "Chỉ kiểm chứng được khi motor chạy trong bài test có giám sát."),
     },
