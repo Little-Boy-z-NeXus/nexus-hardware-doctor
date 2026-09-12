@@ -1,10 +1,19 @@
-"""Print the serial port for the NeXus GOOUUU ESP32-S3 board."""
+"""Print the serial port matching the active Hardware-as-Code profile."""
 
 import json
 import subprocess
 
+from nexus_hardware_runtime import load_active_profile
+
 
 def main() -> int:
+    profile = load_active_profile()
+    discovery = profile["transport"].get("discovery", {})
+    usb_ids = {
+        (item["vid"].removeprefix("0x").upper(), item["pid"].removeprefix("0x").upper())
+        for item in discovery.get("usb", [])
+    }
+    descriptions = [item.lower() for item in discovery.get("description_contains", [])]
     result = subprocess.run(
         ["pio", "device", "list", "--json-output"],
         capture_output=True,
@@ -21,13 +30,14 @@ def main() -> int:
 
     for port in ports:
         hardware_id = port.get("hwid", "").upper()
-        if "VID:PID=303A:1001" in hardware_id or "VID_303A&PID_1001" in hardware_id:
-            print(port["port"])
-            return 0
+        for vid, pid in usb_ids:
+            if f"VID:PID={vid}:{pid}" in hardware_id or f"VID_{vid}&PID_{pid}" in hardware_id:
+                print(port["port"])
+                return 0
 
     for port in ports:
         description = port.get("description", "").lower()
-        if "ch343" in description or "usb serial" in description:
+        if any(fragment in description for fragment in descriptions):
             print(port["port"])
             return 0
 

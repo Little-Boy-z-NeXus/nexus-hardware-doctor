@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 
 SCRIPT_PATH = Path(__file__).resolve().parents[2] / "scripts" / "nexus_hardware_baseline.py"
+sys.path.insert(0, str(SCRIPT_PATH.parent))
 SPEC = importlib.util.spec_from_file_location("nexus_hardware_baseline", SCRIPT_PATH)
 assert SPEC is not None and SPEC.loader is not None
 BASELINE_MODULE = importlib.util.module_from_spec(SPEC)

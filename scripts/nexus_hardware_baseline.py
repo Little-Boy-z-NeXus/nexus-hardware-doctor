@@ -13,23 +13,33 @@ from pathlib import Path
 from statistics import fmean
 
 import serial
-from serial.tools import list_ports
+from nexus_device_command import detect_port
+from nexus_hardware_runtime import load_active_profile
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
-EXPECTED_MODEL = "nexus-s3-ina226-l298n-motor-rig-v1"
-MIN_BUS_VOLTAGE_V = 9.5
-MAX_BUS_VOLTAGE_V = 14.5
-MAX_CURRENT_MA = 1500.0
+HARDWARE_PROFILE = load_active_profile()
+COMPONENTS = {item["component_id"]: item for item in HARDWARE_PROFILE["components"]}
+EXPECTED_MODEL = HARDWARE_PROFILE["hardware_model_id"]
+MIN_BUS_VOLTAGE_V = float(HARDWARE_PROFILE["safety"]["min_bus_voltage_v"])
+MAX_BUS_VOLTAGE_V = float(HARDWARE_PROFILE["safety"]["max_bus_voltage_v"])
+MAX_CURRENT_MA = float(HARDWARE_PROFILE["safety"]["max_current_ma"])
 MIN_CURRENT_RISE_MA = 30.0
 MAX_LOW_CURRENT_CONSECUTIVE_SAMPLES = 5
 MIN_SAMPLE_COVERAGE = 0.90
-DEFAULT_PWM_PERCENT = 30
+DEFAULT_PWM_PERCENT = int(HARDWARE_PROFILE["firmware"]["default_motor_test_pwm_percent"])
 DEFAULT_DURATION_MINUTES = 30
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+SERIAL_BAUD_RATE = int(HARDWARE_PROFILE["transport"].get("baud_rate", 115_200))
+CONTROLLER_MODEL = str(HARDWARE_PROFILE["controller"]["model"])
+SENSOR_MODEL = str(COMPONENTS[HARDWARE_PROFILE["roles"]["power_monitor"]]["model"])
+DRIVER_MODEL = str(COMPONENTS[HARDWARE_PROFILE["roles"]["motor_driver"]]["model"])
+MOTOR_MODEL = str(COMPONENTS[HARDWARE_PROFILE["roles"]["actuator"]]["model"])
+POWER_MODEL = str(COMPONENTS[HARDWARE_PROFILE["roles"]["power"]]["model"])
+MOTOR_ENABLE_PIN = int(HARDWARE_PROFILE["firmware"]["pins"]["motor_enable"])
 
 
 @dataclass
@@ -46,18 +56,6 @@ class BaselineState:
 
 def utc_now() -> str:
     return datetime.now(UTC).isoformat().replace("+00:00", "Z")
-
-
-def detect_port() -> str | None:
-    ports = list(list_ports.comports())
-    for item in ports:
-        if item.vid == 0x303A and item.pid == 0x1001:
-            return item.device
-    for item in ports:
-        description = (item.description or "").lower()
-        if "ch343" in description or "usb serial" in description:
-            return item.device
-    return None
 
 
 def parse_telemetry(line: str) -> dict[str, object] | None:
@@ -94,7 +92,7 @@ def measurement_failures(
         return ["Telemetry thiếu trường đo bắt buộc."]
 
     if not math.isfinite(bus_voltage) or not math.isfinite(current):
-        failures.append("INA226 trả về số không hữu hạn.")
+        failures.append(f"{SENSOR_MODEL} trả về số không hữu hạn.")
     if not MIN_BUS_VOLTAGE_V <= bus_voltage <= MAX_BUS_VOLTAGE_V:
         failures.append(
             f"Điện áp {bus_voltage:.3f} V nằm ngoài "
@@ -138,7 +136,9 @@ def update_low_current_streak(
 
 
 def open_serial(port: str) -> serial.Serial:
-    device = serial.Serial(port=None, baudrate=115_200, timeout=0.25, write_timeout=1)
+    device = serial.Serial(
+        port=None, baudrate=SERIAL_BAUD_RATE, timeout=0.25, write_timeout=1,
+    )
     device.dtr = False
     device.rts = False
     device.port = port
@@ -341,7 +341,7 @@ def write_report(
 
 - Kết quả: **{'PASS' if passed else 'CHƯA ĐẠT'}**
 - Thời gian UTC: `{utc_now()}`
-- Cấu hình: INA226 R100 → L298N → JGB37-520, nguồn 12 V
+- Cấu hình: {SENSOR_MODEL} → {DRIVER_MODEL} → {MOTOR_MODEL}, nguồn {POWER_MODEL}
 - PWM: `{pwm_percent}%`
 - Thời lượng yêu cầu: `{duration_seconds}` giây
 - Thời lượng thực tế: `{duration_actual:.1f}` giây
@@ -394,13 +394,14 @@ def main() -> int:
     if duration_seconds < 10:
         print("[ERROR] Thời lượng tối thiểu là 10 giây.")
         return 2
-    if not 1 <= args.pwm <= 80:
-        print("[ERROR] PWM phải nằm trong 1..80%.")
+    max_pwm = int(HARDWARE_PROFILE["safety"]["max_pwm_percent"])
+    if not 1 <= args.pwm <= max_pwm:
+        print(f"[ERROR] PWM phải nằm trong 1..{max_pwm}% theo hardware profile.")
         return 2
 
     preflight = {
         "Dây nguồn/tín hiệu đã dán nhãn": False,
-        "ENA jumper đã tháo; GPIO12 nối ENA": False,
+        f"ENA jumper đã tháo; GPIO{MOTOR_ENABLE_PIN} nối ENA": False,
         "Trục motor thông thoáng và motor được cố định": False,
         "Có thể ngắt nguồn 12 V ngay lập tức": False,
         "Người vận hành ở cạnh bộ phần cứng trong suốt bài test": False,
@@ -417,7 +418,7 @@ def main() -> int:
 
     port = args.port or detect_port()
     if not port:
-        print("[ERROR] Không tìm thấy GOOUUU ESP32-S3 qua USB.")
+        print(f"[ERROR] Không tìm thấy {CONTROLLER_MODEL} theo USB discovery của profile.")
         return 4
 
     timestamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
@@ -439,8 +440,8 @@ def main() -> int:
 
     physical_checks = dict(preflight)
     if not args.yes:
-        physical_checks["Motor và L298N không quá nhiệt sau khi dừng"] = ask_yes(
-            "Sau khi dừng: motor và L298N không quá nhiệt/mùi lạ"
+        physical_checks[f"Motor và {DRIVER_MODEL} không quá nhiệt sau khi dừng"] = ask_yes(
+            f"Sau khi dừng: motor và {DRIVER_MODEL} không quá nhiệt/mùi lạ"
         )
         physical_checks["Video baseline đã được quay và lưu"] = ask_yes(
             "Video đã quay đủ nguồn 12 V, UI realtime, motor chạy và nút ngắt"

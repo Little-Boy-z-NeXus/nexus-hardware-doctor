@@ -12,6 +12,7 @@ from typing import Protocol
 from uuid import uuid4
 
 import serial
+from nexus_hardware_runtime import controller_gpio_pin_ids, load_active_profile
 from serial.tools import list_ports
 
 PROTOCOL_VERSION = "1.0.0"
@@ -27,7 +28,20 @@ COMMANDS = {
     "recalibrate_sensor",
 }
 WRITE_COMMANDS = {"enable_driver", "set_pwm", "run_motor_test"}
-GPIO_ALLOWLIST = {"gpio_12", "gpio_13", "gpio_14", "gpio_16", "gpio_17"}
+HARDWARE_PROFILE = load_active_profile()
+GPIO_ALLOWLIST = controller_gpio_pin_ids(HARDWARE_PROFILE)
+MAX_PWM_PERCENT = int(HARDWARE_PROFILE["safety"]["max_pwm_percent"])
+MAX_TEST_DURATION_MS = int(HARDWARE_PROFILE["safety"]["max_motor_test_duration_ms"])
+SERIAL_BAUD_RATE = int(HARDWARE_PROFILE["transport"].get("baud_rate", 115_200))
+CONTROLLER_MODEL = str(HARDWARE_PROFILE["controller"]["model"])
+DISCOVERY = HARDWARE_PROFILE["transport"].get("discovery", {})
+USB_IDENTITIES = {
+    (int(item["vid"], 16), int(item["pid"], 16))
+    for item in DISCOVERY.get("usb", [])
+}
+DISCOVERY_DESCRIPTIONS = tuple(
+    value.lower() for value in DISCOVERY.get("description_contains", [])
+)
 
 
 class SerialLike(Protocol):
@@ -66,16 +80,24 @@ def command_arguments(
             raise DeviceCommandError("enable_driver requires --enabled or --disabled")
         return {"enabled": enabled}
     if command == "set_pwm":
-        if type(pwm_percent) is not int or not 0 <= pwm_percent <= 80:
-            raise DeviceCommandError("set_pwm requires --pwm-percent between 0 and 80")
+        if type(pwm_percent) is not int or not 0 <= pwm_percent <= MAX_PWM_PERCENT:
+            raise DeviceCommandError(
+                f"set_pwm requires --pwm-percent between 0 and {MAX_PWM_PERCENT}"
+            )
         return {"pwm_percent": pwm_percent}
     if command == "run_motor_test":
-        if type(duration_ms) is not int or not 100 <= duration_ms <= 3000:
-            raise DeviceCommandError("run_motor_test requires --duration-ms between 100 and 3000")
+        if type(duration_ms) is not int or not 100 <= duration_ms <= MAX_TEST_DURATION_MS:
+            raise DeviceCommandError(
+                "run_motor_test requires --duration-ms between 100 and "
+                f"{MAX_TEST_DURATION_MS}"
+            )
         arguments: dict[str, object] = {"duration_ms": duration_ms}
         if pwm_percent is not None:
-            if type(pwm_percent) is not int or not 1 <= pwm_percent <= 80:
-                raise DeviceCommandError("motor-test --pwm-percent must be between 1 and 80")
+            if type(pwm_percent) is not int or not 1 <= pwm_percent <= MAX_PWM_PERCENT:
+                raise DeviceCommandError(
+                    "motor-test --pwm-percent must be between 1 and "
+                    f"{MAX_PWM_PERCENT}"
+                )
             arguments["pwm_percent"] = pwm_percent
         return arguments
     return {}
@@ -118,7 +140,7 @@ def _valid_snapshot(value: object) -> bool:
     return (
         all(item is None or type(item) in {int, float} for item in nullable_numbers)
         and type(value["pwm_percent"]) is int
-        and 0 <= value["pwm_percent"] <= 80
+        and 0 <= value["pwm_percent"] <= MAX_PWM_PERCENT
         and type(value["driver_enabled"]) is bool
     )
 
@@ -216,11 +238,11 @@ def exchange(device: SerialLike, request: dict[str, object]) -> CommandExchange:
 def detect_port() -> str | None:
     ports = list(list_ports.comports())
     for item in ports:
-        if item.vid == 0x303A and item.pid == 0x1001:
+        if (item.vid, item.pid) in USB_IDENTITIES:
             return item.device
     for item in ports:
         description = (item.description or "").lower()
-        if "ch343" in description or "usb serial" in description:
+        if any(fragment in description for fragment in DISCOVERY_DESCRIPTIONS):
             return item.device
     return None
 
@@ -266,9 +288,9 @@ def main() -> int:
     )
     port = args.port or detect_port()
     if not port:
-        raise DeviceCommandError("No GOOUUU ESP32-S3 serial port was found")
+        raise DeviceCommandError(f"No serial port matching {CONTROLLER_MODEL} was found")
 
-    with serial.Serial(port, 115_200, timeout=0.25) as device:
+    with serial.Serial(port, SERIAL_BAUD_RATE, timeout=0.25) as device:
         time.sleep(0.5)
         first = exchange(device, request)
         print(json.dumps({"ack": first.ack, "terminal": first.terminal}, indent=2))
