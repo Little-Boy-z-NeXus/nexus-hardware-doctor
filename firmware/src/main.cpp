@@ -87,6 +87,7 @@ volatile uint32_t encoderInvalidTransitions = 0;
 volatile uint8_t encoderLastState = 0;
 uint32_t encoderWindowStartedMs = 0;
 bool encoderFaultReported = false;
+bool encoderSignalVerified = false;
 String serialCommandBuffer;
 bool discardOversizedCommand = false;
 CachedResponse responseCache[kRequestCacheSize];
@@ -151,6 +152,7 @@ void inspectEncoderSignals(bool force = false) {
         static_cast<unsigned long>(bEdges),
         static_cast<unsigned long>(elapsed));
     encoderFaultReported = true;
+    encoderSignalVerified = false;
   } else if (aEdges == 0) {
     Serial.printf(
         "[NEXUS][ERROR][ENCODER_CHANNEL_A_MISSING] B has %lu edges but A=GPIO16 has none; "
@@ -158,6 +160,7 @@ void inspectEncoderSignals(bool force = false) {
         static_cast<unsigned long>(bEdges),
         static_cast<unsigned long>(elapsed));
     encoderFaultReported = true;
+    encoderSignalVerified = false;
   } else if (bEdges == 0) {
     Serial.printf(
         "[NEXUS][ERROR][ENCODER_CHANNEL_B_MISSING] A has %lu edges but B=GPIO17 has none; "
@@ -165,6 +168,7 @@ void inspectEncoderSignals(bool force = false) {
         static_cast<unsigned long>(aEdges),
         static_cast<unsigned long>(elapsed));
     encoderFaultReported = true;
+    encoderSignalVerified = false;
   } else if (invalidTransitions >= kEncoderInvalidTransitionFloor &&
              invalidTransitions * 4 > aEdges + bEdges) {
     Serial.printf(
@@ -175,7 +179,8 @@ void inspectEncoderSignals(bool force = false) {
         static_cast<unsigned long>(invalidTransitions),
         static_cast<unsigned long>(elapsed));
     encoderFaultReported = true;
-  } else if (encoderFaultReported) {
+    encoderSignalVerified = false;
+  } else if (encoderFaultReported || !encoderSignalVerified) {
     Serial.printf(
         "[NEXUS][INFO][ENCODER_SIGNAL_OK] Hall A/B recovered; A_edges=%lu B_edges=%lu "
         "elapsed_ms=%lu\n",
@@ -183,6 +188,7 @@ void inspectEncoderSignals(bool force = false) {
         static_cast<unsigned long>(bEdges),
         static_cast<unsigned long>(elapsed));
     encoderFaultReported = false;
+    encoderSignalVerified = true;
   }
   resetEncoderObservation();
 }
