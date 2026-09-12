@@ -11,7 +11,7 @@ from uuid import uuid4
 
 from nexus_backend.hardware import load_hardware_model
 from nexus_backend.policy import READ_TOOLS, WRITE_TOOLS, SafetyPolicy
-from nexus_backend.tool_adapter import LocalToolAdapter
+from nexus_backend.tool_adapter import LocalToolAdapter, SerialToolAdapter
 from nexus_backend.validation import validate_contract
 
 
@@ -143,8 +143,8 @@ async def run_diagnosis(context: dict, planner, *, mode: str = "mock", max_steps
     """Diagnose with bounded local tools; a result never verifies physical operation.
 
     An injected adapter and initial fixture observations support offline evaluation.
-    HTTP routes do not expose these injection points. No real-mode write is ever
-    delegated, including when a caller supplies a custom adapter.
+    HTTP routes select the configured adapter, never accept one from a request.
+    No real-mode write is delegated, including with a caller-supplied adapter.
     """
     from nexus_backend.diagnosis import validate_plan
 
@@ -178,12 +178,18 @@ async def run_diagnosis(context: dict, planner, *, mode: str = "mock", max_steps
     deadline = asyncio.get_running_loop().time() + timeout_seconds
 
     def finish(status: str, reason: str) -> dict:
+        serial_reads = isinstance(executor, SerialToolAdapter) and any(
+            item.get("data", {}).get("scope") == "serial_read" for item in observations
+        )
         return {"status": status, "plan": plan, "observations": observations, "events": events,
                 "steps": steps, "trace_id": identity, "device_id": device_id, "mode": mode,
-                "source": "simulator" if mode == "mock" else "context_snapshot",
+                "source": "simulator" if mode == "mock" else (
+                    "device" if serial_reads else "context_snapshot"),
                 "summary": reason, "verified_simulated_changes": verified_changes,
                 "physical_operation_verified": False,
-                "limitations": ["No physical device commands were executed",
+                "limitations": ["Device transport permits reads only; motor commands remain disabled"
+                                if isinstance(executor, SerialToolAdapter) else
+                                "No physical device commands were executed",
                                 "Simulated state changes do not establish motor movement"]}
 
     async def bounded(awaitable):
@@ -260,7 +266,7 @@ async def run_diagnosis(context: dict, planner, *, mode: str = "mock", max_steps
         timed_out = False
         for retry in range((max_retries if name in READ_TOOLS else 0) + 1):
             try:
-                data = _check_result_data(await bounded(executor.execute(name, deepcopy(arguments))),
+                data = _check_result_data(await bounded(executor.execute_call(deepcopy(call))),
                                           task_context, mode, identity, name)
                 break
             except TimeoutError:
@@ -285,7 +291,10 @@ async def run_diagnosis(context: dict, planner, *, mode: str = "mock", max_steps
                 return finish("timeout", "Diagnosis reached its time limit")
             continue
         observation.update(status="succeeded", data=data, recorded_at=_now())
-        events.append(_event(device_id, identity, "action.executed", "Local tool returned an observation",
+        if isinstance(executor, SerialToolAdapter) and data.get("scope") == "serial_read":
+            observation["source"] = "device"
+            task_context["telemetry"] = (task_context["telemetry"] + [data["sample"]])[-100:]
+        events.append(_event(device_id, identity, "action.executed", "Tool returned an observation",
                              source="tool", tool_call_id=tool_id,
                              payload={"mode": mode, "evidence_id": observation["evidence_id"],
                                       "physical_operation_verified": False}))

@@ -45,6 +45,23 @@ def test_dataset_contains_ten_distinct_canonical_synthetic_cases():
         assert case["expected_top2"]
 
 
+def test_challenge_is_separate_and_its_labels_do_not_enter_model_inputs():
+    from nexus_backend.diagnosis import HYPOTHESIS_IDS
+
+    cases = load_cases("challenge")
+    development = {json.dumps(case_inputs(case), sort_keys=True) for case in load_cases()}
+    assert len(cases) == 12 and len({case["case_id"] for case in cases}) == 12
+    for case in cases:
+        assert set(case["expected_top2"]) <= set(HYPOTHESIS_IDS)
+        inputs = case_inputs(case)
+        assert json.dumps(inputs, sort_keys=True) not in development
+        changed = copy.deepcopy(case)
+        changed.update(case_id="HIDDEN_CASE_ID", name="HIDDEN_NAME", expected_top2=["HIDDEN_ANSWER"])
+        assert case_inputs(changed) == inputs
+    with pytest.raises(ValueError, match="Unknown evaluation dataset"):
+        load_cases("unregistered")
+
+
 def test_answers_and_case_names_cannot_leak_into_planner_input():
     original = load_cases()[3]
     changed = copy.deepcopy(original)

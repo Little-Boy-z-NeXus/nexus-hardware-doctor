@@ -22,11 +22,14 @@ from .validation import validate_contract
 READ_TOOLS = {"get_hardware_graph", "get_telemetry", "read_gpio"}
 WRITE_TOOLS = {"set_pwm", "enable_driver", "run_motor_test"}
 TERMINALS = {"continue", "diagnosed", "needs_manual", "insufficient_evidence"}
+DATASETS = {"development": "eval_cases.json", "challenge": "eval_challenge_cases.json"}
 
 
-def load_cases() -> list[dict]:
+def load_cases(dataset: str = "development") -> list[dict]:
     """Load labelled cases from the installed package, not the working directory."""
-    data = json.loads(files("nexus_backend").joinpath("eval_cases.json").read_text("utf-8"))
+    if dataset not in DATASETS:
+        raise ValueError("Unknown evaluation dataset")
+    data = json.loads(files("nexus_backend").joinpath(DATASETS[dataset]).read_text("utf-8"))
     return data["cases"]
 
 
@@ -318,20 +321,25 @@ async def evaluate_simulated_paths(repetitions: int = 5) -> dict:
 
 
 async def run_evaluation(*, live: bool = False, repetitions: int = 5,
-                         environ: dict | None = None) -> dict:
+                         environ: dict | None = None, dataset: str = "development") -> dict:
     from .diagnosis import PROMPT_VERSION, MockPlanner, NebiusPlanner
 
+    selected_cases = load_cases(dataset)
     if live:
         from .provider import NebiusProvider, ProviderConfig
         planner = NebiusPlanner(NebiusProvider(ProviderConfig.from_env(environ)))
     else:
         planner = MockPlanner()
-    cases = await evaluate_cases(planner)
+    cases = await evaluate_cases(planner, selected_cases)
     paths = await evaluate_simulated_paths(repetitions)
     passed = (cases["accuracy_gate_passed"] and cases["safety_and_evidence_gate_passed"]
               and paths["gate_passed"])
     return {
-        "report_version": "1.1.0", "dataset_version": "h07-synthetic-v1",
+        "report_version": "1.2.0",
+        "dataset_version": "h07-synthetic-v1" if dataset == "development" else "h07-challenge-v1",
+        "dataset": dataset,
+        "dataset_sha256": hashlib.sha256(files("nexus_backend").joinpath(
+            DATASETS[dataset]).read_bytes()).hexdigest(),
         "prompt_version": PROMPT_VERSION,
         "prompt_sha256": hashlib.sha256(files("nexus_backend").joinpath(
             f"prompts/{PROMPT_VERSION}.txt"
@@ -352,7 +360,10 @@ async def run_evaluation(*, live: bool = False, repetitions: int = 5,
             "N05 fault profiles and integrated live-model hardware diagnosis accuracy",
         ],
         "limitations": [
-            "Ten hand-labelled synthetic cases are a development regression set, not a held-out benchmark.",
+            ("Ten hand-labelled synthetic cases are a development regression set, not a held-out benchmark."
+             if dataset == "development" else
+             "The synthetic challenge was authored locally, not independently collected on real hardware; "
+             "only its first run before tuning can be described as unseen by the selected model configuration."),
             "The deterministic mock and synthetic simulator cannot establish NVIDIA model quality.",
             "Prevent uses supplied electrical inspection evidence; N04 electrical rule validation is separate.",
             "Manual checks stop without writes; physical repair and a real retest remain unverified.",
@@ -369,6 +380,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--env-file", type=Path,
                         help="Explicit local configuration file, used only with --live")
     parser.add_argument("--repetitions", type=int, choices=range(1, 21), default=5)
+    parser.add_argument("--dataset", choices=sorted(DATASETS), default="development")
     parser.add_argument("--output", type=Path, default=Path("artifacts/h07-evaluation.json"))
     args = parser.parse_args(argv)
     if args.env_file and not args.live:
@@ -380,7 +392,7 @@ def main(argv: list[str] | None = None) -> int:
                 raise FileNotFoundError
             environ = {**dotenv_values(args.env_file, interpolate=False), **os.environ}
         report = asyncio.run(run_evaluation(live=args.live, repetitions=args.repetitions,
-                                            environ=environ))
+                                            environ=environ, dataset=args.dataset))
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     except Exception as error:  # noqa: BLE001 - CLI boundary must not print provider secrets.

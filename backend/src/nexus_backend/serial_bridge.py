@@ -19,6 +19,8 @@ from pydantic import ValidationError
 from serial.tools import list_ports
 
 from nexus_backend.contracts import TelemetrySample
+from nexus_backend.serial_reads import SerialReadChannel
+from nexus_backend.validation import validate_contract
 
 EXPECTED_HARDWARE_MODEL_ID = "nexus-s3-ina226-l298n-motor-rig-v1"
 DEFAULT_BAUD_RATE = 115_200
@@ -44,6 +46,15 @@ def utc_now() -> str:
 
 def reject_non_json_number(value: str) -> None:
     raise ValueError(f"{value} is not valid JSON")
+
+
+def unique_json_object(pairs: list[tuple[str, object]]) -> dict:
+    result = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("Duplicate JSON field")
+        result[key] = value
+    return result
 
 
 class SerialBridge:
@@ -80,6 +91,8 @@ class SerialBridge:
         self._stop_event = threading.Event()
         self._thread: threading.Thread | None = None
         self._sink: SnapshotSink | None = None
+        self._sample_sink: SnapshotSink | None = None
+        self.reads = SerialReadChannel()
         self._latest_sequence: int | None = None
         self._latest_telemetry: dict[str, object] | None = None
         self._logs: deque[dict[str, object]] = deque(maxlen=160)
@@ -103,6 +116,9 @@ class SerialBridge:
     def set_sink(self, sink: SnapshotSink | None) -> None:
         self._sink = sink
 
+    def set_sample_sink(self, sink: SnapshotSink | None) -> None:
+        self._sample_sink = sink
+
     def start(self) -> None:
         if not self.enabled or (self._thread and self._thread.is_alive()):
             return
@@ -116,6 +132,7 @@ class SerialBridge:
 
     def stop(self) -> None:
         self._stop_event.set()
+        self.reads.disconnect()
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=3)
         self._thread = None
@@ -207,11 +224,15 @@ class SerialBridge:
             return
 
         try:
-            payload = json.loads(line, parse_constant=reject_non_json_number)
+            if len(line.encode("utf-8")) > 8192:
+                raise ValueError("Serial frame exceeds the size limit")
+            payload = json.loads(line, parse_constant=reject_non_json_number,
+                                 object_pairs_hook=unique_json_object)
+            self.reads.receive(payload)
             if self._is_device_command_response(payload):
                 self._notify()
                 return
-            sample = TelemetrySample.model_validate(payload)
+            sample = TelemetrySample.model_validate(validate_contract("telemetry", payload))
             measurements = sample.measurements
             numeric_values = (
                 measurements.bus_voltage_v,
@@ -233,6 +254,7 @@ class SerialBridge:
             return
 
         if sample.hardware_model_id != EXPECTED_HARDWARE_MODEL_ID:
+            self.reads.invalidate()
             self._diagnose(
                 "HARDWARE_MODEL_MISMATCH",
                 "error",
@@ -252,6 +274,10 @@ class SerialBridge:
                 status="connected",
                 message=f"Đang nhận telemetry realtime từ {self._connection.get('port') or 'ESP32'}.",
             )
+
+        record = self.reads.observe(sample.model_dump(mode="json"))
+        if record is not None and self._sample_sink is not None:
+            self._sample_sink(record)
 
         self._resolve("SERIAL_DEVICE_NOT_FOUND")
         self._resolve("SERIAL_PORT_BUSY")
@@ -374,7 +400,8 @@ class SerialBridge:
                 continue
 
             try:
-                with serial.Serial(port, self.baud_rate, timeout=1) as device:
+                with serial.Serial(port, self.baud_rate, timeout=0.1, write_timeout=0.25) as device:
+                    self.reads.connect()
                     self._set_connection(
                         "connected",
                         port,
@@ -386,12 +413,26 @@ class SerialBridge:
                     self._append_log("info", f"Đã kết nối serial {port} @ {self.baud_rate} baud.", source="backend")
                     last_line = monotonic()
                     timeout_reported = False
+                    buffered = b""
+                    discarding = False
                     while not self._stop_event.is_set():
-                        raw = device.readline()
+                        self.reads.flush(device)
+                        raw = device.readline(8193)
                         if raw:
                             last_line = monotonic()
                             timeout_reported = False
-                            self.ingest_line(raw.decode("utf-8", errors="replace"), port=port)
+                            if not discarding:
+                                buffered += raw
+                                if len(buffered) > 8192:
+                                    buffered = b""
+                                    discarding = True
+                                    self.ingest_line("{", port=port)
+                            if raw.endswith(b"\n"):
+                                if not discarding:
+                                    self.ingest_line(buffered.decode("utf-8", errors="replace"),
+                                                     port=port)
+                                buffered = b""
+                                discarding = False
                         elif monotonic() - last_line >= 4 and not timeout_reported:
                             timeout_reported = True
                             self._diagnose(
@@ -413,10 +454,13 @@ class SerialBridge:
                     if is_busy
                     else "Rút/cắm lại cáp USB; backend sẽ tự tìm lại cổng COM."
                 )
+                self.reads.disconnect()
                 self._set_connection("error", port, title)
                 self._diagnose(code, "error", "esp32", title, message[:220], action)
                 self._notify()
                 self._stop_event.wait(self.retry_seconds)
+            finally:
+                self.reads.disconnect()
 
         self._set_connection("disconnected", None, "Serial bridge đã dừng.")
 

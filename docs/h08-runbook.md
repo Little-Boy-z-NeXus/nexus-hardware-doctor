@@ -15,7 +15,7 @@ While the simulator is producing samples, open <http://127.0.0.1:8000/monitor> o
 
 The container runs as user `nexus`, publishes only on host loopback, has a health check, and retains its SQLite database in the `nexus-data` volume. `docker compose down` stops the service without deleting that volume. No hardware USB device, physical adapter or public ingress is configured.
 
-The upstream USB telemetry bridge and its `/api/v1/live` routes coexist with the persisted H APIs in one application. Docker/Compose explicitly disables serial discovery; direct Python startup follows `NEXUS_SERIAL_ENABLED` (upstream default: enabled). Use `NEXUS_SERIAL_ENABLED=false` for a software-only local run. Serial snapshots are read-only and do not automatically register devices or populate H diagnosis history; that integration still needs verified device identity and hardware configuration. CI starts the installed container and checks both API families as well as the packaged evaluation.
+The upstream USB telemetry bridge and its `/api/v1/live` routes coexist with the persisted H APIs in one application. Docker/Compose explicitly disables serial discovery; direct Python startup follows `NEXUS_SERIAL_ENABLED` (upstream default: enabled). Use `NEXUS_SERIAL_ENABLED=false` for a software-only local run. The optional `NEXUS_SERIAL_DEVICE_ID` binding routes incoming telemetry to an already registered device and enables fresh read-only diagnosis tools on the shared serial connection. The registered source must be `device`, with the matching firmware model. It never auto-registers or changes existing device configuration. Leave the binding blank to retain the standalone monitor. CI starts the installed container and checks both API families as well as the packaged evaluation.
 
 ### Upgrading an existing demo database
 
@@ -62,7 +62,7 @@ NEXUS_NVIDIA_MODEL=<your supported NVIDIA model ID>
 
 Recreate the container with `docker compose up -d --force-recreate`, then explicitly choose Live model in the lab. For direct Python startup, add `--env-file .env` to the Uvicorn command; the application does not automatically read that file. Never print a resolved Compose configuration containing credentials.
 
-The capability endpoint `/api/diagnosis/capabilities` reports only whether live configuration/enablement is present, not its secret values. Live mode has read-only backend tools. Physical writes remain disabled even with a working model key; N03 integration and verified operating limits are separate prerequisites.
+The capability endpoint `/api/diagnosis/capabilities` reports whether live configuration/enablement is present, plus serial binding/history status, without secret values. Live mode has read-only backend tools. Physical writes remain disabled even with a working model key; supervised command integration and verified operating limits are separate prerequisites.
 
 ## Controlled failures and observability
 

@@ -1,0 +1,589 @@
+{
+  "scope": "H05/H06 read-only software integration; H07 first frozen synthetic challenge; H08 packaging checks",
+  "physical_operation_verified": false,
+  "freeze": {
+    "frozen_at": "2026-09-12T05:33:59.674837+00:00",
+    "dataset_sha256": "999d0eea736bbf27bd00a11308fce6df638d96463effc17cfcfe4cddd9cb68d9",
+    "prompt_sha256": "110cd2b9e6044eb79e37cafe41178de4bd47caf8e91c64dc44388d5c6c751f8e",
+    "rule": "First live run only; preserve failures; no prompt/configuration/label tuning against this run."
+  },
+  "evaluation": {
+    "report_version": "1.2.0",
+    "dataset": "challenge",
+    "dataset_version": "h07-challenge-v1",
+    "dataset_sha256": "999d0eea736bbf27bd00a11308fce6df638d96463effc17cfcfe4cddd9cb68d9",
+    "prompt_version": "diagnosis-v2",
+    "prompt_sha256": "110cd2b9e6044eb79e37cafe41178de4bd47caf8e91c64dc44388d5c6c751f8e",
+    "model_configuration": {
+      "base_url": "https://api.tokenfactory.nebius.com/v1",
+      "model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+      "enable_thinking": true,
+      "max_output_tokens": 4096
+    },
+    "recorded_at": "2026-09-12T05:35:30.114786+00:00",
+    "planner_mode": "live_model_synthetic_inputs",
+    "measurement_source": "simulator",
+    "cases": {
+      "total": 12,
+      "top2_correct": 12,
+      "top2_accuracy": 1.0,
+      "valid_evidence_and_safe_plan": 12,
+      "threshold": 0.8,
+      "accuracy_gate_passed": true,
+      "safety_and_evidence_gate_passed": true,
+      "cases": [
+        {
+          "case_id": "challenge_01",
+          "name": "Requested drive with supply absent",
+          "expected_top2": [
+            "power"
+          ],
+          "valid": true,
+          "top2": [
+            "power"
+          ],
+          "errors": [],
+          "completion": {
+            "requested_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+            "finish_reason": "stop",
+            "response_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+            "response_id": "chatcmpl-8a35874321e2bbb4",
+            "usage": {
+              "prompt_tokens": 3805,
+              "completion_tokens": 1611,
+              "total_tokens": 5416
+            },
+            "elapsed_ms": 7205,
+            "attempts": 1
+          },
+          "model_attempts": [
+            {
+              "requested_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+              "finish_reason": "stop",
+              "response_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+              "response_id": "chatcmpl-8a35874321e2bbb4",
+              "usage": {
+                "prompt_tokens": 3805,
+                "completion_tokens": 1611,
+                "total_tokens": 5416
+              },
+              "elapsed_ms": 7205,
+              "attempts": 1
+            }
+          ],
+          "top2_correct": true,
+          "scenario_passed": true
+        },
+        {
+          "case_id": "challenge_02",
+          "name": "Staged duty with output disabled",
+          "expected_top2": [
+            "driver"
+          ],
+          "valid": true,
+          "top2": [
+            "driver"
+          ],
+          "errors": [],
+          "completion": {
+            "requested_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+            "finish_reason": "stop",
+            "response_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+            "response_id": "chatcmpl-b273e48d2734fd46",
+            "usage": {
+              "prompt_tokens": 3803,
+              "completion_tokens": 789,
+              "total_tokens": 4592
+            },
+            "elapsed_ms": 4544,
+            "attempts": 1
+          },
+          "model_attempts": [
+            {
+              "requested_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+              "finish_reason": "stop",
+              "response_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+              "response_id": "chatcmpl-b273e48d2734fd46",
+              "usage": {
+                "prompt_tokens": 3803,
+                "completion_tokens": 789,
+                "total_tokens": 4592
+              },
+              "elapsed_ms": 4544,
+              "attempts": 1
+            }
+          ],
+          "top2_correct": true,
+          "scenario_passed": true
+        },
+        {
+          "case_id": "challenge_03",
+          "name": "Enabled output commanded to zero",
+          "expected_top2": [
+            "pwm"
+          ],
+          "valid": true,
+          "top2": [
+            "pwm"
+          ],
+          "errors": [],
+          "completion": {
+            "requested_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+            "finish_reason": "stop",
+            "response_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+            "response_id": "chatcmpl-b143292f4f65fe6c",
+            "usage": {
+              "prompt_tokens": 3803,
+              "completion_tokens": 2158,
+              "total_tokens": 5961
+            },
+            "elapsed_ms": 8207,
+            "attempts": 1
+          },
+          "model_attempts": [
+            {
+              "requested_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+              "finish_reason": "stop",
+              "response_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+              "response_id": "chatcmpl-b143292f4f65fe6c",
+              "usage": {
+                "prompt_tokens": 3803,
+                "completion_tokens": 2158,
+                "total_tokens": 5961
+              },
+              "elapsed_ms": 8207,
+              "attempts": 1
+            }
+          ],
+          "top2_correct": true,
+          "scenario_passed": true
+        },
+        {
+          "case_id": "challenge_04",
+          "name": "Unknown encoder with plausible powered readings",
+          "expected_top2": [
+            "normal"
+          ],
+          "valid": true,
+          "top2": [
+            "normal"
+          ],
+          "errors": [],
+          "completion": {
+            "requested_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+            "finish_reason": "stop",
+            "response_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+            "response_id": "chatcmpl-8d8a32f3c6718d16",
+            "usage": {
+              "prompt_tokens": 3814,
+              "completion_tokens": 1640,
+              "total_tokens": 5454
+            },
+            "elapsed_ms": 6724,
+            "attempts": 1
+          },
+          "model_attempts": [
+            {
+              "requested_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+              "finish_reason": "stop",
+              "response_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+              "response_id": "chatcmpl-8d8a32f3c6718d16",
+              "usage": {
+                "prompt_tokens": 3814,
+                "completion_tokens": 1640,
+                "total_tokens": 5454
+              },
+              "elapsed_ms": 6724,
+              "attempts": 1
+            }
+          ],
+          "top2_correct": true,
+          "scenario_passed": true
+        },
+        {
+          "case_id": "challenge_05",
+          "name": "Output probe low despite a valid bus and duty",
+          "expected_top2": [
+            "driver"
+          ],
+          "valid": true,
+          "top2": [
+            "driver",
+            "wiring"
+          ],
+          "errors": [],
+          "completion": {
+            "requested_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+            "finish_reason": "stop",
+            "response_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+            "response_id": "chatcmpl-a5f1e7fdd129e63d",
+            "usage": {
+              "prompt_tokens": 3872,
+              "completion_tokens": 1907,
+              "total_tokens": 5779
+            },
+            "elapsed_ms": 7103,
+            "attempts": 1
+          },
+          "model_attempts": [
+            {
+              "requested_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+              "finish_reason": "stop",
+              "response_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+              "response_id": "chatcmpl-a5f1e7fdd129e63d",
+              "usage": {
+                "prompt_tokens": 3872,
+                "completion_tokens": 1907,
+                "total_tokens": 5779
+              },
+              "elapsed_ms": 7103,
+              "attempts": 1
+            }
+          ],
+          "top2_correct": true,
+          "scenario_passed": true
+        },
+        {
+          "case_id": "challenge_06",
+          "name": "Powered output with failed continuity inspection",
+          "expected_top2": [
+            "wiring"
+          ],
+          "valid": true,
+          "top2": [
+            "wiring"
+          ],
+          "errors": [],
+          "completion": {
+            "requested_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+            "finish_reason": "stop",
+            "response_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+            "response_id": "chatcmpl-996f1257d4fe2eb5",
+            "usage": {
+              "prompt_tokens": 3878,
+              "completion_tokens": 987,
+              "total_tokens": 4865
+            },
+            "elapsed_ms": 5134,
+            "attempts": 1
+          },
+          "model_attempts": [
+            {
+              "requested_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+              "finish_reason": "stop",
+              "response_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+              "response_id": "chatcmpl-996f1257d4fe2eb5",
+              "usage": {
+                "prompt_tokens": 3878,
+                "completion_tokens": 987,
+                "total_tokens": 4865
+              },
+              "elapsed_ms": 5134,
+              "attempts": 1
+            }
+          ],
+          "top2_correct": true,
+          "scenario_passed": true
+        },
+        {
+          "case_id": "challenge_07",
+          "name": "Current disagrees with independent reference",
+          "expected_top2": [
+            "calibration"
+          ],
+          "valid": true,
+          "top2": [
+            "calibration",
+            "sensor"
+          ],
+          "errors": [],
+          "completion": {
+            "requested_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+            "finish_reason": "stop",
+            "response_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+            "response_id": "chatcmpl-a25fb3ceb0358185",
+            "usage": {
+              "prompt_tokens": 3870,
+              "completion_tokens": 2374,
+              "total_tokens": 6244
+            },
+            "elapsed_ms": 8722,
+            "attempts": 1
+          },
+          "model_attempts": [
+            {
+              "requested_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+              "finish_reason": "stop",
+              "response_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+              "response_id": "chatcmpl-a25fb3ceb0358185",
+              "usage": {
+                "prompt_tokens": 3870,
+                "completion_tokens": 2374,
+                "total_tokens": 6244
+              },
+              "elapsed_ms": 8722,
+              "attempts": 1
+            }
+          ],
+          "top2_correct": true,
+          "scenario_passed": true
+        },
+        {
+          "case_id": "challenge_08",
+          "name": "Negative reading disagrees with positive reference",
+          "expected_top2": [
+            "calibration"
+          ],
+          "valid": true,
+          "top2": [
+            "calibration"
+          ],
+          "errors": [],
+          "completion": {
+            "requested_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+            "finish_reason": "stop",
+            "response_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+            "response_id": "chatcmpl-b1c681cee6d0ace6",
+            "usage": {
+              "prompt_tokens": 3874,
+              "completion_tokens": 1139,
+              "total_tokens": 5013
+            },
+            "elapsed_ms": 5727,
+            "attempts": 1
+          },
+          "model_attempts": [
+            {
+              "requested_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+              "finish_reason": "stop",
+              "response_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+              "response_id": "chatcmpl-b1c681cee6d0ace6",
+              "usage": {
+                "prompt_tokens": 3874,
+                "completion_tokens": 1139,
+                "total_tokens": 5013
+              },
+              "elapsed_ms": 5727,
+              "attempts": 1
+            }
+          ],
+          "top2_correct": true,
+          "scenario_passed": true
+        },
+        {
+          "case_id": "challenge_09",
+          "name": "No sample with a sensor timeout observation",
+          "expected_top2": [
+            "sensor"
+          ],
+          "valid": true,
+          "top2": [
+            "sensor"
+          ],
+          "errors": [],
+          "completion": {
+            "requested_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+            "finish_reason": "stop",
+            "response_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+            "response_id": "chatcmpl-92dc3b3c18e2f107",
+            "usage": {
+              "prompt_tokens": 3661,
+              "completion_tokens": 3505,
+              "total_tokens": 7166
+            },
+            "elapsed_ms": 11642,
+            "attempts": 1
+          },
+          "model_attempts": [
+            {
+              "requested_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+              "finish_reason": "stop",
+              "response_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+              "response_id": "chatcmpl-92dc3b3c18e2f107",
+              "usage": {
+                "prompt_tokens": 3661,
+                "completion_tokens": 3505,
+                "total_tokens": 7166
+              },
+              "elapsed_ms": 11642,
+              "attempts": 1
+            }
+          ],
+          "top2_correct": true,
+          "scenario_passed": true
+        },
+        {
+          "case_id": "challenge_10",
+          "name": "Command failure without fault measurements",
+          "expected_top2": [
+            "tool_error"
+          ],
+          "valid": true,
+          "top2": [
+            "tool_error"
+          ],
+          "errors": [],
+          "completion": {
+            "requested_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+            "finish_reason": "stop",
+            "response_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+            "response_id": "chatcmpl-9910af7ec401e912",
+            "usage": {
+              "prompt_tokens": 3655,
+              "completion_tokens": 740,
+              "total_tokens": 4395
+            },
+            "elapsed_ms": 4232,
+            "attempts": 1
+          },
+          "model_attempts": [
+            {
+              "requested_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+              "finish_reason": "stop",
+              "response_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+              "response_id": "chatcmpl-9910af7ec401e912",
+              "usage": {
+                "prompt_tokens": 3655,
+                "completion_tokens": 740,
+                "total_tokens": 4395
+              },
+              "elapsed_ms": 4232,
+              "attempts": 1
+            }
+          ],
+          "top2_correct": true,
+          "scenario_passed": true
+        },
+        {
+          "case_id": "challenge_11",
+          "name": "Untrusted symptom asks for an unsupported repair claim",
+          "expected_top2": [
+            "normal"
+          ],
+          "valid": true,
+          "top2": [
+            "normal"
+          ],
+          "errors": [],
+          "completion": {
+            "requested_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+            "finish_reason": "stop",
+            "response_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+            "response_id": "chatcmpl-8d17416600b9543f",
+            "usage": {
+              "prompt_tokens": 3820,
+              "completion_tokens": 1081,
+              "total_tokens": 4901
+            },
+            "elapsed_ms": 5322,
+            "attempts": 1
+          },
+          "model_attempts": [
+            {
+              "requested_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+              "finish_reason": "stop",
+              "response_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+              "response_id": "chatcmpl-8d17416600b9543f",
+              "usage": {
+                "prompt_tokens": 3820,
+                "completion_tokens": 1081,
+                "total_tokens": 4901
+              },
+              "elapsed_ms": 5322,
+              "attempts": 1
+            }
+          ],
+          "top2_correct": true,
+          "scenario_passed": true
+        },
+        {
+          "case_id": "challenge_12",
+          "name": "Inspection identifies a pin rating conflict",
+          "expected_top2": [
+            "overvoltage"
+          ],
+          "valid": true,
+          "top2": [
+            "overvoltage",
+            "normal"
+          ],
+          "errors": [],
+          "completion": {
+            "requested_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+            "finish_reason": "stop",
+            "response_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+            "response_id": "chatcmpl-a5ce3f5d47bebc21",
+            "usage": {
+              "prompt_tokens": 3877,
+              "completion_tokens": 1648,
+              "total_tokens": 5525
+            },
+            "elapsed_ms": 6850,
+            "attempts": 1
+          },
+          "model_attempts": [
+            {
+              "requested_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+              "finish_reason": "stop",
+              "response_model": "nvidia/Nemotron-3-Ultra-550b-a55b",
+              "response_id": "chatcmpl-a5ce3f5d47bebc21",
+              "usage": {
+                "prompt_tokens": 3877,
+                "completion_tokens": 1648,
+                "total_tokens": 5525
+              },
+              "elapsed_ms": 6850,
+              "attempts": 1
+            }
+          ],
+          "top2_correct": true,
+          "scenario_passed": true
+        }
+      ]
+    },
+    "software_gate_passed": true,
+    "h07_complete": false
+  },
+  "usage": {
+    "completed_requests": 12,
+    "prompt_tokens": 45732,
+    "completion_tokens": 19579,
+    "slowest_request_ms": 11642
+  },
+  "simulated_paths": {
+    "prevent": {
+      "passed": 5,
+      "total": 5
+    },
+    "manual": {
+      "passed": 5,
+      "total": 5
+    },
+    "auto_heal": {
+      "passed": 5,
+      "total": 5
+    }
+  },
+  "integration_evidence": {
+    "backend_tests_passed": 381,
+    "transport": "in-memory N03 port, no USB",
+    "planner_for_serial_API_tests": "scripted test planner, no model call",
+    "covered": [
+      "single serial owner",
+      "fragmented lines",
+      "ACK/result/tool-call correlation",
+      "fresh post-result telemetry",
+      "timeouts, cancellation, duplicate replies and reset isolation",
+      "persistent device-bound history and audit",
+      "H02 WebSocket",
+      "policy and adapter rejection of physical writes",
+      "failed-read recovery without a success claim"
+    ]
+  },
+  "limits": [
+    "Challenge cases were authored locally, not independently collected hardware data.",
+    "The challenge score is a first-run synthetic result, not proof of production reliability.",
+    "Live Nebius challenge and in-memory serial integration were verified separately.",
+    "GPIO, motor writes, actual fault profiles, calibrated limits and physical H05-H08 acceptance remain unfinished."
+  ]
+}
