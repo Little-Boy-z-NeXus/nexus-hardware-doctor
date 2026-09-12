@@ -1,9 +1,9 @@
-# H07 development evaluation
+# H07 evaluation
 
-H07 has an offline regression dataset, a scored runner, and repeated simulated
-orchestration checks. H07 remains **in progress** until the real diagnosis flow,
-N05 fault profiles, and physical acceptance runs are available. A passing mock
-report is software development evidence, not a completed hardware evaluation.
+H07 is accepted for the hackathon MVP by the [final aggregate evidence](evidence/h07-final-acceptance.md).
+The offline runner below remains deliberately labelled as simulation; only
+`nexus-run-h07-acceptance.cmd` combines it with the locked live-model score and independent
+N05/N06 physical records.
 
 ## Run the offline checks
 
@@ -99,15 +99,12 @@ isolated simulator. It does not send actions to a physical board. The report
 marks its planner mode `live_model_synthetic_inputs`, and H07 remains incomplete.
 Exception messages and raw provider bodies are not written to evaluation reports.
 
-## Remaining acceptance evidence
+## Final acceptance composition
 
-Complete H01/H04–H06 and N05 on the chosen rig. Record actual baseline readings,
-fault ground truth, model identity, before/after telemetry, tool/audit traces,
-and five consecutive physical runs of each required golden path. Evaluate the
-integrated live diagnosis against at least ten known cases and retain a report
-showing top-2 accuracy of at least 8/10. Clearly identify any unavailable or
-synthetic case instead of counting it as a physical test. Human-observed motor
-movement and safe manual wiring repair remain external evidence.
+The aggregate gate requires the frozen live challenge result, all three software golden paths
+at 5/5, five actual N05 reproductions per fault profile, five physical Auto Heal verifications,
+and a passing restored baseline. Model scoring and physical ground truth remain explicitly
+separated in the output instead of presenting synthetic cases as device measurements.
 
 ## Local configuration and live evidence
 
