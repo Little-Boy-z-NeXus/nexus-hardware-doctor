@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "nexus_device_command.py"
+sys.path.insert(0, str(SCRIPT.parent))
 SPEC = importlib.util.spec_from_file_location("nexus_device_command", SCRIPT)
 assert SPEC is not None and SPEC.loader is not None
 nexus_device_command = importlib.util.module_from_spec(SPEC)

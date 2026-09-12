@@ -22,16 +22,38 @@ function ageLabel(timestamp: number | null, now: number | null) {
 export function AppShell() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [now, setNow] = useState<number | null>(null);
-  const { snapshot, streamStatus, lastUpdatedAt, retryAttempt, reconnect } = useHardwareMonitor();
-  const isLive = streamStatus === "live" && snapshot.connection.status === "connected";
-  const isReplay = snapshot.telemetry?.quality.source === "replay";
+  const {
+    snapshot,
+    hardwareProfile,
+    streamStatus,
+    lastUpdatedAt,
+    retryAttempt,
+    reconnect,
+  } = useHardwareMonitor();
+  const isLive = streamStatus === "live" && snapshot?.connection.status === "connected";
+  const dataSource = snapshot?.telemetry?.quality.source;
+  const sourceLabel = dataSource === "device"
+    ? "DEVICE LIVE"
+    : dataSource === "replay"
+      ? "REPLAY"
+      : dataSource === "simulator"
+        ? "SIMULATOR"
+        : "OFFLINE";
+  const sourceIsSynthetic = dataSource === "replay" || dataSource === "simulator";
+  const controllerName = hardwareProfile?.controller.model ?? "board trong profile";
   const connectionLabel = isLive
-    ? `${snapshot.connection.port ?? "USB"} · ${isReplay ? "Replay" : "Realtime"}`
+    ? `${snapshot?.connection.port ?? hardwareProfile?.transport.type ?? "transport"} · ${sourceLabel}`
     : streamStatus === "live"
-      ? "Đang tìm ESP32"
+      ? `Đang tìm ${controllerName}`
       : streamStatus === "reconnecting"
         ? `Đang nối lại${retryAttempt ? ` · lần ${retryAttempt}` : ""}`
         : "Backend chưa sẵn sàng";
+  const roleOrder = ["controller", "power_monitor", "motor_driver", "actuator"] as const;
+  const hardwareLabel = hardwareProfile
+    ? roleOrder.map((role) => hardwareProfile.components.find(
+        (item) => item.component_id === hardwareProfile.roles[role],
+      )?.model).filter(Boolean).join(" · ")
+    : "Đang tải hardware profile";
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 10_000);
@@ -65,7 +87,7 @@ export function AppShell() {
             <span><strong>Bộ demo MVP</strong><small>{connectionLabel}</small></span>
             <span className={`online-dot${isLive ? "" : " online-dot--offline"}`} aria-label={isLive ? "Đang nhận dữ liệu" : "Chưa nhận dữ liệu"} />
           </div>
-          <p>GOOUUU S3 · INA226 · L298N · JGB37-520</p>
+          <p>{hardwareLabel}</p>
         </div>
       </aside>
 
@@ -80,7 +102,7 @@ export function AppShell() {
           </div>
           <div className="topbar__actions">
             {!isLive && <button className="topbar__reconnect" type="button" onClick={reconnect}><RefreshCw size={15} /> Nối lại</button>}
-            <span className={`demo-badge${isReplay ? " demo-badge--replay" : ""}`}>{isReplay ? "REPLAY" : "LIVE MVP"}</span>
+            <span className={`demo-badge${sourceIsSynthetic ? " demo-badge--replay" : ""}`}>{sourceLabel}</span>
             <span className="team-chip" aria-label="Nhóm Little Boyz"><UsersRound size={19} /><span>Little Boyz</span></span>
           </div>
         </header>

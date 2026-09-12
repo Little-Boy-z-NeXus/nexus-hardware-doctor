@@ -147,14 +147,14 @@ The current generated values are:
 
 | Flag | Default | Meaning |
 | --- | --- | --- |
-| `NEXUS_DEVICE_ID` | `nexus-demo-esp32` | Deployment-specific device identity in every payload |
+| runtime `device_id` | `nexus-{board_id}-{12-hex-chip-id}` | Stable identity derived from the ESP32 eFuse MAC at boot |
 | `NEXUS_HARDWARE_MODEL_ID` | `nexus-s3-ina226-l298n-motor-rig-v1` | Frozen ESP32-S3/INA226/L298N hardware model identity |
 | `NEXUS_MAX_PWM_PERCENT` | `80` | Absolute firmware PWM ceiling |
 | `NEXUS_MAX_CURRENT_MA` | `1500` | Motion is stopped/rejected above this measured current |
 | `NEXUS_MIN_BUS_VOLTAGE_MV` | `9500` | Minimum measured motor bus for motion |
 | `NEXUS_MAX_BUS_VOLTAGE_MV` | `13000` | Maximum verified MVP motor bus for motion |
 
-Except for the deployment-specific device ID, these values come from the JSON profile. Do not
+All build values come from the JSON profile; the device ID is derived from the physical chip. Do not
 raise the PWM ceiling until the physical hardware baseline and temperature checks are complete.
 Never store Wi-Fi or broker credentials in the profile or `platformio.ini`.
 
@@ -165,9 +165,9 @@ At 115200 baud, the device emits one compact JSON object per line:
 ```json
 {
   "schema_version": "1.0.0",
-  "device_id": "nexus-demo-esp32",
+  "device_id": "nexus-goouuu-esp32-s3-n16r8-30eda027da00",
   "hardware_model_id": "nexus-s3-ina226-l298n-motor-rig-v1",
-  "sample_id": "nexus-demo-esp32-42",
+  "sample_id": "nexus-goouuu-esp32-s3-n16r8-30eda027da00-42",
   "recorded_at": null,
   "sequence": 42,
   "measurements": {

@@ -21,6 +21,7 @@ from serial.tools import list_ports
 
 from nexus_backend.contracts import TelemetrySample
 from nexus_backend.hardware_profile import (
+    component,
     load_hardware_profile,
     profile_fingerprint,
     profile_summary,
@@ -62,6 +63,20 @@ COMPATIBILITY_DIAGNOSTIC_CODES = (
     "FIRMWARE_PROFILE_MISMATCH",
     "HARDWARE_MODEL_MISMATCH",
 )
+DIAGNOSTIC_SIGNALS = {
+    "FIRMWARE_PROFILE_MISMATCH": "firmware_profile",
+    "HARDWARE_MODEL_MISMATCH": "firmware_profile",
+    "INA226_ID_MISMATCH": "sensor_identity",
+    "I2C_SDA_STUCK_LOW": "i2c_sda",
+    "I2C_SCL_STUCK_LOW": "i2c_scl",
+    "INA226_I2C_NO_ACK": "i2c_bus",
+    "INA226_I2C_FAILURE": "i2c_bus",
+    "INA226_SIGNAL_INCONSISTENT": "i2c_bus",
+    "ENCODER_CHANNEL_A_MISSING": "encoder_a",
+    "ENCODER_CHANNEL_B_MISSING": "encoder_b",
+    "ENCODER_SIGNAL_MISSING": "encoder_bus",
+    "ENCODER_SIGNAL_INVALID": "encoder_bus",
+}
 
 SnapshotSink = Callable[[dict[str, object]], None]
 
@@ -84,7 +99,7 @@ def unique_json_object(pairs: list[tuple[str, object]]) -> dict:
 
 
 class SerialBridge:
-    """Own one ESP32 serial connection and expose a thread-safe live snapshot."""
+    """Own the profile-selected serial controller and expose a live snapshot."""
 
     def __init__(
         self,
@@ -104,6 +119,34 @@ class SerialBridge:
         self.expected_hardware_model_id = self.hardware_profile["hardware_model_id"]
         self.expected_sensor_profile = self.hardware_profile["firmware"]["sensor_profile"]
         self.controller_model = self.hardware_profile["controller"]["model"]
+        self.controller_component_id = self.hardware_profile["roles"]["controller"]
+        self.sensor_component_id = self.hardware_profile["roles"]["power_monitor"]
+        self.driver_component_id = self.hardware_profile["roles"]["motor_driver"]
+        self.motor_component_id = self.hardware_profile["roles"]["actuator"]
+        self.power_component_id = self.hardware_profile["roles"]["power"]
+        self.sensor_model = component(
+            self.hardware_profile, self.sensor_component_id
+        )["model"]
+        self.driver_model = component(
+            self.hardware_profile, self.driver_component_id
+        )["model"]
+        self.motor_model = component(
+            self.hardware_profile, self.motor_component_id
+        )["model"]
+        self.power_model = component(
+            self.hardware_profile, self.power_component_id
+        )["model"]
+        pins = self.hardware_profile["firmware"]["pins"]
+        self.i2c_sda_pin = pins["i2c_sda"]
+        self.i2c_scl_pin = pins["i2c_scl"]
+        self.encoder_a_pin = pins["encoder_a"]
+        self.encoder_b_pin = pins["encoder_b"]
+        self.sensor_i2c_address = self.hardware_profile["firmware"]["sensor"][
+            "i2c_address"
+        ]
+        self.sensor_shunt_ohms = self.hardware_profile["firmware"]["sensor"][
+            "shunt_ohms"
+        ]
         self.min_bus_voltage_v = self.hardware_profile["safety"]["min_bus_voltage_v"]
         self.max_current_ma = self.hardware_profile["safety"]["max_current_ma"]
         self.max_pwm_percent = self.hardware_profile["safety"]["max_pwm_percent"]
@@ -279,7 +322,7 @@ class SerialBridge:
                 self._diagnose(
                     "FIRMWARE_PROFILE_MISMATCH",
                     "error",
-                    "esp32",
+                    self.controller_component_id,
                     "Firmware không khớp BOM đã chốt",
                     f"Firmware báo profile={reported_profile_id or 'không có'} / "
                     f"sha256={reported_profile_sha256 or 'không có'} / "
@@ -309,10 +352,13 @@ class SerialBridge:
             self._diagnose(
                 "I2C_SDA_STUCK_LOW",
                 "error",
-                "ina226",
+                self.sensor_component_id,
                 "Dây SDA đang bị giữ LOW",
-                "GPIO1 không trở về mức HIGH khi bus I²C rảnh, nên dữ liệu INA226 không đáng tin.",
-                "Tắt nguồn motor; kiểm tra SDA của INA226 → GPIO1, điểm chạm GND/chập dây và điện trở pull-up rồi reset ESP32.",
+                f"GPIO{self.i2c_sda_pin} không trở về mức HIGH khi bus I²C rảnh, "
+                f"nên dữ liệu {self.sensor_model} không đáng tin.",
+                f"Tắt nguồn motor; kiểm tra SDA của {self.sensor_model} → "
+                f"GPIO{self.i2c_sda_pin}, điểm chạm GND/chập dây và điện trở pull-up "
+                f"rồi reset {self.controller_model}.",
             )
             self._notify()
             return
@@ -322,10 +368,13 @@ class SerialBridge:
             self._diagnose(
                 "I2C_SCL_STUCK_LOW",
                 "error",
-                "ina226",
+                self.sensor_component_id,
                 "Dây SCL đang bị giữ LOW",
-                "GPIO2 không trở về mức HIGH khi bus I²C rảnh, nên ESP32 không thể clock INA226 an toàn.",
-                "Tắt nguồn motor; kiểm tra SCL của INA226 → GPIO2, điểm chạm GND/chập dây và điện trở pull-up rồi reset ESP32.",
+                f"GPIO{self.i2c_scl_pin} không trở về mức HIGH khi bus I²C rảnh, "
+                f"nên {self.controller_model} không thể clock {self.sensor_model} an toàn.",
+                f"Tắt nguồn motor; kiểm tra SCL của {self.sensor_model} → "
+                f"GPIO{self.i2c_scl_pin}, điểm chạm GND/chập dây và điện trở pull-up "
+                f"rồi reset {self.controller_model}.",
             )
             self._notify()
             return
@@ -336,10 +385,12 @@ class SerialBridge:
             self._diagnose(
                 "INA226_I2C_NO_ACK",
                 "error",
-                "ina226",
-                "INA226 không phản hồi trên SDA/SCL",
-                "SDA/SCL đang ở mức rảnh nhưng địa chỉ I²C 0x40 không trả ACK; firmware đã bỏ mẫu.",
-                "Tắt nguồn motor; kiểm tra INA226 VCC→3V3, GND chung, SDA→GPIO1, SCL→GPIO2 và chân đổi địa chỉ A0/A1.",
+                self.sensor_component_id,
+                f"{self.sensor_model} không phản hồi trên SDA/SCL",
+                f"SDA/SCL đang ở mức rảnh nhưng địa chỉ I²C {self.sensor_i2c_address} "
+                "không trả ACK; firmware đã bỏ mẫu.",
+                f"Tắt nguồn motor; kiểm tra {self.sensor_model} VCC, GND chung, "
+                f"SDA→GPIO{self.i2c_sda_pin}, SCL→GPIO{self.i2c_scl_pin} và chân đổi địa chỉ.",
             )
             self._notify()
             return
@@ -349,10 +400,12 @@ class SerialBridge:
             self._diagnose(
                 "INA226_SIGNAL_INCONSISTENT",
                 "error",
-                "ina226",
-                "Tín hiệu INA226 không nhất quán",
-                "Thanh ghi dòng không khớp với dòng tính độc lập từ điện áp shunt R100; mẫu có thể sai do dây I²C/nhiễu/hiệu chuẩn.",
-                "Tắt motor; cắm lại SDA/SCL và GND, tách dây khỏi OUT1/OUT2, xác nhận điện trở R100 rồi reset để INA226 tự hiệu chuẩn lại.",
+                self.sensor_component_id,
+                f"Tín hiệu {self.sensor_model} không nhất quán",
+                f"Thanh ghi dòng không khớp với dòng tính độc lập từ shunt "
+                f"{self.sensor_shunt_ohms:g} Ω; mẫu có thể sai do I²C, nhiễu hoặc hiệu chuẩn.",
+                f"Tắt motor; cắm lại SDA/SCL và GND, tách dây khỏi đầu ra "
+                f"{self.driver_model}, xác nhận shunt {self.sensor_shunt_ohms:g} Ω rồi reset.",
             )
             self._notify()
             return
@@ -360,23 +413,38 @@ class SerialBridge:
         encoder_faults = {
             "ENCODER_CHANNEL_A_MISSING": (
                 "Mất tín hiệu encoder A",
-                "Encoder B có xung nhưng dây A/GPIO16 không có cạnh tín hiệu.",
-                "Tắt nguồn motor; cắm lại dây encoder A màu vàng vào GPIO16 và kiểm tra GND/VCC 3.3V.",
+                f"Encoder B có xung nhưng dây A/GPIO{self.encoder_a_pin} không có cạnh tín hiệu.",
+                (
+                    f"Tắt nguồn motor; kiểm tra kết nối encoder A → GPIO{self.encoder_a_pin} "
+                    "và đối chiếu màu dây, GND, VCC trong hardware profile."
+                ),
             ),
             "ENCODER_CHANNEL_B_MISSING": (
                 "Mất tín hiệu encoder B",
-                "Encoder A có xung nhưng dây B/GPIO17 không có cạnh tín hiệu.",
-                "Tắt nguồn motor; cắm lại dây encoder B màu xanh lá vào GPIO17 và kiểm tra GND/VCC 3.3V.",
+                f"Encoder A có xung nhưng dây B/GPIO{self.encoder_b_pin} không có cạnh tín hiệu.",
+                (
+                    f"Tắt nguồn motor; kiểm tra kết nối encoder B → GPIO{self.encoder_b_pin} "
+                    "và đối chiếu màu dây, GND, VCC trong hardware profile."
+                ),
             ),
             "ENCODER_SIGNAL_MISSING": (
                 "Không nhận được xung encoder A/B",
-                "Driver đã được lệnh chạy nhưng cả GPIO16 và GPIO17 đều không có cạnh tín hiệu.",
-                "Tắt nguồn motor; kiểm tra encoder VCC xanh dương→3V3, GND đen→GND, A vàng→GPIO16, B xanh lá→GPIO17 và xác nhận trục motor thực sự quay.",
+                (
+                    f"{self.driver_model} đã được lệnh chạy nhưng GPIO{self.encoder_a_pin} "
+                    f"và GPIO{self.encoder_b_pin} đều không có cạnh tín hiệu."
+                ),
+                (
+                    "Tắt nguồn motor; đối chiếu VCC, GND, A và B của encoder trong "
+                    "hardware profile rồi xác nhận trục motor thực sự quay."
+                ),
             ),
             "ENCODER_SIGNAL_INVALID": (
                 "Tín hiệu encoder A/B bị nhiễu",
                 "Có quá nhiều chuyển trạng thái A/B không hợp lệ trong lúc motor chạy.",
-                "Tắt nguồn motor; cắm chặt A/B, tách dây encoder khỏi OUT1/OUT2 và dây nguồn, sau đó chạy lại kiểm tra ngắn.",
+                (
+                    f"Tắt nguồn motor; cắm chặt A/B, tách dây encoder khỏi đầu ra "
+                    f"{self.driver_model} và dây nguồn, sau đó chạy lại kiểm tra ngắn."
+                ),
             ),
         }
         for code, (title, message, action) in encoder_faults.items():
@@ -399,7 +467,7 @@ class SerialBridge:
                         encoder_a_verified=False,
                         encoder_b_verified=False,
                     )
-                self._diagnose(code, "error", "motor", title, message, action)
+                self._diagnose(code, "error", self.motor_component_id, title, message, action)
                 self._notify()
                 return
 
@@ -427,10 +495,12 @@ class SerialBridge:
             self._diagnose(
                 "INA226_I2C_FAILURE",
                 "error",
-                "ina226",
-                "Không đọc được INA226",
-                "ESP32 không đọc hoặc cấu hình được INA226; firmware đã bỏ mẫu lỗi thay vì gửi số giả lên UI.",
-                "Tắt nguồn motor; kiểm tra INA226 GND→ESP32 GND, VCC→3V3, SDA→GPIO1, SCL→GPIO2 rồi reset board.",
+                self.sensor_component_id,
+                f"Không đọc được {self.sensor_model}",
+                f"{self.controller_model} không đọc hoặc cấu hình được {self.sensor_model}; "
+                "firmware đã bỏ mẫu lỗi thay vì gửi số giả lên UI.",
+                f"Tắt nguồn motor; đối chiếu GND, VCC, SDA→GPIO{self.i2c_sda_pin} "
+                f"và SCL→GPIO{self.i2c_scl_pin} trong hardware profile rồi reset board.",
             )
             self._notify()
             return
@@ -441,10 +511,12 @@ class SerialBridge:
             self._diagnose(
                 "INA226_ID_MISMATCH",
                 "error",
-                "ina226",
-                "Cảm biến thực tế không phải INA226",
-                "ESP32 nhận I2C ACK nhưng manufacturer/die ID không đúng INA226; đây thường là INA219, INA260, module gắn nhầm hoặc chip không đúng nhãn.",
-                "Không sửa calibration để che lỗi. Tắt nguồn, đọc mã in trên IC và thay bằng INA226 R100 tại địa chỉ 0x40 rồi reset board.",
+                self.sensor_component_id,
+                "Cảm biến thực tế không khớp hardware profile",
+                f"{self.controller_model} nhận I²C ACK nhưng manufacturer/die ID không "
+                f"khớp {self.sensor_model}; module có thể bị gắn nhầm hoặc sai nhãn.",
+                f"Không sửa calibration để che lỗi. Tắt nguồn, đối chiếu IC với "
+                f"{self.sensor_model} tại {self.sensor_i2c_address} rồi reset board.",
             )
             self._notify()
             return
@@ -475,10 +547,11 @@ class SerialBridge:
             self._diagnose(
                 "TELEMETRY_INVALID",
                 "error",
-                "esp32",
+                self.controller_component_id,
                 "Gói telemetry không hợp lệ",
                 f"Backend đã bỏ qua dòng lỗi để UI không hiển thị số sai: {str(exc)[:180]}",
-                "Reset ESP32. Nếu thấy nan, kiểm tra lại INA226 rồi nạp firmware NeXus mới nhất.",
+                f"Reset {self.controller_model}. Nếu thấy nan, kiểm tra lại "
+                f"{self.sensor_model} rồi nạp firmware NeXus mới nhất.",
             )
             self._notify()
             return
@@ -492,7 +565,7 @@ class SerialBridge:
             self._diagnose(
                 "HARDWARE_MODEL_MISMATCH",
                 "error",
-                "esp32",
+                self.controller_component_id,
                 "Firmware không đúng bộ phần cứng MVP",
                 f"Nhận {sample.hardware_model_id}, cần {self.expected_hardware_model_id}.",
                 f"Chọn {self.expected_profile_id}, sinh lại cấu hình rồi nạp firmware vào "
@@ -507,7 +580,8 @@ class SerialBridge:
             self._latest_telemetry = sample.model_dump(mode="json")
             self._connection.update(
                 status="connected",
-                message=f"Đang nhận telemetry realtime từ {self._connection.get('port') or 'ESP32'}.",
+                message=f"Đang nhận telemetry realtime từ "
+                f"{self._connection.get('port') or self.controller_model}.",
             )
             if self._signal_health["monitor_ready"]:
                 verified_at = utc_now()
@@ -522,7 +596,11 @@ class SerialBridge:
             self._compatibility["reported_hardware_model_id"] = sample.hardware_model_id
 
         record = self.reads.observe(sample.model_dump(mode="json"))
-        if record is not None and self._sample_sink is not None:
+        if (
+            record is not None
+            and self._sample_sink is not None
+            and bool(self._compatibility["firmware_profile_verified"])
+        ):
             self._sample_sink(record)
 
         self._resolve("SERIAL_DEVICE_NOT_FOUND")
@@ -539,7 +617,7 @@ class SerialBridge:
             self._diagnose(
                 "TELEMETRY_SEQUENCE_GAP",
                 "warning",
-                "esp32",
+                self.controller_component_id,
                 "Đã mất một số gói telemetry",
                 f"Sequence nhảy từ {previous_sequence} lên {sample.sequence}.",
                 "Kiểm tra cáp USB và đóng Serial Monitor khác. Nếu chỉ xảy ra một lần khi reset board thì có thể bỏ qua.",
@@ -555,10 +633,11 @@ class SerialBridge:
             self._diagnose(
                 "INA226_REFERENCE_INVALID",
                 "error",
-                "ina226",
-                "Số đo INA226 không hợp lý",
+                self.sensor_component_id,
+                f"Số đo {self.sensor_model} không hợp lý",
                 f"Điện áp là {values.bus_voltage_v:.2f} V nhưng dòng vẫn là {values.current_ma:.1f} mA.",
-                "Kiểm tra GND chung; nối VBUS của INA226 với VIN− (phía tải), nguồn +→VIN+, VIN−→L298N +12V.",
+                f"Kiểm tra GND chung và các kết nối VBUS/VIN trong profile; đường tải "
+                f"phải đi từ {self.sensor_model} tới {self.driver_model}.",
             )
         else:
             self._resolve("INA226_REFERENCE_INVALID")
@@ -567,10 +646,12 @@ class SerialBridge:
             self._diagnose(
                 "MOTOR_SUPPLY_NOT_DETECTED",
                 "warning",
-                "power",
-                "Chưa thấy nguồn 12V của motor",
-                "INA226 đang đọc xấp xỉ 0 V. Điều này bình thường nếu nguồn motor đang tắt.",
-                "Nếu nguồn đã bật, kiểm tra VBUS INA226 đã được nối/jumper sang VIN− và GND đã dùng chung.",
+                self.power_component_id,
+                "Chưa thấy nguồn motor",
+                f"{self.sensor_model} đang đọc xấp xỉ 0 V. Điều này bình thường nếu "
+                f"{self.power_model} đang tắt.",
+                f"Nếu nguồn đã bật, đối chiếu đường cấp nguồn, VBUS và GND trong "
+                f"profile {self.expected_profile_id}.",
             )
         else:
             self._resolve("MOTOR_SUPPLY_NOT_DETECTED")
@@ -579,11 +660,12 @@ class SerialBridge:
             self._diagnose(
                 "MOTOR_UNDERVOLTAGE",
                 "error",
-                "power",
+                self.power_component_id,
                 "Nguồn motor quá thấp để chạy an toàn",
                 f"Đang đo {values.bus_voltage_v:.2f} V, thấp hơn ngưỡng profile "
                 f"{self.min_bus_voltage_v:.1f} V.",
-                "Tắt driver và dùng nguồn DC 12V đủ dòng; không dùng pin vuông 9V.",
+                f"Tắt driver và dùng đúng {self.power_model}; không thay nguồn khác "
+                "với profile hiện tại.",
             )
         else:
             self._resolve("MOTOR_UNDERVOLTAGE")
@@ -592,11 +674,12 @@ class SerialBridge:
             self._diagnose(
                 "MOTOR_OVERCURRENT",
                 "error",
-                "motor",
+                self.motor_component_id,
                 "Dòng motor vượt giới hạn",
                 f"Đang đo {values.current_ma:.0f} mA, vượt ngưỡng profile "
                 f"{self.max_current_ma:.0f} mA.",
-                "Tắt motor ngay; kiểm tra kẹt trục, chập OUT1/OUT2 và khả năng cấp dòng của L298N.",
+                f"Tắt motor ngay; kiểm tra kẹt trục, chập đầu ra và khả năng cấp "
+                f"dòng của {self.driver_model}.",
             )
         else:
             self._resolve("MOTOR_OVERCURRENT")
@@ -605,10 +688,11 @@ class SerialBridge:
             self._diagnose(
                 "INA226_POLARITY_REVERSED",
                 "warning",
-                "ina226",
-                "INA226 có thể đang đấu ngược chiều",
+                self.sensor_component_id,
+                f"{self.sensor_model} có thể đang đấu ngược chiều",
                 f"Dòng điện đang âm ({values.current_ma:.1f} mA).",
-                "Kiểm tra lại nguồn + đi vào VIN+ và điện ra L298N đi từ VIN−.",
+                f"Đối chiếu chiều VIN+ và VIN− từ {self.power_model} tới "
+                f"{self.driver_model} trong hardware profile.",
             )
         else:
             self._resolve("INA226_POLARITY_REVERSED")
@@ -617,7 +701,7 @@ class SerialBridge:
             self._diagnose(
                 "PWM_SAFETY_LIMIT_EXCEEDED",
                 "error",
-                "l298n",
+                self.driver_component_id,
                 "PWM vượt giới hạn an toàn",
                 f"Firmware báo PWM {values.pwm_percent}%, giới hạn profile là "
                 f"{self.max_pwm_percent}%.",
@@ -639,8 +723,8 @@ class SerialBridge:
                     self._diagnose(
                         "SERIAL_DEVICE_NOT_FOUND",
                         "warning",
-                        "esp32",
-                        "Chưa tìm thấy ESP32 qua USB",
+                        self.controller_component_id,
+                        f"Chưa tìm thấy {self.controller_model} qua USB",
                         "Backend chưa thấy USB identity được khai báo trong hardware profile.",
                         "Cắm cáp USB data vào board, chờ Windows tạo COM rồi giữ ứng dụng đang chạy để tự kết nối.",
                     )
@@ -654,7 +738,7 @@ class SerialBridge:
                     self._set_connection(
                         "connected",
                         port,
-                        f"Đã mở {port}; đang chờ telemetry từ ESP32.",
+                        f"Đã mở {port}; đang chờ telemetry từ {self.controller_model}.",
                     )
                     self._resolve("SERIAL_DEVICE_NOT_FOUND")
                     self._resolve("SERIAL_PORT_BUSY")
@@ -687,10 +771,11 @@ class SerialBridge:
                             self._diagnose(
                                 "TELEMETRY_TIMEOUT",
                                 "error",
-                                "esp32",
-                                "ESP32 đã kết nối nhưng không gửi dữ liệu",
+                                self.controller_component_id,
+                                f"{self.controller_model} đã kết nối nhưng không gửi dữ liệu",
                                 f"{port} mở được nhưng không có dòng mới trong 4 giây.",
-                                "Nhấn RESET trên board. Nếu vẫn im lặng, nạp firmware NeXus mới nhất và kiểm tra baud 115200.",
+                                f"Nhấn RESET trên board. Nếu vẫn im lặng, nạp firmware "
+                                f"NeXus mới nhất và kiểm tra baud {self.baud_rate}.",
                             )
                             self._notify()
             except serial.SerialException as exc:
@@ -705,7 +790,14 @@ class SerialBridge:
                 )
                 self.reads.disconnect()
                 self._set_connection("error", port, title)
-                self._diagnose(code, "error", "esp32", title, message[:220], action)
+                self._diagnose(
+                    code,
+                    "error",
+                    self.controller_component_id,
+                    title,
+                    message[:220],
+                    action,
+                )
                 self._notify()
                 self._stop_event.wait(self.retry_seconds)
             finally:
@@ -812,6 +904,7 @@ class SerialBridge:
                 "code": code,
                 "severity": severity,
                 "component_id": component_id,
+                "signal_id": DIAGNOSTIC_SIGNALS.get(code),
                 "title": title,
                 "message": message,
                 "action": action,

@@ -72,7 +72,7 @@ Copy `.env.example` to `.env.local` only when you need to override the defaults.
 | Route | MVP purpose |
 | --- | --- |
 | `/dashboard` | Overall health, live signal cards, preventive risk and activity |
-| `/hardware` | Fixed GOOUUU S3 → INA226 R100 → L298N → JGB37-520 topology, log and fault guide |
+| `/hardware` | Topology, pins, signal health, live log and fault guide derived from the active Hardware-as-Code profile |
 | `/doctor` | Natural-language diagnosis, evidence and safety context |
 
 Unknown paths redirect to `/dashboard`.
@@ -84,7 +84,10 @@ Template: [`.env.example`](.env.example)
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `VITE_API_BASE_URL` | `http://127.0.0.1:8000` | Backend HTTP base URL |
-| `VITE_DEVICE_ID` | `nexus-demo-esp32` | Device selected by the MVP UI |
+
+The browser does not contain a device ID, board name, sensor, pin map or safety limit. It learns
+the active profile and the profile-verified runtime device from the backend so changing hardware
+does not require rebuilding the UI.
 
 Every browser-exposed variable must use the `VITE_` prefix. Never put Nebius keys, device secrets, Wi-Fi passwords, or private tokens in a frontend environment file because Vite bundles exposed values into client code.
 

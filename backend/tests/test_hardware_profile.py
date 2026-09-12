@@ -8,6 +8,7 @@ from nexus_backend.hardware_profile import (
     default_profile_path,
     load_hardware_profile,
     profile_summary,
+    profile_to_hardware_model,
 )
 
 
@@ -67,3 +68,18 @@ def test_unsafe_signal_voltage_is_rejected(tmp_path: Path) -> None:
 
 def test_default_path_uses_nexus_prefix() -> None:
     assert default_profile_path().name.startswith("nexus-")
+
+
+def test_diagnosis_model_is_generated_from_the_active_profile() -> None:
+    profile = load_hardware_profile()
+    model = profile_to_hardware_model(profile, "nexus-runtime-device")
+
+    assert model["device_id"] == "nexus-runtime-device"
+    assert model["hardware_model_id"] == profile["hardware_model_id"]
+    assert [item["model"] for item in model["components"]] == [
+        item["model"] for item in profile["components"]
+    ]
+    assert len(model["connections"]) == len(profile["connections"])
+    assert model["safety_limits"]["max_current_ma"] == profile["safety"][
+        "max_current_ma"
+    ]

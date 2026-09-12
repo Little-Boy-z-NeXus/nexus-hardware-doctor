@@ -92,6 +92,7 @@ volatile uint8_t encoderLastState = 0;
 uint32_t encoderWindowStartedMs = 0;
 bool encoderFaultReported = false;
 bool encoderSignalVerified = false;
+String deviceId;
 String serialCommandBuffer;
 bool discardOversizedCommand = false;
 CachedResponse responseCache[kRequestCacheSize];
@@ -151,25 +152,29 @@ void inspectEncoderSignals(bool force = false) {
   if (aEdges == 0 && bEdges == 0) {
     Serial.printf(
         "[NEXUS][ERROR][ENCODER_SIGNAL_MISSING] No Hall edges while driver is enabled; "
-        "A=GPIO16 edges=%lu B=GPIO17 edges=%lu elapsed_ms=%lu\n",
+        "A=GPIO%d edges=%lu B=GPIO%d edges=%lu elapsed_ms=%lu\n",
+        kEncoderAPin,
         static_cast<unsigned long>(aEdges),
+        kEncoderBPin,
         static_cast<unsigned long>(bEdges),
         static_cast<unsigned long>(elapsed));
     encoderFaultReported = true;
     encoderSignalVerified = false;
   } else if (aEdges == 0) {
     Serial.printf(
-        "[NEXUS][ERROR][ENCODER_CHANNEL_A_MISSING] B has %lu edges but A=GPIO16 has none; "
+        "[NEXUS][ERROR][ENCODER_CHANNEL_A_MISSING] B has %lu edges but A=GPIO%d has none; "
         "elapsed_ms=%lu\n",
         static_cast<unsigned long>(bEdges),
+        kEncoderAPin,
         static_cast<unsigned long>(elapsed));
     encoderFaultReported = true;
     encoderSignalVerified = false;
   } else if (bEdges == 0) {
     Serial.printf(
-        "[NEXUS][ERROR][ENCODER_CHANNEL_B_MISSING] A has %lu edges but B=GPIO17 has none; "
+        "[NEXUS][ERROR][ENCODER_CHANNEL_B_MISSING] A has %lu edges but B=GPIO%d has none; "
         "elapsed_ms=%lu\n",
         static_cast<unsigned long>(aEdges),
+        kEncoderBPin,
         static_cast<unsigned long>(elapsed));
     encoderFaultReported = true;
     encoderSignalVerified = false;
@@ -222,14 +227,16 @@ bool probeIna226Signal(bool logFailure = true) {
   if (!sdaHigh || !sclHigh) {
     if (logFailure) {
       if (!sdaHigh) {
-        Serial.println(
-            "[NEXUS][ERROR][I2C_SDA_STUCK_LOW] SDA=GPIO1 is LOW while I2C is idle; "
-            "power off and inspect the SDA wire/pull-up");
+        Serial.printf(
+            "[NEXUS][ERROR][I2C_SDA_STUCK_LOW] SDA=GPIO%d is LOW while I2C is idle; "
+            "power off and inspect the SDA wire/pull-up\n",
+            kInaSdaPin);
       }
       if (!sclHigh) {
-        Serial.println(
-            "[NEXUS][ERROR][I2C_SCL_STUCK_LOW] SCL=GPIO2 is LOW while I2C is idle; "
-            "power off and inspect the SCL wire/pull-up");
+        Serial.printf(
+            "[NEXUS][ERROR][I2C_SCL_STUCK_LOW] SCL=GPIO%d is LOW while I2C is idle; "
+            "power off and inspect the SCL wire/pull-up\n",
+            kInaSclPin);
       }
     }
     return false;
@@ -240,10 +247,13 @@ bool probeIna226Signal(bool logFailure = true) {
   if (ackError != 0) {
     if (logFailure) {
       Serial.printf(
-          "[NEXUS][ERROR][INA226_I2C_NO_ACK] address=0x40 ack_error=%u "
-          "SDA=GPIO1:%s SCL=GPIO2:%s; check sensor power, GND and both signal wires\n",
+          "[NEXUS][ERROR][INA226_I2C_NO_ACK] address=0x%02X ack_error=%u "
+          "SDA=GPIO%d:%s SCL=GPIO%d:%s; check sensor power, GND and both signal wires\n",
+          kIna226Address,
           ackError,
+          kInaSdaPin,
           sdaHigh ? "HIGH" : "LOW",
+          kInaSclPin,
           sclHigh ? "HIGH" : "LOW");
     }
     return false;
@@ -268,9 +278,11 @@ bool verifyIna226Identity(bool logFailure = true) {
       (dieId & kIna226DieIdMask) != kIna226DieId) {
     if (logFailure) {
       Serial.printf(
-          "[NEXUS][ERROR][INA226_ID_MISMATCH] Expected manufacturer=0x%04X die=0x226x; "
-          "received manufacturer=0x%04X die=0x%04X\n",
+          "[NEXUS][ERROR][INA226_ID_MISMATCH] Expected manufacturer=0x%04X "
+          "die=0x%04X mask=0x%04X; received manufacturer=0x%04X die=0x%04X\n",
           kIna226ManufacturerId,
+          kIna226DieId,
+          kIna226DieIdMask,
           manufacturerId,
           dieId);
     }
@@ -287,8 +299,11 @@ bool initializeCurrentSensor() {
   }
   currentSensorReady = currentSensor.begin();
   if (!currentSensorReady) {
-    Serial.println(
-        "[NEXUS][ERROR][INA226_I2C_NO_ACK] Check GND, 3V3, SDA=GPIO1 and SCL=GPIO2");
+    Serial.printf(
+        "[NEXUS][ERROR][INA226_I2C_NO_ACK] Check profile wiring: GND, sensor VCC, "
+        "SDA=GPIO%d and SCL=GPIO%d\n",
+        kInaSdaPin,
+        kInaSclPin);
     return false;
   }
 
@@ -321,9 +336,14 @@ bool initializeCurrentSensor() {
     return false;
   }
 
-  Serial.println(
-      "[NEXUS][INFO][INA226_READY] INA226 verified on SDA=GPIO1 SCL=GPIO2 "
-      "address=0x40 shunt=R100 calibration=512");
+  Serial.printf(
+      "[NEXUS][INFO][INA226_READY] sensor=%s verified on SDA=GPIO%d SCL=GPIO%d "
+      "address=0x%02X shunt_ohms=%.4f\n",
+      NEXUS_SENSOR_MODEL,
+      kInaSdaPin,
+      kInaSclPin,
+      kIna226Address,
+      kIna226ShuntOhms);
   return true;
 }
 
@@ -441,9 +461,9 @@ void emitTelemetry() {
       "\"pwm_percent\":%u,\"driver_enabled\":%s,\"motor_rpm\":null},"
       "\"quality\":{\"signal_quality_percent\":100.0,\"source\":\"device\"}}\n",
       nexus::contract::v1::kSchemaVersion,
-      NEXUS_DEVICE_ID,
+      deviceId.c_str(),
       NEXUS_HARDWARE_MODEL_ID,
-      NEXUS_DEVICE_ID,
+      deviceId.c_str(),
       static_cast<unsigned long>(sequence),
       static_cast<unsigned long>(sequence),
       snapshot.busVoltageV,
@@ -646,24 +666,27 @@ bool parseCommand(const String& line, ParsedCommand& parsed, String& errorCode,
       }
       parsed.pwmPercent = arguments["pwm_percent"].as<int>();
     } else {
-      parsed.pwmPercent = 20;
+      parsed.pwmPercent = NEXUS_DEFAULT_MOTOR_TEST_PWM_PERCENT;
     }
   }
 
   if (parsed.pwmPercent > kMaxPwmPercent || parsed.pwmPercent < -1) {
     errorCode = "PWM_LIMIT_EXCEEDED";
-    errorMessage = "pwm_percent exceeds the local 0..80 safety limit";
+    errorMessage = "pwm_percent exceeds the profile 0.." + String(kMaxPwmPercent) +
+                   " safety limit";
     return false;
   }
   if (parsed.command == "run_motor_test" &&
       (parsed.durationMs < 100 || parsed.durationMs > kMaxMotorTestDurationMs)) {
     errorCode = "DURATION_LIMIT_EXCEEDED";
-    errorMessage = "duration_ms must be between 100 and 3000";
+    errorMessage = "duration_ms must be between 100 and " +
+                   String(kMaxMotorTestDurationMs);
     return false;
   }
   if (parsed.command == "run_motor_test" && parsed.pwmPercent < 1) {
     errorCode = "INVALID_ARGUMENTS";
-    errorMessage = "run_motor_test pwm_percent must be between 1 and 80";
+    errorMessage = "run_motor_test pwm_percent must be between 1 and " +
+                   String(kMaxPwmPercent);
     return false;
   }
   if (parsed.command == "run_motor_test" && parsed.timeoutMs < parsed.durationMs + 100) {
@@ -747,17 +770,20 @@ void cacheResponse(const ParsedCommand& parsed, const String& response) {
 bool readingsAllowMotion(const MeasurementSnapshot& before, String& code, String& message) {
   if (!before.valid) {
     code = "SENSOR_NOT_READY";
-    message = "A valid INA226 reading is required before motor motion";
+    message = "A valid reading from " + String(NEXUS_SENSOR_MODEL) +
+              " is required before motor motion";
     return false;
   }
   if (before.busVoltageV < kMinBusVoltageV || before.busVoltageV > kMaxBusVoltageV) {
     code = "BUS_VOLTAGE_UNSAFE";
-    message = "Motor bus voltage is outside the verified 9.5..13.0 V MVP window";
+    message = "Motor bus voltage is outside the profile window " +
+              String(kMinBusVoltageV, 3) + ".." + String(kMaxBusVoltageV, 3) + " V";
     return false;
   }
   if (fabs(before.currentMa) > kMaxCurrentMa) {
     code = "CURRENT_LIMIT_EXCEEDED";
-    message = "Measured current exceeds the 1500 mA MVP limit";
+    message = "Measured current exceeds the profile limit " +
+              String(kMaxCurrentMa, 1) + " mA";
     return false;
   }
   return true;
@@ -1107,10 +1133,18 @@ void serviceSerialInput() {
 
 void setup() {
   Serial.begin(NEXUS_SERIAL_BAUD_RATE);
+  char chipSuffix[13];
+  snprintf(
+      chipSuffix,
+      sizeof(chipSuffix),
+      "%012llx",
+      static_cast<unsigned long long>(ESP.getEfuseMac()));
+  deviceId = String("nexus-") + NEXUS_CONTROLLER_BOARD_ID + "-" + chipSuffix;
   serialCommandBuffer.reserve(kMaxCommandLength);
   delay(300);
   Serial.printf(
-      "[NEXUS][INFO][BOOT] controller=%s profile=%s\n",
+      "[NEXUS][INFO][BOOT] device_id=%s controller=%s profile=%s\n",
+      deviceId.c_str(),
       NEXUS_CONTROLLER_MODEL,
       NEXUS_HARDWARE_PROFILE_ID);
   emitHardwareProfile();

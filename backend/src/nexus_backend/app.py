@@ -23,6 +23,7 @@ from starlette.websockets import WebSocketDisconnect
 from nexus_backend import __version__
 from nexus_backend.context import build_context
 from nexus_backend.hardware import load_hardware_model
+from nexus_backend.hardware_profile import profile_to_hardware_model
 from nexus_backend.health_check import run_health_check
 from nexus_backend.runtime import RunLimiter, configure_logging, log_run
 from nexus_backend.serial_bridge import SerialBridge
@@ -136,10 +137,14 @@ def create_app(
                 loop.call_soon_threadsafe(live_hub.publish, snapshot)
 
         try:
-            if bound_device_id is not None:
+            if serial_bridge.enabled:
                 from nexus_backend.serial_history import SerialHistory
 
-                history = SerialHistory(application.state.store, bound_device_id)
+                history = SerialHistory(
+                    application.state.store,
+                    bound_device_id,
+                    hardware_profile=serial_bridge.hardware_profile,
+                )
                 application.state.serial_history = history
                 serial_bridge.set_sample_sink(history.ingest)
             serial_bridge.set_sink(publish_from_thread)
@@ -218,7 +223,7 @@ def create_app(
             )),
             "physical_commands_enabled": False,
             "serial_reads_enabled": history is not None,
-            "serial_device_id": bound_device_id,
+            "serial_device_id": history.device_id if history is not None else None,
             "serial_history_status": history.status if history is not None else "disabled",
         }
 
@@ -242,8 +247,18 @@ def create_app(
                 raise HTTPException(503, "Live model configuration is invalid") from None
         else:
             planner = MockPlanner()
-        context = build_context(store.get_hardware_model(device_id),
-                                store.telemetry_history(device_id, 10), body.symptom)
+        hardware_model = store.get_hardware_model(device_id)
+        if body.mode == "live" and device["source"] == "device":
+            if device["hardware_model_id"] != serial_bridge.expected_hardware_model_id:
+                raise HTTPException(
+                    409, "Registered device does not match the active hardware profile"
+                )
+            hardware_model = profile_to_hardware_model(
+                serial_bridge.hardware_profile, device_id
+            )
+        context = build_context(
+            hardware_model, store.telemetry_history(device_id, 10), body.symptom
+        )
         adapter = None
         history = request.app.state.serial_history
         if (body.mode == "live" and device["source"] == "device"
@@ -267,6 +282,7 @@ def create_app(
                                 headers={"Retry-After": "60" if denied == "rate_limited" else "5"})
         started = time.monotonic()
         session = None
+        diagnosis_timeout = 45 if body.mode == "live" else 25
         try:
             session = store.create_session(device_id, body.symptom)
             try:
@@ -274,8 +290,8 @@ def create_app(
                     run_context, planner, mode="mock" if body.mode == "mock" else "real",
                     adapter=adapter,
                     max_steps=body.max_steps,
-                    timeout_seconds=25, trace_id=session["trace_id"],
-                ), timeout=30)
+                    timeout_seconds=diagnosis_timeout, trace_id=session["trace_id"],
+                ), timeout=diagnosis_timeout + 5)
             except Exception:  # noqa: BLE001 - contain external provider failures without payload leaks
                 # Provider exceptions can contain request URLs/bodies. Return and log no raw error.
                 result = {
@@ -319,6 +335,16 @@ def create_app(
     def active_hardware_profile() -> dict:
         """Expose the validated machine-readable BOM selected by this backend."""
         return deepcopy(serial_bridge.hardware_profile)
+
+    @application.get("/api/v1/hardware-model", tags=["Live hardware"])
+    def active_hardware_model() -> dict:
+        """Project the diagnosis graph from the selected profile, never a fixture."""
+        snapshot = serial_bridge.snapshot()
+        telemetry = snapshot["telemetry"]
+        device_id = telemetry["device_id"] if telemetry is not None else bound_device_id
+        if device_id is None:
+            raise HTTPException(409, "No live or configured device identity is available")
+        return profile_to_hardware_model(serial_bridge.hardware_profile, device_id)
 
     @application.get("/api/v1/telemetry", tags=["Live hardware"])
     def live_telemetry() -> dict[str, object]:

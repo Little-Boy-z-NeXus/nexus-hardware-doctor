@@ -2,7 +2,6 @@ import { Activity, ArrowUpRight, Bot, CheckCircle2, Gauge, ShieldCheck, Sparkles
 import { Link } from "react-router-dom";
 
 import { PageHeader } from "../components/PageHeader";
-import { env } from "../config/env";
 import { useHardwareMonitor } from "../realtime/HardwareMonitorContext";
 
 const formatValue = (value: number | null | undefined, digits: number) =>
@@ -28,33 +27,44 @@ function MetricTrend({ values, label }: { values: number[]; label: string }) {
 }
 
 export function DashboardPage() {
-  const { snapshot, streamStatus, history } = useHardwareMonitor();
-  const measurements = snapshot.telemetry?.measurements;
-  const activeDiagnostics = snapshot.diagnostics.filter((item) => item.active);
+  const { snapshot, hardwareProfile, streamStatus, history } = useHardwareMonitor();
+  const measurements = snapshot?.telemetry?.measurements;
+  const activeDiagnostics = snapshot?.diagnostics.filter((item) => item.active) ?? [];
   const hasError = activeDiagnostics.some((item) => item.severity === "error");
-  const isLive = streamStatus === "live" && snapshot.connection.status === "connected";
-  const status = hasError ? "error" : isLive && !activeDiagnostics.length ? "healthy" : "warning";
-  const healthScore = status === "healthy" ? 94 : status === "warning" ? 62 : 28;
-  const sourceLabel = snapshot.telemetry?.quality.source === "replay" ? "Dữ liệu replay" : "Dữ liệu thiết bị";
+  const isLive = streamStatus === "live" && snapshot?.connection.status === "connected";
+  const status = snapshot?.health.status ?? "warning";
+  const signalQuality = snapshot?.telemetry?.quality.signal_quality_percent ?? 0;
+  const source = snapshot?.telemetry?.quality.source;
+  const sourceLabel = source === "device"
+    ? "Thiết bị thật"
+    : source === "replay"
+      ? "Replay"
+      : source === "simulator"
+        ? "Mô phỏng"
+        : "--";
+  const controllerName = hardwareProfile?.controller.model ?? "board đã khai báo";
+  const unitFor = (field: string) => hardwareProfile?.telemetry.measurements.find(
+    (item) => item.field === field,
+  )?.unit ?? "";
   const metrics = [
     {
       label: "Điện áp bus",
       value: formatValue(measurements?.bus_voltage_v, 2),
-      unit: "V",
+      unit: unitFor("bus_voltage_v"),
       values: history.map((item) => item.measurements.bus_voltage_v),
       icon: Zap,
     },
     {
       label: "Dòng điện",
       value: formatValue(measurements?.current_ma, 1),
-      unit: "mA",
+      unit: unitFor("current_ma"),
       values: history.map((item) => item.measurements.current_ma),
       icon: Activity,
     },
     {
       label: "Công suất",
       value: formatValue(measurements?.power_mw, 1),
-      unit: "mW",
+      unit: unitFor("power_mw"),
       values: history.map((item) => item.measurements.power_mw),
       icon: Gauge,
     },
@@ -70,7 +80,7 @@ export function DashboardPage() {
         {
           time: "Hiện tại",
           title: isLive ? "Telemetry realtime đang hoạt động" : "Đang chờ ESP32",
-          detail: snapshot.connection.message,
+          detail: snapshot?.connection.message ?? "Đang tải trạng thái runtime từ backend.",
           tone: isLive ? "good" : "warn",
         },
       ];
@@ -80,7 +90,7 @@ export function DashboardPage() {
       <PageHeader
         eyebrow="Tổng quan hệ thống"
         title={hasError ? "Phần cứng cần được kiểm tra" : status === "healthy" ? "Hệ thống đang ổn định" : "Đang chờ phần cứng"}
-        description="Theo dõi trực tiếp điện áp, dòng điện, công suất và cảnh báo của đúng bộ NeXus MVP."
+        description={`Theo dõi dữ liệu trực tiếp của ${hardwareProfile?.name ?? "hardware profile đang được tải"}.`}
         action={<Link className="button button--primary" to="/doctor"><Sparkles size={17} /> Hỏi Bác sĩ AI</Link>}
       />
 
@@ -88,22 +98,22 @@ export function DashboardPage() {
         <div className="hero-health__copy">
           <span className={`status-pill status-pill--${status}`}><CheckCircle2 size={15} /> {status === "healthy" ? "Ổn định" : status === "error" ? "Cần xử lý" : "Đang chờ"}</span>
           <h2 id="health-heading">{status === "healthy" ? "Các tín hiệu điện đang trong giới hạn MVP" : hasError ? "NeXus đã phát hiện một vấn đề phần cứng" : "Chưa có telemetry trực tiếp từ board"}</h2>
-          <p>{hasError ? "Mở Sơ đồ phần cứng để xem linh kiện liên quan và việc cần làm ngay." : isLive ? "Mỗi thay đổi dưới đây đến trực tiếp từ luồng ESP32 qua backend." : "Kết nối GOOUUU ESP32-S3 và giữ backend đang chạy; NeXus sẽ tự nối lại."}</p>
+          <p>{hasError ? "Mở Sơ đồ phần cứng để xem linh kiện liên quan và việc cần làm ngay." : isLive ? `Mỗi thay đổi dưới đây đến trực tiếp từ ${controllerName} qua backend.` : `Kết nối ${controllerName} và giữ backend đang chạy; NeXus sẽ tự nối lại.`}</p>
           <div className="hero-health__meta">
-            <span><strong>{env.deviceId}</strong><small>Thiết bị</small></span>
-            <span><strong>{snapshot.connection.port ?? "--"}</strong><small>Cổng serial</small></span>
-            <span><strong>{snapshot.telemetry ? `${snapshot.telemetry.quality.signal_quality_percent}%` : "--"}</strong><small>Chất lượng tín hiệu</small></span>
-            <span><strong>{snapshot.telemetry ? sourceLabel : "--"}</strong><small>Nguồn dữ liệu</small></span>
+            <span><strong>{snapshot?.telemetry?.device_id ?? "--"}</strong><small>Thiết bị</small></span>
+            <span><strong>{snapshot?.connection.port ?? "--"}</strong><small>Cổng serial</small></span>
+            <span><strong>{snapshot?.telemetry ? `${signalQuality}%` : "--"}</strong><small>Chất lượng tín hiệu</small></span>
+            <span><strong>{sourceLabel}</strong><small>Nguồn dữ liệu</small></span>
           </div>
         </div>
-        <div className="health-score" aria-label={`Điểm sức khỏe ${healthScore} trên 100`}>
+        <div className="health-score" aria-label={`Chất lượng telemetry ${signalQuality} trên 100`}>
           <div
             className="health-score__ring"
             style={{
-              background: `radial-gradient(closest-side, white 80%, transparent 81% 99%), conic-gradient(${status === "error" ? "#d85b55" : status === "warning" ? "#dda24c" : "#28ad8f"} ${healthScore}%, #e8efed 0)`,
+              background: `radial-gradient(closest-side, white 80%, transparent 81% 99%), conic-gradient(${status === "error" ? "#d85b55" : status === "warning" ? "#dda24c" : "#28ad8f"} ${signalQuality}%, #e8efed 0)`,
             }}
-          ><strong>{healthScore}</strong><span>/100</span></div>
-          <p>Điểm sức khỏe MVP</p>
+          ><strong>{snapshot?.telemetry ? signalQuality : "--"}</strong><span>/100</span></div>
+          <p>Chất lượng telemetry</p>
         </div>
       </section>
 
@@ -121,7 +131,7 @@ export function DashboardPage() {
       <section className="dashboard-grid">
         <article className="card panel">
           <div className="panel__header"><div><p className="eyebrow">Phòng ngừa</p><h2>Giám sát rủi ro</h2></div><span className={`status-pill status-pill--${status}`}><ShieldCheck size={14} /> {activeDiagnostics.length} cảnh báo</span></div>
-          <div className="risk-row"><div className="risk-gauge"><span>{status === "healthy" ? "8%" : status === "warning" ? "38%" : "86%"}</span></div><div><strong>{status === "healthy" ? "Chưa cần can thiệp" : "Hãy kiểm tra hướng dẫn phần cứng"}</strong><p>Ước lượng từ giới hạn MVP cố định và trạng thái serial hiện tại.</p></div></div>
+          <div className="risk-row"><div className="risk-gauge"><span>{activeDiagnostics.length}</span></div><div><strong>{activeDiagnostics.length === 0 ? "Không có cảnh báo đang mở" : "Hãy kiểm tra hướng dẫn phần cứng"}</strong><p>Kết quả trực tiếp từ diagnostics backend và giới hạn trong profile đang chọn.</p></div></div>
           <Link className="text-link" to="/hardware">Mở sơ đồ và log <ArrowUpRight size={15} /></Link>
         </article>
 

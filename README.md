@@ -2,7 +2,7 @@
 
 NeXus is an AI doctor for physical hardware. The hackathon MVP turns one ESP32 motor rig into a software-readable system that can prevent unsafe configurations, diagnose failures from telemetry, and safely heal software-controllable faults.
 
-This repository targets the [Nebius x NVIDIA Global AI Hackathon](https://nebiusglobalaihackathon.devpost.com/) and intentionally supports one topology: GOOUUU Tech ESP32-S3-N16R8, INA226 with an R100 (0.1 Ω) shunt, L298N, one JGB37-520 12 V DC gearmotor with encoder, and a 12 V supply.
+This repository targets the [Nebius x NVIDIA Global AI Hackathon](https://nebiusglobalaihackathon.devpost.com/). The first certified adapter is GOOUUU Tech ESP32-S3-N16R8 with INA226 R100, L298N, JGB37-520 encoder motor and a 12 V supply. That BOM is not duplicated in application code: the versioned JSON Hardware-as-Code profile is the source for firmware generation, backend validation and the UI graph.
 
 The INA226 `VBUS` input must be bridged to `VIN−` (the load side of the R100 shunt) so the application can read the 12 V motor bus.
 
@@ -143,7 +143,7 @@ python -m nexus_backend.mock_device --count 60
 
 Open <http://127.0.0.1:8000/monitor> while the simulator runs. It displays source-labeled telemetry from the persistent per-device backend stream. The React Dashboard and Hardware Graph use the separate serial live snapshot API; simulator registration does not replace their hardware readings.
 
-The backend owns the serial port, rejects malformed/`nan` packets, persists timestamped NDJSON entries under `logs/`, and streams complete live snapshots over `/api/v1/live/ws`. These read-only live endpoints coexist with the SQLite device/session APIs. Setting `NEXUS_SERIAL_DEVICE_ID` explicitly binds fresh serial snapshots into the matching source=`device` diagnosis history; no device identity is inferred automatically.
+The backend owns the serial port, rejects malformed/`nan` packets, persists timestamped NDJSON entries under `logs/`, and streams complete live snapshots over `/api/v1/live/ws`. These read-only live endpoints coexist with the SQLite device/session APIs. Leave `NEXUS_SERIAL_DEVICE_ID` blank for safe discovery: the backend accepts and registers an identity only after the firmware profile ID and SHA-256 match the selected JSON profile. Set it explicitly only when a deployment needs a strict device bind.
 
 The [diagnosis lab](http://127.0.0.1:8000/doctor-lab) runs the H01/H04–H08 software. Simulation requires no model key. Live mode requires configured Nebius access and explicit enablement; its tools are read-only. Successful real NVIDIA calls and a read-only tool cycle are recorded in the [live acceptance evidence](docs/evidence/h01-h04-live-nebius.md); their inputs are synthetic, and physical acceptance remains separate. See the [H resource checklist](docs/h-resource-checklist.md), [model guide](docs/h01-h04.md), [orchestration/policy guide](docs/h05-h06.md), [evaluation guide](docs/h07-evaluation.md), and [Docker runbook](docs/h08-runbook.md).
 

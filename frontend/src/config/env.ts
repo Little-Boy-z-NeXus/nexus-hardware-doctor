@@ -8,5 +8,4 @@ export function toWebSocketUrl(baseUrl: string) {
 
 export const env = {
   apiBaseUrl: normalizeBaseUrl(import.meta.env.VITE_API_BASE_URL),
-  deviceId: import.meta.env.VITE_DEVICE_ID ?? "nexus-demo-esp32",
 } as const;

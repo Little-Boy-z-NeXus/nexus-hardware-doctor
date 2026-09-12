@@ -33,6 +33,7 @@ export interface LiveLog {
 
 export interface HardwareDiagnostic {
   code: string;
+  signal_id: string | null;
   severity: "warning" | "error";
   component_id: string;
   title: string;
@@ -90,69 +91,83 @@ export interface HardwareSnapshot {
   };
 }
 
-const initialSnapshot: HardwareSnapshot = {
-  connection: {
-    status: "searching",
-    port: null,
-    baud_rate: 115200,
-    last_seen_at: null,
-    log_file: null,
-    message: "Đang kết nối tới backend và tìm ESP32...",
-  },
-  telemetry: null,
-  logs: [],
-  diagnostics: [],
-  health: { status: "warning", active_issue_count: 0 },
-  signal_health: {
-    monitor_ready: false,
-    i2c_verified: false,
-    encoder_a_verified: false,
-    encoder_b_verified: false,
-    last_i2c_verified_at: null,
-    last_encoder_verified_at: null,
-  },
-  compatibility: {
-    expected_profile_id: "nexus-profile-goouuu-esp32-s3-ina226-l298n-jgb37-v1",
-    reported_profile_id: null,
-    expected_profile_sha256: "",
-    reported_profile_sha256: null,
-    expected_hardware_model_id: "nexus-s3-ina226-l298n-motor-rig-v1",
-    reported_hardware_model_id: null,
-    firmware_profile_version: null,
-    firmware_profile_verified: false,
-    sensor_identity_verified: false,
-    last_verified_at: null,
-  },
-  hardware: {
-    profile_id: "nexus-profile-goouuu-esp32-s3-ina226-l298n-jgb37-v1",
-    profile_schema_version: "1.0.0",
-    profile_sha256: "",
-    hardware_model_id: "nexus-s3-ina226-l298n-motor-rig-v1",
-    controller: "GOOUUU Tech ESP32-S3-N16R8",
-    sensor: "INA226 (R100 shunt)",
-    driver: "L298N",
-    motor: "JGB37-520 12V + Hall encoder",
-    power: "12V DC (không dùng pin vuông 9V)",
-    capabilities: [
-      "telemetry.publish",
-      "power.voltage.read",
-      "power.current.read",
-      "motor.control",
-      "motor.rpm.read",
-      "signal.i2c.health",
-      "signal.encoder.health",
-    ],
-    limits: {
-      min_bus_voltage_v: 9.5,
-      max_bus_voltage_v: 13,
-      max_current_ma: 1500,
-      max_pwm_percent: 80,
-    },
-  },
-};
+export interface HardwareProfilePin {
+  pin_id: string;
+  label: string;
+  mode: string;
+  logic_voltage_v: number | null;
+  max_voltage_v?: number;
+}
+
+export interface HardwareProfileComponent {
+  component_id: string;
+  component_type: string;
+  model: string;
+  address?: string;
+  capabilities: string[];
+  pins: HardwareProfilePin[];
+}
+
+export interface HardwareProfileConnection {
+  connection_id: string;
+  signal_type: string;
+  wire_color?: string;
+  from: { component_id: string; pin_id: string };
+  to: { component_id: string; pin_id: string };
+}
+
+export interface HardwareAsCodeProfile {
+  schema_version: string;
+  profile_id: string;
+  hardware_model_id: string;
+  name: string;
+  updated_at: string;
+  controller: {
+    family: string;
+    model: string;
+    board_id: string;
+    runtime: string;
+    logic_voltage_v: number;
+    firmware_target: string;
+  };
+  transport: { type: string; baud_rate?: number };
+  roles: {
+    controller: string;
+    power_monitor: string;
+    motor_driver: string;
+    actuator: string;
+    power: string;
+  };
+  components: HardwareProfileComponent[];
+  connections: HardwareProfileConnection[];
+  capabilities: string[];
+  telemetry: {
+    interval_ms: number;
+    measurements: Array<{
+      field: string;
+      metric_id: string;
+      component_id: string;
+      unit: string;
+      nullable: boolean;
+    }>;
+  };
+  safety: HardwareSnapshot["hardware"]["limits"] & {
+    max_motor_test_duration_ms: number;
+    emergency_stop: string;
+  };
+  firmware: {
+    profile_version: string;
+    sensor_profile: string;
+    driver_profile: string;
+    default_motor_test_pwm_percent: number;
+    pins: Record<string, number>;
+    sensor: { i2c_address: string };
+  };
+}
 
 interface HardwareMonitorValue {
-  snapshot: HardwareSnapshot;
+  snapshot: HardwareSnapshot | null;
+  hardwareProfile: HardwareAsCodeProfile | null;
   streamStatus: "connecting" | "live" | "reconnecting" | "unavailable";
   history: TelemetrySampleV1[];
   lastUpdatedAt: number | null;
@@ -163,7 +178,8 @@ interface HardwareMonitorValue {
 const HardwareMonitorContext = createContext<HardwareMonitorValue | null>(null);
 
 export function HardwareMonitorProvider({ children }: { children: ReactNode }) {
-  const [snapshot, setSnapshot] = useState(initialSnapshot);
+  const [snapshot, setSnapshot] = useState<HardwareSnapshot | null>(null);
+  const [hardwareProfile, setHardwareProfile] = useState<HardwareAsCodeProfile | null>(null);
   const [streamStatus, setStreamStatus] = useState<HardwareMonitorValue["streamStatus"]>(
     "connecting",
   );
@@ -174,9 +190,6 @@ export function HardwareMonitorProvider({ children }: { children: ReactNode }) {
   const reconnect = useCallback(() => setConnectionEpoch((value) => value + 1), []);
 
   useEffect(() => {
-    // Protocol behavior is exercised by k6; jsdom's Event type conflicts with Node's WebSocket.
-    if (import.meta.env.MODE === "test") return;
-
     let stopped = false;
     let retryDelay = 1000;
     let retryTimer: number | undefined;
@@ -197,6 +210,18 @@ export function HardwareMonitorProvider({ children }: { children: ReactNode }) {
       })
       .catch(() => {
         if (!stopped) setStreamStatus("unavailable");
+      });
+
+    fetch(`${env.apiBaseUrl}/api/v1/hardware-profile`, { signal: abortController.signal })
+      .then((response) => {
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json() as Promise<HardwareAsCodeProfile>;
+      })
+      .then((data) => {
+        if (!stopped) setHardwareProfile(data);
+      })
+      .catch(() => {
+        if (!stopped) setHardwareProfile(null);
       });
 
     const connect = () => {
@@ -239,6 +264,15 @@ export function HardwareMonitorProvider({ children }: { children: ReactNode }) {
       };
     };
 
+    // WebSocket protocol behavior is covered by k6. jsdom's Event implementation
+    // conflicts with Node's WebSocket, but HTTP profile/snapshot loading stays tested.
+    if (import.meta.env.MODE === "test") {
+      return () => {
+        stopped = true;
+        abortController.abort();
+      };
+    }
+
     const handleOnline = () => {
       if (!stopped && socket?.readyState !== WebSocket.OPEN) reconnect();
     };
@@ -262,8 +296,16 @@ export function HardwareMonitorProvider({ children }: { children: ReactNode }) {
   }, [connectionEpoch, reconnect]);
 
   const value = useMemo(
-    () => ({ snapshot, streamStatus, history, lastUpdatedAt, retryAttempt, reconnect }),
-    [snapshot, streamStatus, history, lastUpdatedAt, retryAttempt, reconnect],
+    () => ({
+      snapshot,
+      hardwareProfile,
+      streamStatus,
+      history,
+      lastUpdatedAt,
+      retryAttempt,
+      reconnect,
+    }),
+    [snapshot, hardwareProfile, streamStatus, history, lastUpdatedAt, retryAttempt, reconnect],
   );
   return <HardwareMonitorContext.Provider value={value}>{children}</HardwareMonitorContext.Provider>;
 }

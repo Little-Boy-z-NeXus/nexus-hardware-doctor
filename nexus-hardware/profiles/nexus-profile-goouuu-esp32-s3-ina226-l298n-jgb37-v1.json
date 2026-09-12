@@ -3,6 +3,7 @@
   "profile_id": "nexus-profile-goouuu-esp32-s3-ina226-l298n-jgb37-v1",
   "hardware_model_id": "nexus-s3-ina226-l298n-motor-rig-v1",
   "name": "NeXus ESP32-S3 INA226 motor rig",
+  "updated_at": "2026-09-13T02:15:00+07:00",
   "description": "Certified MVP profile for the GOOUUU ESP32-S3-N16R8, INA226 R100, L298N and JGB37-520 Hall encoder rig.",
   "controller": {
     "family": "esp32",
@@ -175,6 +176,7 @@
     "profile_version": "1.0.0",
     "sensor_profile": "ina226-r100",
     "driver_profile": "l298n",
+    "default_motor_test_pwm_percent": 20,
     "pins": {
       "i2c_sda": 1,
       "i2c_scl": 2,

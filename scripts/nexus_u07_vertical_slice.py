@@ -11,11 +11,6 @@ from urllib.parse import urlparse
 
 import httpx
 
-REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
-MODEL_FIXTURE = REPOSITORY_ROOT / "nexus-contracts/v1/fixtures/hardware-model.example.json"
-DEVICE_ID = "nexus-demo-esp32"
-MODEL_ID = "nexus-s3-ina226-l298n-motor-rig-v1"
-
 
 class AcceptanceError(RuntimeError):
     """A user-actionable U07 gate failure with no secret or provider body."""
@@ -53,62 +48,62 @@ def request_json(client: httpx.Client, method: str, path: str, **kwargs) -> dict
         raise AcceptanceError("HTTP_JSON_INVALID", f"{path} không trả JSON hợp lệ.") from exc
 
 
-def require_runtime_preflight(capabilities: object, snapshot: object) -> dict:
-    if not isinstance(capabilities, dict) or not isinstance(snapshot, dict):
+def require_runtime_preflight(
+    capabilities: object, snapshot: object, hardware_model: object,
+) -> dict:
+    if (not isinstance(capabilities, dict) or not isinstance(snapshot, dict)
+            or not isinstance(hardware_model, dict)):
         raise AcceptanceError("PREFLIGHT_INVALID", "Backend trả trạng thái U07 không hợp lệ.")
     missing = []
     for field, label in (
         ("live_enabled", "NEXUS_ENABLE_LIVE_MODEL=true"),
         ("live_configured", "ba biến NEXUS_NEBIUS_*"),
-        ("serial_reads_enabled", "NEXUS_SERIAL_DEVICE_ID=nexus-demo-esp32"),
+        ("serial_reads_enabled", "serial bridge đang bật"),
     ):
         if capabilities.get(field) is not True:
             missing.append(label)
-    if capabilities.get("serial_device_id") != DEVICE_ID:
-        missing.append("serial_device_id đúng nexus-demo-esp32")
     connection = snapshot.get("connection")
     telemetry = snapshot.get("telemetry")
     if not isinstance(connection, dict) or connection.get("status") != "connected":
         missing.append("ESP32 đang kết nối")
     if not isinstance(telemetry, dict):
         missing.append("telemetry device thật")
-    elif telemetry.get("device_id") != DEVICE_ID:
-        missing.append("telemetry đúng device_id")
+    elif capabilities.get("serial_device_id") != telemetry.get("device_id"):
+        missing.append("device_id đã được nhận diện và bind động")
     if (isinstance(telemetry, dict)
             and (not isinstance(telemetry.get("quality"), dict)
                  or telemetry["quality"].get("source") != "device")):
         missing.append("telemetry nguồn device, không phải replay/simulator")
     if missing:
         raise AcceptanceError("U07_PREFLIGHT_BLOCKED", "Thiếu: " + "; ".join(missing) + ".")
-    if telemetry.get("hardware_model_id") != MODEL_ID:
-        raise AcceptanceError("HARDWARE_MODEL_MISMATCH", "Firmware không dùng hardware_model v1 đã khóa.")
+    if (hardware_model.get("device_id") != telemetry.get("device_id")
+            or hardware_model.get("hardware_model_id") != telemetry.get("hardware_model_id")):
+        raise AcceptanceError(
+            "HARDWARE_MODEL_MISMATCH",
+            "Telemetry không khớp hardware model sinh từ profile đang hoạt động.",
+        )
+    compatibility = snapshot.get("compatibility")
+    if (not isinstance(compatibility, dict)
+            or compatibility.get("firmware_profile_verified") is not True
+            or compatibility.get("sensor_identity_verified") is not True):
+        raise AcceptanceError(
+            "HARDWARE_PROFILE_NOT_VERIFIED",
+            "Firmware/profile hoặc danh tính sensor chưa được xác minh.",
+        )
     return telemetry
 
 
-def ensure_device_registration(client: httpx.Client) -> None:
-    model = json.loads(MODEL_FIXTURE.read_text(encoding="utf-8"))
-    response = client.post("/api/devices", json={
-        "hardware_model": model, "display_name": "NeXus MVP physical rig", "source": "device",
-    })
-    if response.status_code == 201:
-        return
-    existing = request_json(client, "GET", f"/api/devices/{DEVICE_ID}")
-    if (not isinstance(existing, dict) or existing.get("source") != "device"
-            or existing.get("hardware_model_id") != MODEL_ID):
-        raise AcceptanceError(
-            "DEVICE_REGISTRATION_CONFLICT",
-            "Database đã có nexus-demo-esp32 nhưng khác source hoặc hardware model.",
-        )
-
-
-def wait_for_persisted_device_sample(client: httpx.Client, timeout_seconds: float) -> dict:
+def wait_for_persisted_device_sample(
+    client: httpx.Client, device_id: str, timeout_seconds: float,
+) -> dict:
     deadline = time.monotonic() + timeout_seconds
     while time.monotonic() < deadline:
-        response = client.get(f"/api/devices/{DEVICE_ID}/telemetry")
+        response = client.get(f"/api/devices/{device_id}/telemetry")
         if response.status_code == 200:
             sample = response.json()
             capabilities = request_json(client, "GET", "/api/diagnosis/capabilities")
             if (sample.get("quality", {}).get("source") == "device"
+                    and sample.get("device_id") == device_id
                     and capabilities.get("serial_history_status") == "receiving"):
                 return sample
         time.sleep(0.5)
@@ -230,10 +225,12 @@ def main(argv: list[str] | None = None) -> int:
         parser.error(str(exc))
     report = {"task": "U07", "started_at": utc_now(), "passed": False, "runs": []}
     try:
-        with httpx.Client(base_url=args.base_url, timeout=45) as backend:
+        with httpx.Client(base_url=args.base_url, timeout=60) as backend:
             capabilities = request_json(backend, "GET", "/api/diagnosis/capabilities")
             snapshot = request_json(backend, "GET", "/api/v1/live")
-            telemetry = require_runtime_preflight(capabilities, snapshot)
+            hardware_model = request_json(backend, "GET", "/api/v1/hardware-model")
+            telemetry = require_runtime_preflight(capabilities, snapshot, hardware_model)
+            device_id = telemetry["device_id"]
             if args.preflight_only:
                 report.update(passed=True, preflight_only=True, telemetry={
                     "device_id": telemetry["device_id"],
@@ -242,20 +239,24 @@ def main(argv: list[str] | None = None) -> int:
                     "source": telemetry["quality"]["source"],
                 })
             else:
-                ensure_device_registration(backend)
-                stored = wait_for_persisted_device_sample(backend, args.wait_seconds)
+                stored = wait_for_persisted_device_sample(
+                    backend, device_id, args.wait_seconds,
+                )
                 with httpx.Client(timeout=10) as browser:
                     check_frontend(browser, args.frontend_url)
                 streamed = check_live_websocket(args.base_url, args.frontend_url, args.wait_seconds)
                 for run_number in range(1, args.runs + 1):
-                    session = request_json(backend, "POST", f"/api/devices/{DEVICE_ID}/diagnoses",
+                    session = request_json(backend, "POST", f"/api/devices/{device_id}/diagnoses",
                                            json={
-                                               "mode": "live", "max_steps": 4,
+                                               "mode": "live", "max_steps": 6,
                                                "require_fresh_read": True,
                                                "symptom": (
                                                    "Motor demo needs a current health hypothesis. "
-                                                   "Read fresh telemetry with get_telemetry first; "
-                                                   "do not request a physical write."
+                                                   "Read fresh telemetry exactly once with "
+                                                   "get_telemetry. After that successful read, "
+                                                   "immediately conclude with diagnosed or "
+                                                   "needs_manual; do not request another tool or "
+                                                   "any physical write."
                                                ),
                                            })
                     report["runs"].append(validate_live_run(session, run_number))
@@ -263,6 +264,8 @@ def main(argv: list[str] | None = None) -> int:
                               required_runs=args.runs, frontend_dashboard=True,
                               websocket_device_sample=streamed["sample_id"],
                               persisted_device_sample=stored["sample_id"],
+                              device_id=device_id,
+                              hardware_model_id=hardware_model["hardware_model_id"],
                               physical_commands_enabled=False)
     except AcceptanceError as exc:
         report.update(error_code=exc.code, error=str(exc))

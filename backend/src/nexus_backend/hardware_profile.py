@@ -147,6 +147,10 @@ def _validate_references(profile: dict[str, Any]) -> None:
     safety = profile["safety"]
     if safety["min_bus_voltage_v"] >= safety["max_bus_voltage_v"]:
         raise HardwareProfileError("min_bus_voltage_v must be lower than max_bus_voltage_v")
+    if profile["firmware"]["default_motor_test_pwm_percent"] > safety["max_pwm_percent"]:
+        raise HardwareProfileError(
+            "default_motor_test_pwm_percent must not exceed max_pwm_percent"
+        )
 
 
 @lru_cache(maxsize=8)
@@ -212,6 +216,56 @@ def profile_summary(profile: dict[str, Any]) -> dict[str, Any]:
             "max_pwm_percent": profile["safety"]["max_pwm_percent"],
         },
     }
+
+
+def profile_to_hardware_model(profile: dict[str, Any], device_id: str) -> dict[str, Any]:
+    """Project the active profile into the frozen diagnosis hardware-model contract.
+
+    The Hardware-as-Code profile remains authoritative. The v1 diagnosis contract
+    deliberately carries fewer electrical fields, so this projection never becomes
+    another hand-maintained source of hardware data.
+    """
+    components = [{
+        "component_id": item["component_id"],
+        "component_type": item["component_type"],
+        "model": item["model"],
+        "pins": [{
+            "pin_id": pin["pin_id"],
+            "label": pin["label"],
+            "mode": "input" if pin["mode"] == "analog" else pin["mode"],
+        } for pin in item["pins"]],
+        "capabilities": list(item["capabilities"]),
+    } for item in profile["components"]]
+
+    connections = [{
+        "connection_id": item["connection_id"],
+        "from_component_id": item["from"]["component_id"],
+        "from_pin": item["from"]["pin_id"],
+        "to_component_id": item["to"]["component_id"],
+        "to_pin": item["to"]["pin_id"],
+        # Hardware-model v1 has no analog enum. The current analog edge is the
+        # powered VBUS reference, so "power" is the loss-minimising projection.
+        "signal_type": "power" if item["signal_type"] == "analog" else item["signal_type"],
+    } for item in profile["connections"]]
+
+    model = {
+        "schema_version": profile["telemetry"]["contract_version"],
+        "hardware_model_id": profile["hardware_model_id"],
+        "device_id": device_id,
+        "name": profile["name"],
+        "components": components,
+        "connections": connections,
+        "safety_limits": {
+            "max_pwm_percent": profile["safety"]["max_pwm_percent"],
+            "min_bus_voltage_v": profile["safety"]["min_bus_voltage_v"],
+            "max_current_ma": profile["safety"]["max_current_ma"],
+            "max_motor_test_duration_ms": profile["safety"]["max_motor_test_duration_ms"],
+        },
+        "updated_at": profile["updated_at"],
+    }
+    from nexus_backend.validation import validate_contract
+
+    return validate_contract("hardware-model", model)
 
 
 def main(argv: list[str] | None = None) -> int:
