@@ -13,21 +13,25 @@ motor. A replay or mock run is useful for development but cannot pass U07.
 
 ## One-time local configuration
 
-Copy `.env.example` to the ignored `.env`. Keep the key only on the demo computer and set:
+No manual `.env` editing is required. Double-click `nexus-run-u07-vertical-slice.cmd`; on its
+first run, paste the Nebius API key into the hidden prompt and press Enter. The runner creates the
+Git-ignored `.env`, stores the key only on this computer and sets this frozen profile:
 
 ```dotenv
 NEXUS_SERIAL_ENABLED=true
 NEXUS_SERIAL_DEVICE_ID=nexus-demo-esp32
 NEXUS_ENABLE_LIVE_MODEL=true
 NEXUS_NEBIUS_BASE_URL=https://api.tokenfactory.nebius.com/v1
-NEXUS_NEBIUS_API_KEY=<local secret; never paste or commit>
 NEXUS_NVIDIA_MODEL=nvidia/Nemotron-3-Ultra-550b-a55b
 NEXUS_NEBIUS_ENABLE_THINKING=true
 NEXUS_NEBIUS_MAX_OUTPUT_TOKENS=4096
 ```
 
-Use the exact endpoint and model available to the team's Nebius account if they change.
-The application exposes only whether configuration is present; it never returns the key.
+It also isolates U07 in `artifacts/nexus-u07.sqlite3`, enables local CORS and logs, keeps serial
+auto-detection on, and preserves the 80% safety ceiling. To configure without starting the app,
+double-click `nexus-configure-nebius.cmd` instead. The API key is never sent to the frontend,
+printed in CMD, written to runtime evidence or included in Git. The application exposes only
+whether configuration is present; it never returns the key. Do not paste the key into chat.
 
 Before running, connect the GOOUUU board over USB, load current default-safe firmware, close
 PlatformIO/Arduino Serial Monitor and leave the rig at PWM 0/driver off. The 12 V supply may
@@ -35,7 +39,8 @@ remain off because U07 performs no motor write, but INA226 will then truthfully 
 
 ## One-click acceptance
 
-Double-click `nexus-run-u07-vertical-slice.cmd`. It stops an old local app instance, starts
+Double-click `nexus-run-u07-vertical-slice.cmd`. It prepares configuration (and prompts only when
+the local key is absent), stops an old local app instance, starts
 backend and frontend, registers the frozen physical rig when needed, waits for durable device
 telemetry, verifies the realtime WebSocket and Dashboard shell, and runs three live diagnoses.
 
