@@ -33,6 +33,7 @@ constexpr uint32_t kMaxCommandTimeoutMs = 5000;
 constexpr uint32_t kMaxMotorTestDurationMs = 3000;
 constexpr uint32_t kCommandMeasurementSettleMs = 150;
 constexpr uint32_t kTelemetryIntervalMs = 1000;
+constexpr uint32_t kSignalMonitorHeartbeatMs = 10000;
 constexpr float kIna226ConsistencyAbsoluteToleranceMa = 5.0f;
 constexpr float kIna226ConsistencyRelativeTolerance = 0.20f;
 constexpr uint32_t kEncoderMinimumObservationMs = 250;
@@ -81,6 +82,7 @@ bool currentSensorReady = false;
 uint32_t telemetrySequence = 0;
 uint32_t lastSensorInitAttemptMs = 0;
 uint32_t lastTelemetryMs = 0;
+uint32_t lastSignalMonitorHeartbeatMs = 0;
 volatile uint32_t encoderAEdges = 0;
 volatile uint32_t encoderBEdges = 0;
 volatile uint32_t encoderInvalidTransitions = 0;
@@ -433,6 +435,12 @@ void emitTelemetry() {
       snapshot.powerMw,
       snapshot.pwm,
       snapshot.enabled ? "true" : "false");
+  if (millis() - lastSignalMonitorHeartbeatMs >= kSignalMonitorHeartbeatMs) {
+    lastSignalMonitorHeartbeatMs = millis();
+    Serial.println(
+        "[NEXUS][INFO][SIGNAL_MONITOR_READY] I2C SDA/SCL checked every sample; "
+        "encoder A/B checked whenever the driver runs");
+  }
 }
 
 bool validRequestId(const char* value) {
@@ -1115,6 +1123,7 @@ void setup() {
   Serial.println(
       "[NEXUS][INFO][SIGNAL_MONITOR_READY] I2C SDA/SCL checked every sample; "
       "encoder A/B checked whenever the driver runs");
+  lastSignalMonitorHeartbeatMs = millis();
 #ifdef NEXUS_ENABLE_FAULT_INJECTION
   analogWriteFrequency(kNormalPwmFrequencyHz);
 #endif
