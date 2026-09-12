@@ -66,4 +66,15 @@ describe("NeXus application routes", () => {
     await waitFor(() => expect(document.title).toBe("Sơ đồ và log phần cứng | NeXus"));
     expect(document.documentElement.lang).toBe("vi");
   });
+
+  it("does not claim idle encoder wires are healthy before a supervised motor run", async () => {
+    renderAt("/hardware");
+
+    expect(await screen.findByRole("heading", { name: "Tình trạng dây tín hiệu" })).toBeInTheDocument();
+    expect(screen.getByText("Dây vàng → GPIO16")).toBeInTheDocument();
+    expect(screen.getByText("Dây xanh lá → GPIO17")).toBeInTheDocument();
+    expect(
+      screen.getAllByText("Chỉ kiểm chứng được khi motor chạy trong bài test có giám sát."),
+    ).toHaveLength(2);
+  });
 });

@@ -15,6 +15,7 @@ Available now:
 - timestamped session logs under `logs/hardware-live-*.ndjson`
 - `/api/v1/live` snapshot plus `/api/v1/live/ws` realtime stream
 - deterministic Vietnamese diagnostics for the fixed INA226 R100/L298N/motor rig
+- realtime signal-wire diagnostics for INA226 SDA/SCL integrity and Hall encoder A/B liveness
 - pre-power Health Check rules for voltage, wiring, pin direction, supply and metadata
 - strict Python contract mirrors, JSON Schema/fixture validation, automated tests and Ruff linting
 

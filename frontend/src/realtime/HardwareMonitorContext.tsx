@@ -50,6 +50,14 @@ export interface HardwareSnapshot {
   logs: LiveLog[];
   diagnostics: HardwareDiagnostic[];
   health: { status: MonitorSeverity; active_issue_count: number };
+  signal_health?: {
+    monitor_ready: boolean;
+    i2c_verified: boolean;
+    encoder_a_verified: boolean;
+    encoder_b_verified: boolean;
+    last_i2c_verified_at: string | null;
+    last_encoder_verified_at: string | null;
+  };
   hardware: {
     hardware_model_id: string;
     controller: string;
@@ -74,6 +82,14 @@ const initialSnapshot: HardwareSnapshot = {
   logs: [],
   diagnostics: [],
   health: { status: "warning", active_issue_count: 0 },
+  signal_health: {
+    monitor_ready: false,
+    i2c_verified: false,
+    encoder_a_verified: false,
+    encoder_b_verified: false,
+    last_i2c_verified_at: null,
+    last_encoder_verified_at: null,
+  },
   hardware: {
     hardware_model_id: "nexus-s3-ina226-l298n-motor-rig-v1",
     controller: "GOOUUU Tech ESP32-S3-N16R8",

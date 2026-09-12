@@ -36,6 +36,20 @@ MEASUREMENT_DIAGNOSTIC_CODES = (
     "INA226_POLARITY_REVERSED",
     "PWM_SAFETY_LIMIT_EXCEEDED",
 )
+I2C_SIGNAL_DIAGNOSTIC_CODES = (
+    "I2C_SDA_STUCK_LOW",
+    "I2C_SCL_STUCK_LOW",
+    "INA226_I2C_NO_ACK",
+    "INA226_I2C_FAILURE",
+    "INA226_ID_MISMATCH",
+    "INA226_SIGNAL_INCONSISTENT",
+)
+ENCODER_SIGNAL_DIAGNOSTIC_CODES = (
+    "ENCODER_CHANNEL_A_MISSING",
+    "ENCODER_CHANNEL_B_MISSING",
+    "ENCODER_SIGNAL_MISSING",
+    "ENCODER_SIGNAL_INVALID",
+)
 
 SnapshotSink = Callable[[dict[str, object]], None]
 
@@ -97,6 +111,14 @@ class SerialBridge:
         self._latest_telemetry: dict[str, object] | None = None
         self._logs: deque[dict[str, object]] = deque(maxlen=160)
         self._diagnostics: dict[str, dict[str, object]] = {}
+        self._signal_health: dict[str, object] = {
+            "monitor_ready": False,
+            "i2c_verified": False,
+            "encoder_a_verified": False,
+            "encoder_b_verified": False,
+            "last_i2c_verified_at": None,
+            "last_encoder_verified_at": None,
+        }
         self._log_sequence = 0
         self._log_file: TextIO | None = None
         self._log_path: Path | None = None
@@ -158,6 +180,7 @@ class SerialBridge:
                         "status": severity,
                         "active_issue_count": len(active),
                     },
+                    "signal_health": self._signal_health,
                     "hardware": {
                         "hardware_model_id": EXPECTED_HARDWARE_MODEL_ID,
                         "controller": "GOOUUU Tech ESP32-S3-N16R8",
@@ -190,15 +213,131 @@ class SerialBridge:
             if port:
                 self._connection["port"] = port
 
+        if "SIGNAL_MONITOR_READY" in line:
+            self._update_signal_health(monitor_ready=True)
+            self._notify()
+            return
+
+        if "I2C_SDA_STUCK_LOW" in line:
+            self._update_signal_health(monitor_ready=True, i2c_verified=False)
+            self._diagnose(
+                "I2C_SDA_STUCK_LOW",
+                "error",
+                "ina226",
+                "Dây SDA đang bị giữ LOW",
+                "GPIO1 không trở về mức HIGH khi bus I²C rảnh, nên dữ liệu INA226 không đáng tin.",
+                "Tắt nguồn motor; kiểm tra SDA của INA226 → GPIO1, điểm chạm GND/chập dây và điện trở pull-up rồi reset ESP32.",
+            )
+            self._notify()
+            return
+
+        if "I2C_SCL_STUCK_LOW" in line:
+            self._update_signal_health(monitor_ready=True, i2c_verified=False)
+            self._diagnose(
+                "I2C_SCL_STUCK_LOW",
+                "error",
+                "ina226",
+                "Dây SCL đang bị giữ LOW",
+                "GPIO2 không trở về mức HIGH khi bus I²C rảnh, nên ESP32 không thể clock INA226 an toàn.",
+                "Tắt nguồn motor; kiểm tra SCL của INA226 → GPIO2, điểm chạm GND/chập dây và điện trở pull-up rồi reset ESP32.",
+            )
+            self._notify()
+            return
+
+        if "INA226_I2C_NO_ACK" in line:
+            if "ack_error=" in line:
+                self._update_signal_health(monitor_ready=True, i2c_verified=False)
+            self._diagnose(
+                "INA226_I2C_NO_ACK",
+                "error",
+                "ina226",
+                "INA226 không phản hồi trên SDA/SCL",
+                "SDA/SCL đang ở mức rảnh nhưng địa chỉ I²C 0x40 không trả ACK; firmware đã bỏ mẫu.",
+                "Tắt nguồn motor; kiểm tra INA226 VCC→3V3, GND chung, SDA→GPIO1, SCL→GPIO2 và chân đổi địa chỉ A0/A1.",
+            )
+            self._notify()
+            return
+
+        if "INA226_SIGNAL_INCONSISTENT" in line:
+            self._update_signal_health(monitor_ready=True, i2c_verified=False)
+            self._diagnose(
+                "INA226_SIGNAL_INCONSISTENT",
+                "error",
+                "ina226",
+                "Tín hiệu INA226 không nhất quán",
+                "Thanh ghi dòng không khớp với dòng tính độc lập từ điện áp shunt R100; mẫu có thể sai do dây I²C/nhiễu/hiệu chuẩn.",
+                "Tắt motor; cắm lại SDA/SCL và GND, tách dây khỏi OUT1/OUT2, xác nhận điện trở R100 rồi reset để INA226 tự hiệu chuẩn lại.",
+            )
+            self._notify()
+            return
+
+        encoder_faults = {
+            "ENCODER_CHANNEL_A_MISSING": (
+                "Mất tín hiệu encoder A",
+                "Encoder B có xung nhưng dây A/GPIO16 không có cạnh tín hiệu.",
+                "Tắt nguồn motor; cắm lại dây encoder A màu vàng vào GPIO16 và kiểm tra GND/VCC 3.3V.",
+            ),
+            "ENCODER_CHANNEL_B_MISSING": (
+                "Mất tín hiệu encoder B",
+                "Encoder A có xung nhưng dây B/GPIO17 không có cạnh tín hiệu.",
+                "Tắt nguồn motor; cắm lại dây encoder B màu xanh lá vào GPIO17 và kiểm tra GND/VCC 3.3V.",
+            ),
+            "ENCODER_SIGNAL_MISSING": (
+                "Không nhận được xung encoder A/B",
+                "Driver đã được lệnh chạy nhưng cả GPIO16 và GPIO17 đều không có cạnh tín hiệu.",
+                "Tắt nguồn motor; kiểm tra encoder VCC xanh dương→3V3, GND đen→GND, A vàng→GPIO16, B xanh lá→GPIO17 và xác nhận trục motor thực sự quay.",
+            ),
+            "ENCODER_SIGNAL_INVALID": (
+                "Tín hiệu encoder A/B bị nhiễu",
+                "Có quá nhiều chuyển trạng thái A/B không hợp lệ trong lúc motor chạy.",
+                "Tắt nguồn motor; cắm chặt A/B, tách dây encoder khỏi OUT1/OUT2 và dây nguồn, sau đó chạy lại kiểm tra ngắn.",
+            ),
+        }
+        for code, (title, message, action) in encoder_faults.items():
+            if code in line:
+                if code == "ENCODER_CHANNEL_A_MISSING":
+                    self._update_signal_health(
+                        monitor_ready=True,
+                        encoder_a_verified=False,
+                        encoder_b_verified=True,
+                    )
+                elif code == "ENCODER_CHANNEL_B_MISSING":
+                    self._update_signal_health(
+                        monitor_ready=True,
+                        encoder_a_verified=True,
+                        encoder_b_verified=False,
+                    )
+                else:
+                    self._update_signal_health(
+                        monitor_ready=True,
+                        encoder_a_verified=False,
+                        encoder_b_verified=False,
+                    )
+                self._diagnose(code, "error", "motor", title, message, action)
+                self._notify()
+                return
+
+        if "ENCODER_SIGNAL_OK" in line:
+            self._update_signal_health(
+                monitor_ready=True,
+                encoder_a_verified=True,
+                encoder_b_verified=True,
+                last_encoder_verified_at=utc_now(),
+            )
+            for code in ENCODER_SIGNAL_DIAGNOSTIC_CODES:
+                self._resolve(code)
+            self._notify()
+            return
+
         if "i2cWriteReadNonStop returned Error" in line or any(
             code in line
             for code in (
-                "INA226_I2C_NO_ACK",
                 "INA226_I2C_READ_FAILED",
                 "INA226_CALIBRATION_FAILED",
                 "INA226_INVALID_READING",
             )
         ):
+            self._update_signal_health(i2c_verified=False)
             self._diagnose(
                 "INA226_I2C_FAILURE",
                 "error",
@@ -211,6 +350,7 @@ class SerialBridge:
             return
 
         if "INA226_ID_MISMATCH" in line:
+            self._update_signal_health(i2c_verified=False)
             self._diagnose(
                 "INA226_ID_MISMATCH",
                 "error",
@@ -277,6 +417,11 @@ class SerialBridge:
                 status="connected",
                 message=f"Đang nhận telemetry realtime từ {self._connection.get('port') or 'ESP32'}.",
             )
+            if self._signal_health["monitor_ready"]:
+                self._signal_health.update(
+                    i2c_verified=True,
+                    last_i2c_verified_at=utc_now(),
+                )
 
         record = self.reads.observe(sample.model_dump(mode="json"))
         if record is not None and self._sample_sink is not None:
@@ -287,8 +432,8 @@ class SerialBridge:
         self._resolve("SERIAL_PORT_ERROR")
         self._resolve("TELEMETRY_TIMEOUT")
         self._resolve("TELEMETRY_INVALID")
-        self._resolve("INA226_I2C_FAILURE")
-        self._resolve("INA226_ID_MISMATCH")
+        for code in I2C_SIGNAL_DIAGNOSTIC_CODES:
+            self._resolve(code)
         self._resolve("HARDWARE_MODEL_MISMATCH")
         self._evaluate_measurements(sample)
 
@@ -482,9 +627,21 @@ class SerialBridge:
         with self._lock:
             self._connection.update(status=status, port=port, message=message)
         if status in {"searching", "error", "disconnected"}:
-            for code in MEASUREMENT_DIAGNOSTIC_CODES:
+            for code in MEASUREMENT_DIAGNOSTIC_CODES + I2C_SIGNAL_DIAGNOSTIC_CODES + ENCODER_SIGNAL_DIAGNOSTIC_CODES:
                 self._resolve(code)
+            self._update_signal_health(
+                monitor_ready=False,
+                i2c_verified=False,
+                encoder_a_verified=False,
+                encoder_b_verified=False,
+                last_i2c_verified_at=None,
+                last_encoder_verified_at=None,
+            )
         self._notify()
+
+    def _update_signal_health(self, **changes: object) -> None:
+        with self._lock:
+            self._signal_health.update(changes)
 
     def _append_log(self, level: str, message: str, *, source: str) -> None:
         with self._lock:

@@ -11,6 +11,8 @@ Available now:
 - local `NEXUS_MAX_PWM_PERCENT` clamp
 - one JSON telemetry sample per second
 - INA226 manufacturer/die-ID verification plus explicit readiness and I²C failure logs
+- per-sample SDA/SCL idle-level, address ACK, INA226 identity and shunt/current consistency checks
+- Hall encoder A/B edge monitoring whenever the driver is commanded to run
 - invalid sensor values are withheld instead of emitting non-standard `nan` JSON
 - field names shared with backend and frontend contract v1
 - correlated serial commands with ACK/result/error and before/after snapshots
@@ -57,7 +59,10 @@ The MVP calibration is deliberately fixed to the confirmed `R100` shunt: `0.1 Ω
 
 ![NeXus ESP32, INA226, L298N and JGB37-520 encoder wiring](../docs/nexus-wiring-jgb37-520.svg)
 
-The diagram includes the optional JGB37-520 A/B encoder wiring on GPIO16 and GPIO17. The current firmware configures those pins but does not count pulses yet, so `motor_rpm` remains `null` until encoder support is implemented.
+The diagram includes the JGB37-520 A/B encoder wiring on GPIO16 and GPIO17. The firmware counts
+edges on both channels to detect a missing or noisy signal during commanded motion. It does not
+yet convert those edges to a calibrated shaft RPM, so `motor_rpm` remains `null`. At PWM 0 the
+encoder is intentionally reported as not testable rather than falsely healthy.
 
 For L298N channel A, ENA receives PWM while IN1/IN2 choose direction. The current MVP firmware implements only IN1 HIGH and IN2 LOW. Stop the motor before changing direction. Do not connect the L298N module's 5 V output to the ESP32 3V3 rail; the ESP32 and encoder use the ESP32's USB/3V3 supply shown in the diagram.
 
@@ -172,7 +177,28 @@ At 115200 baud, the device emits one compact JSON object per line:
 
 `recorded_at` remains `null` until a later transport task synchronizes device time. The backend may stamp receipt time but must not rename the field. `motor_rpm` is also `null` until the firmware encoder task reads GPIO16/GPIO17 and converts pulses to RPM.
 
-The firmware also emits readable status lines. `[NEXUS][INFO][INA226_READY]` means address, manufacturer ID, die ID and R100 calibration all passed. `[NEXUS][ERROR][INA226_I2C_NO_ACK]`, `INA226_ID_MISMATCH`, `INA226_CALIBRATION_FAILED`, `INA226_I2C_READ_FAILED`, and `INA226_INVALID_READING` identify the exact failure stage. Failed reads are discarded and never become telemetry. The firmware retries INA226 every five seconds, while the backend converts these codes into a Vietnamese explanation and repair step in the UI.
+The firmware also emits readable signal-health lines. A telemetry packet is emitted only after
+SDA/SCL are idle-high, address `0x40` acknowledges, the manufacturer/die identity matches, all
+register reads succeed, every value is finite, and current agrees with the independent R100
+shunt-voltage calculation. A failed check is discarded instead of being presented as a real
+measurement. The backend converts these codes into a Vietnamese explanation and repair step in
+the UI immediately:
+
+| Firmware code | What it proves | First repair action |
+| --- | --- | --- |
+| `I2C_SDA_STUCK_LOW` | SDA/GPIO1 is electrically held LOW while the bus should be idle | Power off; inspect SDA and pull-up |
+| `I2C_SCL_STUCK_LOW` | SCL/GPIO2 is electrically held LOW while the bus should be idle | Power off; inspect SCL and pull-up |
+| `INA226_I2C_NO_ACK` | Lines are idle-high but address `0x40` does not answer | Check sensor 3V3, GND, SDA/SCL order and address straps |
+| `INA226_ID_MISMATCH` | A device answered, but it is not the expected INA226 | Check the module/IC and address |
+| `INA226_I2C_READ_FAILED` | A register transaction failed after detection | Reseat SDA/SCL and shorten/noise-proof the leads |
+| `INA226_SIGNAL_INCONSISTENT` | Current register disagrees with `shunt_mV / 0.1 Ω` | Check SDA/SCL noise, R100 marking and calibration |
+| `ENCODER_CHANNEL_A_MISSING` | B has edges during motion but A/GPIO16 does not | Check the yellow A wire |
+| `ENCODER_CHANNEL_B_MISSING` | A has edges during motion but B/GPIO17 does not | Check the green B wire |
+| `ENCODER_SIGNAL_MISSING` | Neither channel has edges while the driver is on | Check encoder 3V3/GND/A/B and whether the motor turns |
+| `ENCODER_SIGNAL_INVALID` | Too many impossible simultaneous A/B transitions | Check swapped/loose leads and motor-noise routing |
+
+The firmware retries INA226 every five seconds. `[NEXUS][INFO][ENCODER_SIGNAL_OK]` clears an
+encoder fault after a later supervised run produces valid A/B edges.
 
 ## Supervised U05 baseline mode
 
@@ -247,6 +273,10 @@ The 30-minute baseline, temperature result, supply rating, and photos belong to 
 - `Failed to connect ... No serial data received`: do not add `--upload-port COM8` when using the connector printed `ESP32`; the project uploads over built-in USB-JTAG. If USB-JTAG reports a Windows driver error, move the cable to the connector printed `CH343`, temporarily set `upload_protocol = esptool`, detect its new COM port, and upload to that port after entering bootloader mode if needed.
 - Port is busy: close every serial monitor and IDE serial window before upload.
 - INA226 is not detected: check SDA/SCL, common ground, 3.3 V module power, and I²C address `0x40`.
+- SDA/SCL looks connected but values are suspicious: use the latest firmware and wait for
+  `INA226_READY`; it checks chip identity and R100 current consistency before emitting telemetry.
+- Encoder fault appears: do not test continuity with motor power on. Power off, reseat the named
+  A/B/VCC/GND wire, then use a short supervised motor test to verify recovery.
 - `INA226_ID_MISMATCH`: confirm the IC is really INA226 rather than INA219/INA260 and reset the board.
 - Current is correct but bus voltage stays at 0 V: connect the INA226 `VBUS` input to `VIN−`; measuring 12 V at the screw terminal alone does not prove that the IC's VBUS pin is connected.
 - Readings are negative: verify INA226 current direction and `VIN+`/`VIN-` orientation.
