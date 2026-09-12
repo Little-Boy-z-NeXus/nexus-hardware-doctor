@@ -17,9 +17,9 @@ function renderAt(path: string) {
 
 describe("NeXus application routes", () => {
   it.each([
-    ["/dashboard", "Waiting for your hardware", "Dashboard"],
-    ["/hardware", "Hardware Graph", "Hardware Graph"],
-    ["/doctor", "AI Doctor", "AI Doctor"],
+    ["/dashboard", "Đang chờ phần cứng", "Tổng quan"],
+    ["/hardware", "Sơ đồ phần cứng", "Sơ đồ phần cứng"],
+    ["/doctor", "AI Doctor", "Bác sĩ AI"],
   ])("renders %s and marks its navigation item active", async (path, heading, navLabel) => {
     renderAt(path);
 
@@ -31,7 +31,7 @@ describe("NeXus application routes", () => {
     renderAt(path);
 
     expect(
-      await screen.findByRole("heading", { level: 1, name: "Waiting for your hardware" }),
+      await screen.findByRole("heading", { level: 1, name: "Đang chờ phần cứng" }),
     ).toBeInTheDocument();
     expect(screen.getByText("nexus-demo-esp32")).toBeInTheDocument();
   });
@@ -40,17 +40,17 @@ describe("NeXus application routes", () => {
     const user = userEvent.setup();
     renderAt("/dashboard");
 
-    await user.click(await screen.findByRole("link", { name: "Hardware Graph" }));
+    await user.click(await screen.findByRole("link", { name: "Sơ đồ phần cứng" }));
 
     expect(
-      await screen.findByRole("heading", { level: 1, name: "Hardware Graph" }),
+      await screen.findByRole("heading", { level: 1, name: "Sơ đồ phần cứng" }),
     ).toBeInTheDocument();
   });
 
   it("updates route SEO metadata without another network request", async () => {
     renderAt("/hardware");
 
-    await screen.findByRole("heading", { level: 1, name: "Hardware Graph" });
+    await screen.findByRole("heading", { level: 1, name: "Sơ đồ phần cứng" });
     await waitFor(() => expect(document.title).toBe("Sơ đồ và log phần cứng | NeXus"));
     expect(document.documentElement.lang).toBe("vi");
   });

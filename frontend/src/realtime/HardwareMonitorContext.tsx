@@ -1,4 +1,12 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 
 import { env, toWebSocketUrl } from "../config/env";
 import type { TelemetrySampleV1 } from "../contracts/v1";
@@ -80,6 +88,10 @@ const initialSnapshot: HardwareSnapshot = {
 interface HardwareMonitorValue {
   snapshot: HardwareSnapshot;
   streamStatus: "connecting" | "live" | "reconnecting" | "unavailable";
+  history: TelemetrySampleV1[];
+  lastUpdatedAt: number | null;
+  retryAttempt: number;
+  reconnect: () => void;
 }
 
 const HardwareMonitorContext = createContext<HardwareMonitorValue | null>(null);
@@ -89,6 +101,11 @@ export function HardwareMonitorProvider({ children }: { children: ReactNode }) {
   const [streamStatus, setStreamStatus] = useState<HardwareMonitorValue["streamStatus"]>(
     "connecting",
   );
+  const [history, setHistory] = useState<TelemetrySampleV1[]>([]);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
+  const [retryAttempt, setRetryAttempt] = useState(0);
+  const [connectionEpoch, setConnectionEpoch] = useState(0);
+  const reconnect = useCallback(() => setConnectionEpoch((value) => value + 1), []);
 
   useEffect(() => {
     // Protocol behavior is exercised by k6; jsdom's Event type conflicts with Node's WebSocket.
@@ -106,7 +123,11 @@ export function HardwareMonitorProvider({ children }: { children: ReactNode }) {
         return response.json() as Promise<HardwareSnapshot>;
       })
       .then((data) => {
-        if (!stopped) setSnapshot(data);
+        if (!stopped) {
+          setSnapshot(data);
+          setLastUpdatedAt(Date.now());
+          if (data.telemetry) setHistory([data.telemetry]);
+        }
       })
       .catch(() => {
         if (!stopped) setStreamStatus("unavailable");
@@ -118,6 +139,7 @@ export function HardwareMonitorProvider({ children }: { children: ReactNode }) {
       socket = new WebSocket(`${toWebSocketUrl(env.apiBaseUrl)}/api/v1/live/ws`);
       socket.onopen = () => {
         retryDelay = 1000;
+        setRetryAttempt(0);
         setStreamStatus("live");
       };
       socket.onmessage = (event) => {
@@ -126,7 +148,17 @@ export function HardwareMonitorProvider({ children }: { children: ReactNode }) {
             type?: string;
             data?: HardwareSnapshot;
           };
-          if (message.type === "snapshot" && message.data) setSnapshot(message.data);
+          if (message.type === "snapshot" && message.data) {
+            setSnapshot(message.data);
+            setLastUpdatedAt(Date.now());
+            if (message.data.telemetry) {
+              setHistory((current) => {
+                const latest = message.data?.telemetry;
+                if (!latest || current.at(-1)?.sample_id === latest.sample_id) return current;
+                return [...current, latest].slice(-24);
+              });
+            }
+          }
         } catch {
           setStreamStatus("unavailable");
         }
@@ -136,20 +168,37 @@ export function HardwareMonitorProvider({ children }: { children: ReactNode }) {
         if (stopped) return;
         setStreamStatus("reconnecting");
         retryDelay = Math.min(retryDelay * 2, 8000);
+        setRetryAttempt((value) => value + 1);
         retryTimer = window.setTimeout(connect, retryDelay);
       };
     };
 
+    const handleOnline = () => {
+      if (!stopped && socket?.readyState !== WebSocket.OPEN) reconnect();
+    };
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible" && socket?.readyState !== WebSocket.OPEN) {
+        reconnect();
+      }
+    };
+
+    window.addEventListener("online", handleOnline);
+    document.addEventListener("visibilitychange", handleVisibility);
     connect();
     return () => {
       stopped = true;
       abortController.abort();
       if (retryTimer) window.clearTimeout(retryTimer);
       socket?.close();
+      window.removeEventListener("online", handleOnline);
+      document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, []);
+  }, [connectionEpoch, reconnect]);
 
-  const value = useMemo(() => ({ snapshot, streamStatus }), [snapshot, streamStatus]);
+  const value = useMemo(
+    () => ({ snapshot, streamStatus, history, lastUpdatedAt, retryAttempt, reconnect }),
+    [snapshot, streamStatus, history, lastUpdatedAt, retryAttempt, reconnect],
+  );
   return <HardwareMonitorContext.Provider value={value}>{children}</HardwareMonitorContext.Provider>;
 }
 
