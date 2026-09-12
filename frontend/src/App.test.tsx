@@ -19,7 +19,7 @@ describe("NeXus application routes", () => {
   it.each([
     ["/dashboard", "Đang chờ phần cứng", "Tổng quan"],
     ["/hardware", "Sơ đồ phần cứng", "Sơ đồ phần cứng"],
-    ["/doctor", "AI Doctor", "Bác sĩ AI"],
+    ["/doctor", "Bác sĩ AI", "Bác sĩ AI"],
   ])("renders %s and marks its navigation item active", async (path, heading, navLabel) => {
     renderAt(path);
 
@@ -45,6 +45,18 @@ describe("NeXus application routes", () => {
     expect(
       await screen.findByRole("heading", { level: 1, name: "Sơ đồ phần cứng" }),
     ).toBeInTheDocument();
+  });
+
+  it("answers a Vietnamese diagnosis question from the current realtime state", async () => {
+    const user = userEvent.setup();
+    renderAt("/doctor");
+
+    const input = await screen.findByRole("textbox", { name: "Hỏi Bác sĩ AI" });
+    await user.type(input, "Motor có an toàn không?");
+    await user.click(screen.getByRole("button", { name: "Gửi câu hỏi" }));
+
+    expect(screen.getByText("Motor có an toàn không?")).toBeInTheDocument();
+    expect(screen.getByText(/Tôi chưa có telemetry trực tiếp/)).toBeInTheDocument();
   });
 
   it("updates route SEO metadata without another network request", async () => {
