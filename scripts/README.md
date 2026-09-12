@@ -17,6 +17,11 @@ These scripts provide fast, deterministic checks for repository structure and fr
 `python -m nexus_backend.replay_server` is the N07 no-hardware replay entry point. It serves
 sanitized telemetry through the same live API/WebSocket consumed by the frontend.
 
+| Script | Dependencies | Checks |
+| --- | --- | --- |
+| [`nexus_n08_prepare_recovery_kit.py`](nexus_n08_prepare_recovery_kit.py) | Safe PlatformIO build output | Copies only the frozen-board recovery images/wiring and writes SHA-256 manifest |
+| [`nexus_n08_recovery_drill.py`](nexus_n08_recovery_drill.py) | PlatformIO, `pyserial`, prepared rig | Times safe firmware upload and requires fresh INA226 telemetry at PWM 0/OFF |
+
 Both scripts return exit code `0` on success and a non-zero exit code with actionable messages on failure. GitHub Actions relies on those exit codes.
 
 ## Prepare the environment

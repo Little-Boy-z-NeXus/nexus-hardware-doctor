@@ -14,8 +14,9 @@ This directory records the decisions required to build and demonstrate the hacka
 8. [`n05-fault-injection.md`](n05-fault-injection.md) — supervised repeatable hardware faults and reset procedure.
 9. [`n06-auto-heal-acceptance.md`](n06-auto-heal-acceptance.md) — physical PWM fault-to-recovery loop and evidence gate.
 10. [`n07-quality-replay.md`](n07-quality-replay.md) — no-hardware replay, automation and soak evidence.
-11. [`security.md`](security.md) — secret handling, redaction, model/tool boundaries, and incident basics.
-12. [`backlog.md`](backlog.md) — link to the live Google Sheet and local working rules.
+11. [`n08-demo-kit-recovery.md`](n08-demo-kit-recovery.md) — backup firmware, spare kit and timed recovery runbook.
+12. [`security.md`](security.md) — secret handling, redaction, model/tool boundaries, and incident basics.
+13. [`backlog.md`](backlog.md) — link to the live Google Sheet and local working rules.
 
 ## Document index
 
@@ -31,6 +32,7 @@ This directory records the decisions required to build and demonstrate the hacka
 | [`n05-fault-injection.md`](n05-fault-injection.md) | Reproducing and resetting supervised fault profiles | Nguyễn |
 | [`n06-auto-heal-acceptance.md`](n06-auto-heal-acceptance.md) | Running and evidencing the bounded physical Auto Heal acceptance | Nguyễn |
 | [`n07-quality-replay.md`](n07-quality-replay.md) | Replaying telemetry and reviewing automation/soak/reconnect evidence | Nguyễn |
+| [`n08-demo-kit-recovery.md`](n08-demo-kit-recovery.md) | Packing recovery assets and running the timed demo recovery drill | Nguyễn + Hiếu |
 | [`security.md`](security.md) | Handling keys, telemetry, logs, prompts, or device commands | Hoàng + Hiếu |
 | [`backlog.md`](backlog.md) | Finding the live plan or mapping a commit to a task ID | Entire team |
 | [`h-resource-checklist.md`](h-resource-checklist.md) | Supplying resources to finish H tasks; remaining live acceptance gates | Hoàng |

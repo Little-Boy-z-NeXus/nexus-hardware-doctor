@@ -55,6 +55,8 @@ No command typing is required after the prerequisite applications are installed.
 | `nexus-run-n05-fault-acceptance.cmd` | Run N05 software faults, physical OUT2-open checks and restored baseline |
 | `nexus-run-n06-auto-heal-acceptance.cmd` | Run five bounded physical PWM Auto Heal cycles and restore safe firmware |
 | `nexus-start-replay-demo.cmd` | Start backend/frontend with sanitized realtime telemetry and no board/COM port |
+| `nexus-prepare-n08-recovery-kit.cmd` | Build checksummed default-safe firmware backup and wiring bundle |
+| `nexus-run-n08-recovery-drill.cmd` | Time a safe firmware/INA226 recovery and save local evidence |
 | `nexus-monitor-firmware.cmd` | Standalone Serial Monitor; saves each session under `logs/device-monitor-*.log` |
 | `nexus-run-firmware.cmd` | Upload firmware, open standalone Serial Monitor, and save the session under `logs/` |
 | `nexus-check-project.cmd` | Run repository, backend, frontend, and firmware checks |
