@@ -11,6 +11,7 @@ These scripts provide fast, deterministic checks for repository structure and fr
 | [`nexus_hardware_baseline.py`](nexus_hardware_baseline.py) | Backend virtual environment + supervised hardware | U05 30-minute voltage/current/PWM soak test, failsafe stop, local evidence and report |
 | [`nexus_device_command.py`](nexus_device_command.py) | `pyserial` from the backend environment + supervised hardware | N03 correlated ACK/result/error exchange, local argument checks and duplicate replay verification |
 | [`nexus_n03_hardware_acceptance.py`](nexus_n03_hardware_acceptance.py) | `pyserial` + secured physical rig | Complete N03 real-board matrix, final failsafe stop and local NDJSON/Markdown evidence |
+| [`nexus_n05_fault_acceptance.py`](nexus_n05_fault_acceptance.py) | `pyserial` + secured physical rig | Five-cycle N05 software/manual fault checks, transport retry, safe reset and local evidence |
 
 Both scripts return exit code `0` on success and a non-zero exit code with actionable messages on failure. GitHub Actions relies on those exit codes.
 

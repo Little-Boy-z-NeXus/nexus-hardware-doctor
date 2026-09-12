@@ -51,6 +51,8 @@ No command typing is required after the prerequisite applications are installed.
 | `nexus-start-frontend.cmd` | Start only the UI at `http://127.0.0.1:5173` |
 | `nexus-upload-firmware.cmd` | Upload firmware through the GOOUUU ESP32-S3 built-in USB-JTAG interface |
 | `nexus-upload-command-firmware.cmd` | Upload the supervised N03 build that enables bounded motor commands |
+| `nexus-run-n03-hardware-acceptance.cmd` | Upload and run the full N03 real-board command matrix |
+| `nexus-run-n05-fault-acceptance.cmd` | Run N05 software faults, physical OUT2-open checks and restored baseline |
 | `nexus-monitor-firmware.cmd` | Standalone Serial Monitor; saves each session under `logs/device-monitor-*.log` |
 | `nexus-run-firmware.cmd` | Upload firmware, open standalone Serial Monitor, and save the session under `logs/` |
 | `nexus-check-project.cmd` | Run repository, backend, frontend, and firmware checks |
