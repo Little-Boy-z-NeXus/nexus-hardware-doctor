@@ -43,6 +43,13 @@ const TEST_HARDWARE_PROFILE = {
   ],
   connections: [
     {
+      connection_id: "i2c_sda",
+      signal_type: "i2c",
+      wire_color: "configured",
+      from: { component_id: "esp32", pin_id: "gpio_1" },
+      to: { component_id: "ina226", pin_id: "sda" },
+    },
+    {
       connection_id: "encoder_a",
       signal_type: "digital",
       wire_color: "yellow",
@@ -335,6 +342,31 @@ describe("NeXus application routes", () => {
     expect(screen.getByRole("button", { name: "5. Test 12V supply, Ổn định" })).toBeInTheDocument();
     expect(screen.getByTestId("hardware-detail")).toHaveTextContent("Test 12V supply");
     expect(screen.getByTestId("hardware-detail")).toHaveTextContent("5/5");
+  });
+
+  it("shows profile-driven wire endpoints, real colors, and incomplete color declarations", async () => {
+    const user = userEvent.setup();
+    renderAt("/hardware");
+
+    const guide = await screen.findByTestId("wiring-guide");
+    expect(within(guide).getByRole("heading", { name: "Nối đúng chân, đúng màu" })).toBeInTheDocument();
+    expect(within(guide).getByText("2/3 màu đã chốt")).toBeInTheDocument();
+    expect(within(guide).getByText("Chưa chốt màu")).toBeInTheDocument();
+
+    const encoderA = guide.querySelector('[data-connection-id="encoder_a"]');
+    expect(encoderA).toHaveAttribute("data-wire-color", "yellow");
+    expect(within(encoderA as HTMLElement).getAllByText("gpio_16").length).toBeGreaterThan(0);
+    expect(within(encoderA as HTMLElement).getAllByText("encoder_a").length).toBeGreaterThan(0);
+
+    await user.click(within(encoderA as HTMLElement).getByRole("button", {
+      name: "Chọn Test JGB37, chân encoder_a",
+    }));
+    expect(screen.getByTestId("hardware-detail")).toHaveTextContent("Test JGB37");
+    expect(guide.querySelectorAll(".wiring-row")).toHaveLength(2);
+
+    await user.click(within(guide).getByRole("button", { name: "Toàn bộ 3 dây" }));
+    expect(within(guide).getByRole("button", { name: "Toàn bộ 3 dây" })).toHaveAttribute("aria-pressed", "true");
+    expect(guide.querySelectorAll(".wiring-row")).toHaveLength(3);
   });
 
   it("shows the newest hardware log as a readable summary by default", async () => {

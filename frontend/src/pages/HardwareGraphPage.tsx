@@ -23,6 +23,7 @@ import {
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { PageHeader } from "../components/PageHeader";
+import { WiringGuide } from "../components/WiringGuide";
 import {
   useHardwareMonitor,
   type HardwareDiagnostic,
@@ -625,6 +626,12 @@ export function HardwareGraphPage() {
           <span className="graph-legend__profile" title={profileLabel}>{profileLabel}</span>
         </div>
       </section>
+
+      <WiringGuide
+        profile={hardwareProfile}
+        selectedComponentId={selectedNode?.id}
+        onSelectComponent={setSelectedComponentId}
+      />
 
       <section className="card signal-card" aria-labelledby="compatibility-title">
         <div className="panel__header">
