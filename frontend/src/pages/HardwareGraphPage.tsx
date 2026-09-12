@@ -78,6 +78,8 @@ function activeSignalIssue(
 
 export function HardwareGraphPage() {
   const { snapshot, hardwareProfile, streamStatus, reconnect } = useHardwareMonitor();
+  const [componentQuery, setComponentQuery] = useState("");
+  const [selectedComponentId, setSelectedComponentId] = useState<string | null>(null);
   const [pausedLogs, setPausedLogs] = useState<LiveLog[] | null>(null);
   const [hiddenBefore, setHiddenBefore] = useState<string | null>(null);
   const [logQuery, setLogQuery] = useState("");
@@ -271,9 +273,12 @@ export function HardwareGraphPage() {
   const componentPresentation = {
     controller: { icon: Cpu, tone: "blue" },
     sensor: { icon: Activity, tone: "teal" },
+    power_monitor: { icon: Activity, tone: "teal" },
     driver: { icon: Zap, tone: "violet" },
+    motor_driver: { icon: Zap, tone: "violet" },
     actuator: { icon: RotateCcw, tone: "orange" },
     power: { icon: Gauge, tone: "orange" },
+    power_supply: { icon: Gauge, tone: "orange" },
     compute: { icon: Cpu, tone: "blue" },
     communication: { icon: Cable, tone: "teal" },
     other: { icon: Activity, tone: "teal" },
@@ -311,9 +316,24 @@ export function HardwareGraphPage() {
           : componentState(component.component_id, activeDiagnostics, Boolean(telemetry)),
     };
   }) : [];
-  const hardwareFlowTitle = nodes.length
-    ? nodes.map((node) => node.name).join(" → ")
-    : "Đang tải hardware profile từ backend";
+  const normalizedComponentQuery = componentQuery.trim().toLocaleLowerCase("vi");
+  const filteredNodes = nodes.filter((node) =>
+    !normalizedComponentQuery
+    || node.name.toLocaleLowerCase("vi").includes(normalizedComponentQuery)
+    || node.type.toLocaleLowerCase("vi").includes(normalizedComponentQuery),
+  );
+  const selectedNode = nodes.find((node) => node.id === selectedComponentId) ?? nodes[0];
+  const selectedPosition = selectedNode ? nodes.findIndex((node) => node.id === selectedNode.id) : -1;
+  const selectedComponent = hardwareProfile?.components.find(
+    (component) => component.component_id === selectedNode?.id,
+  );
+  const selectedConnections = hardwareProfile?.connections.filter(
+    (connection) => connection.from.component_id === selectedNode?.id
+      || connection.to.component_id === selectedNode?.id,
+  ) ?? [];
+  const previousNode = selectedPosition > 0 ? nodes[selectedPosition - 1] : undefined;
+  const nextNode = selectedPosition >= 0 ? nodes[selectedPosition + 1] : undefined;
+  const SelectedComponentIcon = selectedNode?.icon;
   const profileLabel = `Profile ${snapshot?.hardware.profile_schema_version ?? hardwareProfile?.schema_version ?? "--"} · ${snapshot?.hardware.profile_id ?? hardwareProfile?.profile_id ?? "đang tải"}`;
 
   const togglePause = () => setPausedLogs((current) => (current ? null : [...(snapshot?.logs ?? [])]));
@@ -371,46 +391,125 @@ export function HardwareGraphPage() {
       <section className="card graph-card">
         <div className="panel__header graph-card__header">
           <div className="graph-card__heading">
-            <p className="eyebrow">BOM signal path</p>
-            <h2 className="graph-card__title" title={hardwareFlowTitle}>{hardwareFlowTitle}</h2>
+            <p className="eyebrow">BOM · Tổng quan</p>
+            <h2 className="graph-card__title">{nodes.length} linh kiện đang theo dõi</h2>
+            <p className="graph-card__summary">
+              Tìm và chọn một linh kiện để xem trạng thái và kết nối.
+            </p>
           </div>
           <span className={`status-pill status-pill--${snapshot?.health.status ?? "warning"}`}>
             {activeDiagnostics.length} lỗi đang mở
           </span>
         </div>
-        <div
-          className="hardware-flow"
-          data-testid="hardware-flow-scroll"
-          role="region"
-          aria-label={`Chuỗi ${nodes.length} thành phần phần cứng. Có thể cuộn ngang để xem đầy đủ.`}
-          tabIndex={0}
-        >
-          <div className="hardware-flow__track">
-            {nodes.map(({ id, name, type, detail, icon: Icon, tone, state }, index) => (
-              <div className="hardware-step" key={id}>
-                <article
-                  className={`hardware-node hardware-node--${tone} hardware-node--state-${state}`}
-                  aria-label={`${type}: ${name}, ${stateLabel(state)}`}
-                >
-                  <span className="hardware-node__icon">
-                    <Icon size={24} />
-                  </span>
-                  <span className="hardware-node__content">
-                    <small title={type}>{type}</small>
-                    <strong title={name}>{name}</strong>
-                    <em title={detail}>{detail}</em>
-                  </span>
-                  <span className={`node-state node-state--${state}`}>{stateLabel(state)}</span>
-                </article>
-                {index < nodes.length - 1 && (
-                  <span className="hardware-edge" aria-hidden="true">
-                    <i />
-                    <ArrowRight size={17} />
-                  </span>
-                )}
+        <div className="hardware-explorer">
+          <aside className="hardware-index" aria-label="Danh sách linh kiện trong BOM">
+            <label className="hardware-search">
+              <Search size={16} aria-hidden="true" />
+              <input
+                type="search"
+                value={componentQuery}
+                onChange={(event) => {
+                  const nextQuery = event.target.value;
+                  const normalizedQuery = nextQuery.trim().toLocaleLowerCase("vi");
+                  setComponentQuery(nextQuery);
+                  if (!normalizedQuery) return;
+                  const selectedStillMatches = selectedNode
+                    && (selectedNode.name.toLocaleLowerCase("vi").includes(normalizedQuery)
+                      || selectedNode.type.toLocaleLowerCase("vi").includes(normalizedQuery));
+                  if (!selectedStillMatches) {
+                    const firstMatch = nodes.find((node) =>
+                      node.name.toLocaleLowerCase("vi").includes(normalizedQuery)
+                      || node.type.toLocaleLowerCase("vi").includes(normalizedQuery),
+                    );
+                    if (firstMatch) setSelectedComponentId(firstMatch.id);
+                  }
+                }}
+                placeholder="Tìm tên hoặc loại linh kiện"
+                aria-label="Tìm linh kiện"
+              />
+            </label>
+            <div className="hardware-index__meta" aria-live="polite">
+              <strong>{filteredNodes.length}</strong> / {nodes.length} linh kiện
+            </div>
+            <ul className="hardware-index__list">
+              {filteredNodes.map(({ id, name, type, icon: Icon, tone, state }) => {
+                const position = nodes.findIndex((node) => node.id === id) + 1;
+                return (
+                  <li key={id}>
+                    <button
+                      className={`hardware-index__item${selectedNode?.id === id ? " is-selected" : ""}`}
+                      type="button"
+                      onClick={() => setSelectedComponentId(id)}
+                      aria-pressed={selectedNode?.id === id}
+                      aria-label={`${position}. ${name}, ${stateLabel(state)}`}
+                    >
+                      <span className="hardware-index__number">{position}</span>
+                      <span className={`hardware-index__icon hardware-index__icon--${tone}`}>
+                        <Icon size={17} aria-hidden="true" />
+                      </span>
+                      <span className="hardware-index__copy">
+                        <small>{type}</small>
+                        <strong title={name}>{name}</strong>
+                      </span>
+                      <span className={`hardware-index__health hardware-index__health--${state}`} title={stateLabel(state)} />
+                    </button>
+                  </li>
+                );
+              })}
+              {filteredNodes.length === 0 && (
+                <li className="hardware-index__empty">Không có linh kiện phù hợp.</li>
+              )}
+            </ul>
+          </aside>
+
+          {selectedNode && SelectedComponentIcon && (
+            <article className="hardware-detail" data-testid="hardware-detail" aria-live="polite">
+              <div className="hardware-detail__header">
+                <span className={`hardware-detail__icon hardware-detail__icon--${selectedNode.tone}`}>
+                  <SelectedComponentIcon size={22} aria-hidden="true" />
+                </span>
+                <div className="hardware-detail__heading">
+                  <small>{selectedNode.type} · {selectedPosition + 1}/{nodes.length}</small>
+                  <h3 title={selectedNode.name}>{selectedNode.name}</h3>
+                </div>
+                <span className={`status-pill status-pill--${selectedNode.state === "waiting" ? "warning" : selectedNode.state}`}>
+                  {stateLabel(selectedNode.state)}
+                </span>
               </div>
-            ))}
-          </div>
+
+              <div className="hardware-detail__runtime">
+                <span>Thông số hiện tại</span>
+                <strong>{selectedNode.detail}</strong>
+              </div>
+
+              <dl className="hardware-detail__facts">
+                <div><dt>Component ID</dt><dd title={selectedNode.id}>{selectedNode.id}</dd></div>
+                <div><dt>Kết nối</dt><dd>{selectedConnections.length} đường</dd></div>
+                <div><dt>Chân khai báo</dt><dd>{selectedComponent?.pins.length ?? 0} chân</dd></div>
+              </dl>
+
+              <div className="hardware-detail__capabilities">
+                <span>Khả năng</span>
+                <div>
+                  {(selectedComponent?.capabilities.length
+                    ? selectedComponent.capabilities.slice(0, 3)
+                    : ["Chưa khai báo"]
+                  ).map((capability) => <small key={capability}>{capability}</small>)}
+                  {(selectedComponent?.capabilities.length ?? 0) > 3 && (
+                    <small>+{(selectedComponent?.capabilities.length ?? 0) - 3}</small>
+                  )}
+                </div>
+              </div>
+
+              <div className="hardware-detail__path" aria-label="Vị trí trong luồng tín hiệu">
+                <span title={previousNode?.name}>{previousNode?.name ?? "Điểm bắt đầu"}</span>
+                <ArrowRight size={14} aria-hidden="true" />
+                <strong>Đang chọn</strong>
+                <ArrowRight size={14} aria-hidden="true" />
+                <span title={nextNode?.name}>{nextNode?.name ?? "Điểm kết thúc"}</span>
+              </div>
+            </article>
+          )}
         </div>
         <div className="graph-legend">
           <span>
@@ -419,7 +518,6 @@ export function HardwareGraphPage() {
             />
             {deviceLive ? "Live telemetry" : "Đang chờ dữ liệu"}
           </span>
-          <span><i className="legend-line" /> Luồng tín hiệu</span>
           <span className="graph-legend__profile" title={profileLabel}>{profileLabel}</span>
         </div>
       </section>

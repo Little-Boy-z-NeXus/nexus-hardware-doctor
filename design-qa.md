@@ -1,43 +1,42 @@
-# Design QA — Hardware graph responsive flow
+# Design QA — Compact hardware explorer
 
-## Visual truth and test state
+## Evidence and state
 
-- Source reference: `C:\Users\lenovo\AppData\Local\Temp\codex-clipboard-7449ed4e-bd78-4d2b-b38a-6ae2d5bdbdf5.png` (1461 × 592).
-- Implementation capture: Codex in-app Browser tab 8 at `http://localhost:5173/hardware`.
-- Viewports checked: 808 × 680 (default app viewport) and 390 × 844 (mobile).
-- Runtime state: `/hardware`, live COM8 profile, five declared components, zero active issues during the final pass.
+- Source visual truth: `C:\Users\lenovo\AppData\Local\Temp\codex-clipboard-b4ef546d-3d0e-4b58-84a0-78f9a594703c.png` (1463 × 615). This is the user-identified problem state, not a pixel-match target.
+- Rendered implementation: Codex in-app Browser tab 8 at `http://localhost:5173/hardware` (802 × 680 CSS viewport, density 1).
+- Focused implementation capture: the accepted in-app Browser capture with search value `INA226`, one result, and the INA226 detail panel selected automatically.
+- Runtime state: live COM8 telemetry, five profile components, zero active hardware issues.
+
+## Full-view comparison
+
+The problem state repeats the complete hardware path in the title and presents every component as a large card in one horizontal strip. The revised view keeps the section width bounded, replaces the strip with a fixed-height searchable index, and shows details for only one selected component. At 802 px, the document measured 802 px client width and 802 px scroll width, so the redesign does not introduce page-level horizontal overflow.
+
+## Focused region comparison
+
+The BOM region required a focused comparison because the user concern was scanability with long names and many components. The final capture shows one compact result row for `INA226` and a corresponding detail panel with status, live measurement, identity, connections, pins, capabilities, and immediate neighbors. Long names are ellipsized in the index and retained in accessible labels and title tooltips.
 
 ## Comparison history
 
-### Initial issues from the supplied reference
+1. P1 — The horizontal card carousel scaled linearly with component count and hid later components. Fixed with a fixed-height searchable component index and one on-demand detail panel.
+2. P1 — The first redesign pass could show details for a component that no longer matched the search. Fixed by automatically selecting the first matching component as the query changes.
+3. P2 — The complete BOM path duplicated the same names already shown in the cards and dominated the header. Fixed with a short component count and a direct instruction.
+4. P2 — The old scrollbar was the only discovery mechanism for off-screen hardware. Fixed with visible search, result count, ordered rows, and native vertical list scrolling.
 
-- The signal path assumed exactly four cards, so additional hardware could be omitted or force uneven wrapping.
-- Long component names changed card height and pushed status rows out of alignment.
-- The full BOM title and profile identifier could compete with the issue badge and overflow their containers.
-- Narrow layouts stacked a potentially unbounded number of cards vertically.
+## Required fidelity surfaces
 
-### Fixes applied
+- Fonts and typography: passed — the existing NeXus type scale is preserved; long component names truncate only in compact overview rows and remain available in the detail view.
+- Spacing and layout rhythm: passed — list and detail use bounded heights, consistent 8–18 px spacing, and stable alignment independent of BOM length.
+- Colors and visual tokens: passed — existing blue, teal, violet, orange, healthy, warning, and error tokens are preserved.
+- Image and icon quality: passed — no raster assets were required; existing Lucide component icons are reused consistently.
+- Copy and content: passed — English path duplication was removed; Vietnamese instructions explain the primary action in one sentence.
+- Responsiveness and accessibility: passed — no page overflow at the verified viewport; search is labelled, every component is a real button, selection uses `aria-pressed`, and the detail panel is live-announced.
 
-- Render every component declared by the active hardware profile instead of a fixed role list.
-- Use an equal-width, equal-height horizontal track with scroll snap and keyboard focus.
-- Clamp long names and supporting text while preserving full values in native title tooltips and accessible labels.
-- Protect the header, issue badge, footer profile identifier, connectors, and card status alignment from overflow.
-- Keep the same horizontal browsing model on mobile, with the next card partially visible as a scroll affordance.
+## Interaction and regression evidence
 
-## Fidelity review
-
-- Layout and hierarchy: passed — the section header, issue badge, signal path, and legend retain the source hierarchy without collisions.
-- Typography: passed — headings remain legible; long hardware names wrap predictably and no longer resize the cards.
-- Color and surfaces: passed — existing semantic colors, borders, shadows, and health states are preserved.
-- Content and data: passed — controller, sensor, driver, actuator, power, and future profile components are driven by profile data.
-- Responsive behavior: passed — no page-level horizontal overflow; only the labelled hardware-flow region scrolls.
-
-## Interaction and regression checks
-
-- Keyboard navigation: passed — focusing the hardware-flow region and pressing End changed `scrollLeft` from 6.4 to 426.4 at 390 px.
-- Mobile visual pass: passed — header and issue badge remain separated; cards stay aligned and horizontally discoverable.
-- Desktop/app visual pass: passed — two-line BOM title, stable badge, equal cards, and intentional contained overflow.
-- Browser console: passed — zero errors.
+- Search `INA226`: passed — result count changed from 5/5 to 1/5 and detail changed automatically to component 2/5.
+- Search with no match: passed — `Không có linh kiện phù hợp.` appeared.
+- Direct component selection: passed — selected state and detail content update from the profile data.
+- Browser console: passed — no warning or error entries; only Vite connection and React development information messages.
 - Automated frontend gate: passed — ESLint, 15 Vitest tests, TypeScript, and Vite production build.
 
 ## Final result
