@@ -2,6 +2,7 @@ FROM python:3.11-slim@sha256:9534e5a8e315485d4061ed659af0fd78a284c015f9b73661b41
 WORKDIR /build
 COPY backend/ backend/
 COPY nexus-contracts/ nexus-contracts/
+COPY nexus-hardware/ nexus-hardware/
 RUN pip install --no-cache-dir --prefix=/install --constraint backend/constraints.txt ./backend
 
 FROM python:3.11-slim@sha256:9534e5a8e315485d4061ed659af0fd78a284c015f9b73661b41d6bab25604534

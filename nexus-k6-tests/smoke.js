@@ -27,6 +27,7 @@ export const options = {
     http_req_failed: ["rate==0"],
     "http_req_duration{target:api-health}": ["p(95)<500"],
     "http_req_duration{target:api-live}": ["p(95)<500"],
+    "http_req_duration{target:api-profile}": ["p(95)<500"],
     "http_req_duration{target:frontend}": ["p(95)<1000"],
   },
 };
@@ -86,6 +87,25 @@ export default function () {
     check(upgrade, {
       "WebSocket upgrades successfully": (result) => result?.status === 101,
       "WebSocket sends initial snapshot": () => receivedSnapshot,
+    });
+  });
+
+  group("machine-readable hardware profile", () => {
+    const response = http.get(`${apiBaseUrl}/api/v1/hardware-profile`, {
+      tags: { target: "api-profile" },
+    });
+    let payload = {};
+    try {
+      payload = response.json();
+    } catch (_) {
+      // Contract checks below explain malformed profile responses.
+    }
+    check(response, {
+      "hardware profile returns HTTP 200": (result) => result.status === 200,
+      "hardware profile uses a nexus ID": () => payload.profile_id?.startsWith("nexus-profile-"),
+      "hardware profile declares the ESP32 controller": () =>
+        payload.controller?.family === "esp32",
+      "hardware profile exposes wiring": () => payload.connections?.length > 10,
     });
   });
 

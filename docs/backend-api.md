@@ -24,8 +24,9 @@ The producer stops after the requested sample count. Restarting it generates new
 
 ## Configuration and persistence
 
-The read-only serial routes `/api/v1/live`, `/api/v1/telemetry`, `/api/v1/logs`,
-`/api/v1/diagnostics` and `/api/v1/live/ws` coexist with the persistent `/api/devices`
+The read-only serial routes `/api/v1/live`, `/api/v1/hardware-profile`,
+`/api/v1/telemetry`, `/api/v1/logs`, `/api/v1/diagnostics` and `/api/v1/live/ws`
+coexist with the persistent `/api/devices`
 routes in one application. Serial snapshots and NDJSON logs are separate from
 SQLite telemetry/session records; receiving serial data does not register a device
 or overwrite stored simulator data. Both WebSocket families use the configured
@@ -43,6 +44,7 @@ health remain readable before lifespan startup; persistent routes require it.
 | --- | --- | --- |
 | `NEXUS_DB_PATH` | `artifacts/nexus.sqlite3` | SQLite path, relative to the server working directory |
 | `NEXUS_CORS_ORIGINS` | `http://localhost:5173,http://127.0.0.1:5173` | Comma-separated browser origins allowed to call the API |
+| `NEXUS_HARDWARE_PROFILE_PATH` | certified ESP32 MVP profile | Versioned machine-readable BOM used by firmware/backend compatibility checks |
 
 Set variables in the launching environment, or pass `--env-file` to Uvicorn for a separately managed file. The application does not automatically load `.env`. Keep the same database path after restarting. SQLite stores device configuration, hardware documents, telemetry, associated audit events and session records. Runtime artifacts are ignored by Git. Queries return bounded windows; this MVP does not implement automatic retention/deletion.
 

@@ -3,6 +3,7 @@ from pathlib import Path
 
 import pytest
 
+from nexus_backend.hardware_profile import load_hardware_profile, profile_fingerprint
 from nexus_backend.serial_bridge import EXPECTED_HARDWARE_MODEL_ID, SerialBridge
 
 FIXTURE = (
@@ -58,8 +59,11 @@ def test_signal_monitor_handshake_allows_latest_i2c_sample_to_be_verified() -> N
 
 def test_locked_hardware_profile_is_verified_before_measurements() -> None:
     bridge = SerialBridge(enabled=False, persist_logs=False)
+    fingerprint = profile_fingerprint(load_hardware_profile())
     bridge.ingest_line(
         "[NEXUS][INFO][HARDWARE_PROFILE] profile_version=1.0.0 "
+        "profile_id=nexus-profile-goouuu-esp32-s3-ina226-l298n-jgb37-v1 "
+        f"profile_sha256={fingerprint} "
         "hardware_model_id=nexus-s3-ina226-l298n-motor-rig-v1 "
         "controller=goouuu-esp32-s3-n16r8 sensor=ina226-r100 driver=l298n"
     )
@@ -69,7 +73,34 @@ def test_locked_hardware_profile_is_verified_before_measurements() -> None:
     assert compatibility["firmware_profile_verified"] is True
     assert compatibility["sensor_identity_verified"] is True
     assert compatibility["firmware_profile_version"] == "1.0.0"
+    assert compatibility["reported_profile_id"] == compatibility["expected_profile_id"]
+    assert compatibility["reported_profile_sha256"] == compatibility["expected_profile_sha256"]
     assert active_codes(bridge) == set()
+
+
+def test_backend_runtime_values_are_loaded_from_selected_profile(tmp_path: Path) -> None:
+    profile = load_hardware_profile()
+    profile["profile_id"] = "nexus-profile-custom-motor-rig-v1"
+    profile["hardware_model_id"] = "nexus-custom-motor-rig-v1"
+    profile["controller"]["model"] = "Custom test controller"
+    profile["safety"]["max_current_ma"] = 500
+    path = tmp_path / "nexus-profile-custom-motor-rig-v1.json"
+    path.write_text(json.dumps(profile), encoding="utf-8")
+    bridge = SerialBridge(
+        enabled=False,
+        persist_logs=False,
+        hardware_profile_path=path,
+    )
+    payload = fixture_payload()
+    payload["hardware_model_id"] = "nexus-custom-motor-rig-v1"
+
+    bridge.ingest_line(json.dumps(payload))
+
+    snapshot = bridge.snapshot()
+    assert snapshot["hardware"]["profile_id"] == "nexus-profile-custom-motor-rig-v1"
+    assert snapshot["hardware"]["controller"] == "Custom test controller"
+    assert snapshot["hardware"]["limits"]["max_current_ma"] == 500
+    assert "MOTOR_OVERCURRENT" in active_codes(bridge)
 
 
 def test_wrong_firmware_profile_is_named_without_trusting_telemetry() -> None:

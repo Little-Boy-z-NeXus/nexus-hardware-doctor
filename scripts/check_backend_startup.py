@@ -27,11 +27,15 @@ def main() -> None:
     assert isinstance(read_json(base_url, "/api/devices"), list)
     snapshot = read_json(base_url, "/api/v1/live")
     assert "connection" in snapshot and "telemetry" in snapshot
+    profile = read_json(base_url, "/api/v1/hardware-profile")
+    assert profile["profile_id"].startswith("nexus-profile-")
+    assert profile["controller"]["family"] == "esp32"
     capabilities = read_json(base_url, "/api/diagnosis/capabilities")
     assert capabilities["physical_commands_enabled"] is False
     paths = read_json(base_url, "/openapi.json")["paths"]
     assert "post" in paths["/api/devices/{device_id}/diagnoses"]
     assert "get" in paths["/api/v1/telemetry"]
+    assert "get" in paths["/api/v1/hardware-profile"]
     with urlopen(base_url + "/doctor-lab", timeout=2) as response:
         assert response.status == 200
     print("Installed backend startup, device API, live API and diagnosis routes: PASS")

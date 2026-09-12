@@ -28,6 +28,8 @@ echo [NeXus] Validating repository...
 if errorlevel 1 goto :failed
 "%NEXUS_PYTHON%" scripts\validate_contracts.py
 if errorlevel 1 goto :failed
+"%NEXUS_PYTHON%" -m nexus_backend.hardware_profile
+if errorlevel 1 goto :failed
 
 echo [NeXus] Checking backend...
 "%NEXUS_PYTHON%" -m ruff check backend scripts

@@ -14,6 +14,7 @@ The INA226 `VBUS` input must be bridged to `VIN−` (the load side of the R100 s
 | Backend | Persistent sessions/telemetry, explicit serial-history binding, verified live Nebius client, read-only orchestration, policy/evaluation and U07 physical 3/3 | Keep motor writes behind the separate H05/H06 and N03/N06 safety gates |
 | Firmware | Safe PWM clamp, strict telemetry v1, calibrated INA226 logs, bounded device command protocol | Connect the physical adapter through H05 policy; add encoder calibration |
 | Contracts | Four frozen JSON Schemas, fixtures and migration enforcement | Change only through a reviewed migration note or v2 |
+| Hardware as code | Validated JSON profile drives firmware constants, backend discovery, compatibility and UI metadata | Add board adapters only when another physical platform is selected |
 
 The three demo paths are `Prevent`, `Manual Diagnose`, and `Auto Heal`. Features that do not make one of those paths more reliable are out of scope until after the hackathon.
 
@@ -66,6 +67,7 @@ No command typing is required after the prerequisite applications are installed.
 | `nexus-run-n08-recovery-drill.cmd` | Time a safe firmware/INA226 recovery and save local evidence |
 | `nexus-monitor-firmware.cmd` | Standalone Serial Monitor; saves each session under `logs/device-monitor-*.log` |
 | `nexus-run-firmware.cmd` | Upload firmware, open standalone Serial Monitor, and save the session under `logs/` |
+| `nexus-validate-hardware-profile.cmd` | Validate the selected machine-readable BOM, wiring, capabilities and safety limits |
 | `nexus-check-project.cmd` | Run repository, backend, frontend, and firmware checks |
 
 For the first use, double-click `nexus-setup.cmd` once. Normal operation then requires only `nexus-start-app.cmd`: the backend automatically finds the GOOUUU ESP32-S3 COM port, writes `logs/hardware-live-*.ndjson`, and streams the same log to Hardware Graph in realtime. Do not open PlatformIO Serial Monitor at the same time because only one process can own the COM port. Close the two server windows or use `nexus-stop-app.cmd` to stop the application. Keep motor power disconnected while uploading firmware.
@@ -251,6 +253,7 @@ nexus-hardware-doctor/
 ├── firmware/          ESP32 telemetry and approved device actions
 ├── backend/           FastAPI, contracts, reasoning, policy and APIs
 ├── frontend/          Dashboard, Hardware Graph and AI Doctor UI
+├── nexus-hardware/    Canonical hardware-as-code schema and versioned JSON profiles
 ├── nexus-contracts/   Frozen schemas, fixtures and migration notes
 ├── nexus-k6-tests/    CI smoke test and manual MVP load baseline
 ├── docs/              Architecture, scope, ownership and security decisions
@@ -263,6 +266,7 @@ Read the component guide before changing an area:
 - [Firmware guide](firmware/README.md)
 - [Backend guide](backend/README.md)
 - [Frontend guide](frontend/README.md)
+- [Hardware-as-code guide](nexus-hardware/README.md)
 - [Contract guide](nexus-contracts/README.md)
 - [k6 performance test guide](nexus-k6-tests/README.md)
 - [Documentation index](docs/README.md)

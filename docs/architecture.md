@@ -31,6 +31,19 @@ flowchart LR
 
 The model can propose; only the deterministic safety policy can approve. A tool execution is not considered successful until Verify receives a newer telemetry sample and emits `verification.passed`.
 
+## Hardware-as-code boundary
+
+The physical source of truth is the selected JSON document under
+[`nexus-hardware/profiles`](../nexus-hardware/README.md). It is separate from the frozen message
+contracts: the profile describes controller, components, pins, wiring, electrical limits,
+capabilities and transport, while `nexus-contracts/v1` describes data crossing runtime
+boundaries. PlatformIO generates firmware constants from the profile; the backend validates and
+loads that same document; the frontend reads it through `GET /api/v1/hardware-profile`.
+
+The firmware heartbeat includes the profile ID and canonical JSON SHA-256. A profile ID, hash,
+hardware model, sensor or driver mismatch is rejected before the backend marks the BOM compatible.
+The ESP32 rig is the first certified adapter, not a permanent backend or UI assumption.
+
 ## Auto Heal sequence
 
 ```mermaid
@@ -80,7 +93,7 @@ The same names are represented in:
 
 - Firmware owns measurements, actuator control, command execution, and a local PWM ceiling.
 - Backend owns schema validation, the hardware graph, deterministic electrical checks, structured model responses, orchestration, policy, and the audit trail.
-- Frontend owns presentation of the fixed topology, health state, telemetry, conversation, and Before/Action/After timeline.
+- Frontend owns presentation of the selected profile topology, health state, telemetry, conversation, and Before/Action/After timeline.
 - Nemotron ranks hypotheses and proposes the next test or action. It never defines safety limits and never calls a device directly.
 - Safety Policy checks tool allowlist, requested arguments, hardware limits, and approval requirements.
 - Verify compares fresh telemetry against the expected observation before an action becomes successful.
