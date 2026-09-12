@@ -6,34 +6,35 @@
 #include <cmath>
 
 #include "nexus_contract_v1.h"
+#include "nexus_hardware_profile.generated.h"
 
 namespace {
-constexpr uint8_t kInaSdaPin = 1;
-constexpr uint8_t kInaSclPin = 2;
-constexpr uint8_t kMotorEnablePin = 12;
-constexpr uint8_t kMotorIn1Pin = 13;
-constexpr uint8_t kMotorIn2Pin = 14;
-constexpr uint8_t kEncoderAPin = 16;
-constexpr uint8_t kEncoderBPin = 17;
+constexpr uint8_t kInaSdaPin = NEXUS_I2C_SDA_PIN;
+constexpr uint8_t kInaSclPin = NEXUS_I2C_SCL_PIN;
+constexpr uint8_t kMotorEnablePin = NEXUS_MOTOR_ENABLE_PIN;
+constexpr uint8_t kMotorIn1Pin = NEXUS_MOTOR_IN1_PIN;
+constexpr uint8_t kMotorIn2Pin = NEXUS_MOTOR_IN2_PIN;
+constexpr uint8_t kEncoderAPin = NEXUS_ENCODER_A_PIN;
+constexpr uint8_t kEncoderBPin = NEXUS_ENCODER_B_PIN;
 constexpr uint8_t kMaxPwmPercent = NEXUS_MAX_PWM_PERCENT;
 constexpr float kMinBusVoltageV = NEXUS_MIN_BUS_VOLTAGE_MV / 1000.0f;
 constexpr float kMaxBusVoltageV = NEXUS_MAX_BUS_VOLTAGE_MV / 1000.0f;
 constexpr float kMaxCurrentMa = NEXUS_MAX_CURRENT_MA;
-constexpr uint8_t kIna226Address = 0x40;
-constexpr float kIna226ShuntOhms = 0.1f;
-constexpr float kIna226CurrentLsbMa = 0.1f;
-constexpr uint16_t kIna226ManufacturerId = 0x5449;
-constexpr uint16_t kIna226DieIdMask = 0xFFF0;
-constexpr uint16_t kIna226DieId = 0x2260;
+constexpr uint8_t kIna226Address = NEXUS_SENSOR_I2C_ADDRESS;
+constexpr float kIna226ShuntOhms = NEXUS_SENSOR_SHUNT_OHMS;
+constexpr float kIna226CurrentLsbMa = NEXUS_SENSOR_CURRENT_LSB_MA;
+constexpr uint16_t kIna226ManufacturerId = NEXUS_SENSOR_MANUFACTURER_ID;
+constexpr uint16_t kIna226DieIdMask = NEXUS_SENSOR_DIE_ID_MASK;
+constexpr uint16_t kIna226DieId = NEXUS_SENSOR_DIE_ID;
 constexpr char kDeviceProtocolVersion[] = "1.0.0";
-constexpr char kHardwareProfileVersion[] = "1.0.0";
+constexpr char kHardwareProfileVersion[] = NEXUS_HARDWARE_PROFILE_VERSION;
 constexpr size_t kMaxCommandLength = 512;
 constexpr size_t kRequestCacheSize = 4;
 constexpr uint32_t kDefaultCommandTimeoutMs = 4000;
 constexpr uint32_t kMaxCommandTimeoutMs = 5000;
-constexpr uint32_t kMaxMotorTestDurationMs = 3000;
+constexpr uint32_t kMaxMotorTestDurationMs = NEXUS_MAX_MOTOR_TEST_DURATION_MS;
 constexpr uint32_t kCommandMeasurementSettleMs = 150;
-constexpr uint32_t kTelemetryIntervalMs = 1000;
+constexpr uint32_t kTelemetryIntervalMs = NEXUS_TELEMETRY_INTERVAL_MS;
 constexpr uint32_t kSignalMonitorHeartbeatMs = 10000;
 constexpr float kIna226ConsistencyAbsoluteToleranceMa = 5.0f;
 constexpr float kIna226ConsistencyRelativeTolerance = 0.20f;
@@ -413,11 +414,16 @@ void addSnapshot(JsonObject target, const MeasurementSnapshot& snapshot) {
 
 void emitHardwareProfile() {
   Serial.printf(
-      "[NEXUS][INFO][HARDWARE_PROFILE] profile_version=%s hardware_model_id=%s "
-      "controller=goouuu-esp32-s3-n16r8 sensor=ina226-r100 driver=l298n "
+      "[NEXUS][INFO][HARDWARE_PROFILE] profile_version=%s profile_id=%s profile_sha256=%s "
+      "hardware_model_id=%s controller=%s sensor=%s driver=%s "
       "motor=jgb37-520-12v-encoder pins=sda1,scl2,ena12,in1-13,in2-14,a16,b17\n",
       kHardwareProfileVersion,
-      NEXUS_HARDWARE_MODEL_ID);
+      NEXUS_HARDWARE_PROFILE_ID,
+      NEXUS_HARDWARE_PROFILE_SHA256,
+      NEXUS_HARDWARE_MODEL_ID,
+      NEXUS_CONTROLLER_BOARD_ID,
+      NEXUS_SENSOR_PROFILE,
+      NEXUS_DRIVER_PROFILE);
 }
 
 void emitTelemetry() {
@@ -784,11 +790,11 @@ String executeCommand(const ParsedCommand& parsed) {
     result["current_ma"] = before.currentMa;
   } else if (parsed.command == "read_gpio") {
     int pin = -1;
-    if (parsed.pinId == "gpio_12") pin = kMotorEnablePin;
-    if (parsed.pinId == "gpio_13") pin = kMotorIn1Pin;
-    if (parsed.pinId == "gpio_14") pin = kMotorIn2Pin;
-    if (parsed.pinId == "gpio_16") pin = kEncoderAPin;
-    if (parsed.pinId == "gpio_17") pin = kEncoderBPin;
+    if (parsed.pinId == NEXUS_MOTOR_ENABLE_PIN_ID) pin = kMotorEnablePin;
+    if (parsed.pinId == NEXUS_MOTOR_IN1_PIN_ID) pin = kMotorIn1Pin;
+    if (parsed.pinId == NEXUS_MOTOR_IN2_PIN_ID) pin = kMotorIn2Pin;
+    if (parsed.pinId == NEXUS_ENCODER_A_PIN_ID) pin = kEncoderAPin;
+    if (parsed.pinId == NEXUS_ENCODER_B_PIN_ID) pin = kEncoderBPin;
     result["pin_id"] = parsed.pinId;
     result["level"] = digitalRead(pin) == HIGH ? 1 : 0;
   } else if (parsed.command == "reset_driver") {
@@ -1100,11 +1106,13 @@ void serviceSerialInput() {
 }  // namespace
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(NEXUS_SERIAL_BAUD_RATE);
   serialCommandBuffer.reserve(kMaxCommandLength);
   delay(300);
-  Serial.println(
-      "[NEXUS][INFO][BOOT] GOOUUU ESP32-S3-N16R8 / INA226 R100 / L298N / JGB37-520");
+  Serial.printf(
+      "[NEXUS][INFO][BOOT] controller=%s profile=%s\n",
+      NEXUS_CONTROLLER_MODEL,
+      NEXUS_HARDWARE_PROFILE_ID);
   emitHardwareProfile();
   Serial.printf(
       "[NEXUS][INFO][DEVICE_COMMAND_PROTOCOL] version=%s writes_enabled=%s\n",
