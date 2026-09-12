@@ -45,6 +45,7 @@ No command typing is required after the prerequisite applications are installed.
 | File | Action |
 | --- | --- |
 | `nexus-setup.cmd` | Install backend, frontend, and PlatformIO dependencies on the first run |
+| `nexus-configure-nebius.cmd` | One-time hidden API-key prompt; prepare every other U07 setting automatically |
 | `nexus-start-app.cmd` | Start backend/frontend, connect ESP32 serial, then open the realtime Hardware Graph |
 | `nexus-stop-app.cmd` | Stop only this repository's backend and frontend processes |
 | `nexus-start-backend.cmd` | Start only the API at `http://127.0.0.1:8000` |
@@ -70,9 +71,11 @@ path, stops on unsafe readings, writes local evidence, and restores normal safe 
 Follow [`docs/hardware-baseline-u05.md`](docs/hardware-baseline-u05.md); never leave the motor
 running unattended.
 
-For U07, first keep the Nebius credential only in an ignored local `.env`, bind
-`NEXUS_SERIAL_DEVICE_ID=nexus-demo-esp32`, then double-click
-`nexus-run-u07-vertical-slice.cmd`. Replay and mock data intentionally fail this gate. See the
+For U07, double-click `nexus-run-u07-vertical-slice.cmd`. On the first run, paste the Nebius API
+key into the hidden prompt and press Enter; the runner creates the ignored local `.env` and fills
+every other frozen MVP setting automatically. Later runs reuse that local key without asking.
+`nexus-configure-nebius.cmd` performs only this one-time configuration when needed. Replay and
+mock data intentionally fail the gate. See the
 [U07 vertical-slice runbook](docs/u07-vertical-slice.md) for the exact 3/3 evidence and safe
 internal-video checklist.
 

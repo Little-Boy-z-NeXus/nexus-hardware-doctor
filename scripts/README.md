@@ -14,6 +14,7 @@ These scripts provide fast, deterministic checks for repository structure and fr
 | [`nexus_n05_fault_acceptance.py`](nexus_n05_fault_acceptance.py) | `pyserial` + secured physical rig | Five-cycle N05 software/manual fault checks, transport retry, safe reset and local evidence |
 | [`nexus_n06_auto_heal_acceptance.py`](nexus_n06_auto_heal_acceptance.py) | `pyserial` + secured physical rig | Five-cycle PWM fault → policy → recovery → motor-test loop with before/after audit evidence |
 | [`nexus_u07_vertical_slice.py`](nexus_u07_vertical_slice.py) | Running backend/frontend, physical ESP32 and configured Nebius model | Three strict physical telemetry → Dashboard/WebSocket → Nemotron → read-only serial-tool runs |
+| [`nexus_configure_nebius.py`](nexus_configure_nebius.py) | Python 3.11 standard library | Creates or updates the ignored U07 `.env`; prompts securely only when the Nebius key is absent |
 
 `python -m nexus_backend.replay_server` is the N07 no-hardware replay entry point. It serves
 sanitized telemetry through the same live API/WebSocket consumed by the frontend.
@@ -122,6 +123,11 @@ disconnect within reach before uploading it.
 Do not put generated reports, private telemetry, keys, or raw model logs under `scripts/`.
 
 ## U07 physical vertical slice
+
+`nexus_configure_nebius.py` freezes every non-secret MVP setting and safely upserts each managed
+variable without duplicating entries or overwriting unrelated local configuration. With
+`--prompt-for-key`, input is hidden and the key is never echoed. Without that flag it can prepare
+the local `.env` while deliberately leaving the key blank.
 
 `nexus_u07_vertical_slice.py` is normally launched by the root
 `nexus-run-u07-vertical-slice.cmd`. It refuses replay/simulator telemetry, missing live-model

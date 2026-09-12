@@ -11,11 +11,9 @@ if not exist "backend\.venv\Scripts\python.exe" (
   call "%~dp0nexus-setup.cmd"
   if errorlevel 1 goto :failed
 )
-if not exist ".env" (
-  echo [NEXUS][U07][BLOCKED] Chưa có file .env cục bộ.
-  echo Sao chép .env.example thành .env, điền Nebius secret ở máy này và bật các biến U07 theo docs\u07-vertical-slice.md.
-  goto :failed
-)
+echo [NEXUS][U07] Đang kiểm tra cấu hình cục bộ...
+"backend\.venv\Scripts\python.exe" "scripts\nexus_configure_nebius.py" --prompt-for-key
+if errorlevel 1 goto :failed
 
 call "%~dp0nexus-stop-app.cmd"
 if errorlevel 1 goto :failed
