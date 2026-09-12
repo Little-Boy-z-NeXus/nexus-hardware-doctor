@@ -17,9 +17,10 @@ This directory records the decisions required to build and demonstrate the hacka
 11. [`n08-demo-kit-recovery.md`](n08-demo-kit-recovery.md) — backup firmware, spare kit and timed recovery runbook.
 12. [`u07-vertical-slice.md`](u07-vertical-slice.md) — one-click physical telemetry, dashboard, Nemotron and read-only-tool gate.
 13. [`evidence/u07-final-acceptance.md`](evidence/u07-final-acceptance.md) — redacted 3/3 physical U07 acceptance and local evidence hashes.
-14. [`security.md`](security.md) — secret handling, redaction, model/tool boundaries, and incident basics.
-15. [`backlog.md`](backlog.md) — link to the live Google Sheet and local working rules.
-16. [`nexus-integration/README.md`](nexus-integration/README.md) — U06 daily integration cadence, blocker SLA, merge gate and decision format.
+14. [`signal-wire-monitoring.md`](signal-wire-monitoring.md) — realtime SDA/SCL and encoder wire checks, fault codes and safe acceptance cases.
+15. [`security.md`](security.md) — secret handling, redaction, model/tool boundaries, and incident basics.
+16. [`backlog.md`](backlog.md) — link to the live Google Sheet and local working rules.
+17. [`nexus-integration/README.md`](nexus-integration/README.md) — U06 daily integration cadence, blocker SLA, merge gate and decision format.
 
 ## Document index
 
@@ -38,6 +39,7 @@ This directory records the decisions required to build and demonstrate the hacka
 | [`n08-demo-kit-recovery.md`](n08-demo-kit-recovery.md) | Packing recovery assets and running the timed demo recovery drill | Nguyễn + Hiếu |
 | [`u07-vertical-slice.md`](u07-vertical-slice.md) | Running and evidencing the first strict end-to-end physical vertical slice | Hiếu |
 | [`evidence/u07-final-acceptance.md`](evidence/u07-final-acceptance.md) | Reviewing the redacted physical U07 result and artifact hashes | Hiếu |
+| [`signal-wire-monitoring.md`](signal-wire-monitoring.md) | Diagnosing SDA/SCL or encoder signal wiring in realtime | Nguyễn + Hiếu |
 | [`security.md`](security.md) | Handling keys, telemetry, logs, prompts, or device commands | Hoàng + Hiếu |
 | [`backlog.md`](backlog.md) | Finding the live plan or mapping a commit to a task ID | Entire team |
 | [`h-resource-checklist.md`](h-resource-checklist.md) | Supplying resources to finish H tasks; remaining live acceptance gates | Hoàng |

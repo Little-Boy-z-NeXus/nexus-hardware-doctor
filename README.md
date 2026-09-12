@@ -176,6 +176,9 @@ Open <http://127.0.0.1:5173>. Available routes:
 - `/doctor`
 
 Dashboard and Hardware Graph use live API data and show `--` while no valid hardware packet exists; they do not invent presentation values. Open `/hardware` for the realtime terminal and fault-resolution guide.
+The Hardware Graph also shows a dedicated SDA/SCL/encoder wire-health panel. See the
+[signal-wire monitoring runbook](docs/signal-wire-monitoring.md) for what can be proven with the
+current BOM and the safe disconnect/recovery test procedure.
 
 ## Quick start: firmware
 
