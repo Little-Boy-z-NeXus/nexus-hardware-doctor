@@ -13,8 +13,9 @@ This directory records the decisions required to build and demonstrate the hacka
 7. [`n04-health-check.md`](n04-health-check.md) — deterministic pre-power rule checks that can run without hardware.
 8. [`n05-fault-injection.md`](n05-fault-injection.md) — supervised repeatable hardware faults and reset procedure.
 9. [`n06-auto-heal-acceptance.md`](n06-auto-heal-acceptance.md) — physical PWM fault-to-recovery loop and evidence gate.
-10. [`security.md`](security.md) — secret handling, redaction, model/tool boundaries, and incident basics.
-11. [`backlog.md`](backlog.md) — link to the live Google Sheet and local working rules.
+10. [`n07-quality-replay.md`](n07-quality-replay.md) — no-hardware replay, automation and soak evidence.
+11. [`security.md`](security.md) — secret handling, redaction, model/tool boundaries, and incident basics.
+12. [`backlog.md`](backlog.md) — link to the live Google Sheet and local working rules.
 
 ## Document index
 
@@ -29,6 +30,7 @@ This directory records the decisions required to build and demonstrate the hacka
 | [`n04-health-check.md`](n04-health-check.md) | Running deterministic pre-power rule checks without hardware | Nguyễn |
 | [`n05-fault-injection.md`](n05-fault-injection.md) | Reproducing and resetting supervised fault profiles | Nguyễn |
 | [`n06-auto-heal-acceptance.md`](n06-auto-heal-acceptance.md) | Running and evidencing the bounded physical Auto Heal acceptance | Nguyễn |
+| [`n07-quality-replay.md`](n07-quality-replay.md) | Replaying telemetry and reviewing automation/soak/reconnect evidence | Nguyễn |
 | [`security.md`](security.md) | Handling keys, telemetry, logs, prompts, or device commands | Hoàng + Hiếu |
 | [`backlog.md`](backlog.md) | Finding the live plan or mapping a commit to a task ID | Entire team |
 | [`h-resource-checklist.md`](h-resource-checklist.md) | Supplying resources to finish H tasks; remaining live acceptance gates | Hoàng |

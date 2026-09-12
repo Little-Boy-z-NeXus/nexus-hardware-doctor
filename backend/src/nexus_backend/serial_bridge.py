@@ -174,14 +174,17 @@ class SerialBridge:
                 }
             )
 
-    def ingest_line(self, raw_line: str, *, port: str | None = None) -> None:
+    def ingest_line(self, raw_line: str, *, port: str | None = None,
+                    source: str = "firmware") -> None:
         """Parse one firmware line; public for deterministic tests and replay."""
+        if source not in {"firmware", "replay"}:
+            raise ValueError("Serial line source must be firmware or replay")
         line = raw_line.strip()
         if not line:
             return
 
         level = self._infer_log_level(line)
-        self._append_log(level, line, source="firmware")
+        self._append_log(level, line, source=source)
         with self._lock:
             self._connection["last_seen_at"] = utc_now()
             if port:

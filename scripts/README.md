@@ -14,6 +14,9 @@ These scripts provide fast, deterministic checks for repository structure and fr
 | [`nexus_n05_fault_acceptance.py`](nexus_n05_fault_acceptance.py) | `pyserial` + secured physical rig | Five-cycle N05 software/manual fault checks, transport retry, safe reset and local evidence |
 | [`nexus_n06_auto_heal_acceptance.py`](nexus_n06_auto_heal_acceptance.py) | `pyserial` + secured physical rig | Five-cycle PWM fault → policy → recovery → motor-test loop with before/after audit evidence |
 
+`python -m nexus_backend.replay_server` is the N07 no-hardware replay entry point. It serves
+sanitized telemetry through the same live API/WebSocket consumed by the frontend.
+
 Both scripts return exit code `0` on success and a non-zero exit code with actionable messages on failure. GitHub Actions relies on those exit codes.
 
 ## Prepare the environment
