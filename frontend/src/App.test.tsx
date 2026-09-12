@@ -295,15 +295,17 @@ describe("NeXus application routes", () => {
     ).toBeInTheDocument();
   });
 
-  it("keeps long component names accessible in a horizontally scrollable BOM", async () => {
+  it("keeps a large BOM compact with search and on-demand component details", async () => {
+    const user = userEvent.setup();
     renderAt("/hardware");
 
-    const flow = await screen.findByTestId("hardware-flow-scroll");
-    expect(flow).toHaveAttribute("tabindex", "0");
-    expect(flow).toHaveAccessibleName("Chuỗi 5 thành phần phần cứng. Có thể cuộn ngang để xem đầy đủ.");
-    expect(
-      screen.getByTitle("INA226 R100 từ profile"),
-    ).toHaveTextContent("INA226 R100 từ profile");
-    expect(screen.getByTitle("Test 12V supply")).toBeInTheDocument();
+    const search = await screen.findByRole("searchbox", { name: "Tìm linh kiện" });
+    expect(screen.getByRole("heading", { name: "5 linh kiện đang theo dõi" })).toBeInTheDocument();
+
+    await user.type(search, "12V supply");
+    expect(screen.getByText("1", { selector: ".hardware-index__meta strong" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "5. Test 12V supply, Ổn định" })).toBeInTheDocument();
+    expect(screen.getByTestId("hardware-detail")).toHaveTextContent("Test 12V supply");
+    expect(screen.getByTestId("hardware-detail")).toHaveTextContent("5/5");
   });
 });
