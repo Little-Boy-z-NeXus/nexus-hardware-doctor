@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it } from "vitest";
 import { MemoryRouter } from "react-router-dom";
@@ -20,10 +20,10 @@ describe("NeXus application routes", () => {
     ["/dashboard", "Waiting for your hardware", "Dashboard"],
     ["/hardware", "Hardware Graph", "Hardware Graph"],
     ["/doctor", "AI Doctor", "AI Doctor"],
-  ])("renders %s and marks its navigation item active", (path, heading, navLabel) => {
+  ])("renders %s and marks its navigation item active", async (path, heading, navLabel) => {
     renderAt(path);
 
-    expect(screen.getByRole("heading", { level: 1, name: heading })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { level: 1, name: heading })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: navLabel })).toHaveClass("nav-link--active");
   });
 
@@ -40,10 +40,18 @@ describe("NeXus application routes", () => {
     const user = userEvent.setup();
     renderAt("/dashboard");
 
-    await user.click(screen.getByRole("link", { name: "Hardware Graph" }));
+    await user.click(await screen.findByRole("link", { name: "Hardware Graph" }));
 
     expect(
       await screen.findByRole("heading", { level: 1, name: "Hardware Graph" }),
     ).toBeInTheDocument();
+  });
+
+  it("updates route SEO metadata without another network request", async () => {
+    renderAt("/hardware");
+
+    await screen.findByRole("heading", { level: 1, name: "Hardware Graph" });
+    await waitFor(() => expect(document.title).toBe("Sơ đồ và log phần cứng | NeXus"));
+    expect(document.documentElement.lang).toBe("vi");
   });
 });
