@@ -93,6 +93,16 @@ jobs:
         run: docker build -t nexus-backend:ci .
       - name: Verify packaged prompts, cases and simulated flow
         run: docker run --rm nexus-backend:ci python -m nexus_backend.evaluation --output /tmp/nexus-evaluation.json
+      - name: Verify packaged serial integration and challenge fixtures without hardware or API calls
+        run: >-
+          docker run --rm nexus-backend:ci python -c
+          'from nexus_backend.serial_history import SerialHistory;
+          from nexus_backend.serial_reads import SerialReadChannel;
+          from nexus_backend.evaluation import load_cases, case_inputs;
+          cases = load_cases("challenge");
+          assert len(cases) == 12;
+          [case_inputs(case) for case in cases];
+          print("Installed serial integration and challenge fixtures: PASS")'
       - name: Verify installed application startup and both API families
         run: |
           docker run --detach --name nexus-backend-ci --publish 127.0.0.1:18000:8000 nexus-backend:ci

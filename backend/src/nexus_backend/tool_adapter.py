@@ -29,6 +29,10 @@ class LocalToolAdapter:
     def latest_sample(self) -> dict | None:
         return deepcopy(self._sample)
 
+    async def execute_call(self, call: dict) -> dict:
+        """Preserve the canonical call ID when an adapter uses a device transport."""
+        return await self.execute(call["tool_name"], call["arguments"])
+
     def _snapshot(self, *, pwm: int, enabled: bool) -> dict:
         if self._sample is None:
             raise ToolExecutionError("No simulator telemetry is available")
@@ -77,3 +81,46 @@ class LocalToolAdapter:
         return {"sample": after, "before": before, "after": after, "during": during,
                 "scope": "simulation", "physical_operation_verified": False,
                 "simulated_duration_ms": arguments.get("duration_ms", 0)}
+
+
+class SerialToolAdapter(LocalToolAdapter):
+    """Policy-checked reads over the existing serial owner, with durable evidence."""
+
+    def __init__(self, context: dict, *, reads, history, policy: SafetyPolicy | None = None):
+        super().__init__(context, mode="real", policy=policy)
+        if history.device_id != context["device_id"]:
+            raise ValueError("Serial history must match the diagnosis device")
+        self.reads = reads
+        self.history = history
+
+    async def execute(self, tool_name: str, arguments: dict) -> dict:
+        # Standalone callers still use the full checked envelope path.
+        return await self.execute_call({
+            "schema_version": "1.0.0", "tool_call_id": str(uuid4()),
+            "trace_id": str(uuid4()), "device_id": self.context["device_id"],
+            "tool_name": tool_name, "arguments": arguments, "requested_by": "orchestrator",
+            "requested_at": datetime.now(UTC).isoformat(), "requires_verification": False,
+        })
+
+    async def execute_call(self, call: dict) -> dict:
+        checked = validate_contract("tool", call)
+        name, arguments = checked["tool_name"], checked["arguments"]
+        if checked["device_id"] != self.context["device_id"]:
+            raise ToolExecutionError("Tool request belongs to another device")
+        decision = self.policy.evaluate(name, arguments, context=self.context,
+                                        sample=self.latest_sample(), mode="real")
+        # Keep the transport boundary read-only even if a caller injects a permissive policy.
+        if not decision.allowed or name not in READ_TOOLS:
+            raise ToolExecutionError("Physical actions are unavailable through this adapter")
+        if name == "get_hardware_graph":
+            return {"hardware_model": deepcopy(self.context["hardware_model"]),
+                    "scope": "declared_configuration"}
+        record = await self.reads.read(
+            device_id=self.context["device_id"],
+            hardware_model_id=self.context["hardware_model_id"],
+            tool_call_id=checked["tool_call_id"],
+        )
+        sample = self.history.persist(record)
+        self._sample = deepcopy(sample)
+        return {"sample": sample, "scope": "serial_read", "provenance": record["provenance"],
+                "device_command": record["device_command"], "physical_operation_verified": False}

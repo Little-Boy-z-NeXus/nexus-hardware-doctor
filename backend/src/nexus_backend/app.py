@@ -104,7 +104,7 @@ class HealthCheckRequest(APIRequest):
 
 def create_app(
     db_path: str | Path | None = None, *, serial_enabled: bool | None = False,
-    bridge: SerialBridge | None = None,
+    bridge: SerialBridge | None = None, serial_device_id: str | None = None,
 ) -> FastAPI:
     """Create isolated state; factory calls disable hardware access unless requested.
 
@@ -113,6 +113,9 @@ def create_app(
     """
     serial_bridge = bridge if bridge is not None else SerialBridge(enabled=serial_enabled)
     live_hub = LiveHub()
+    bound_device_id = serial_device_id
+    if bound_device_id is None and serial_enabled is None:
+        bound_device_id = os.getenv("NEXUS_SERIAL_DEVICE_ID", "").strip() or None
 
     @asynccontextmanager
     async def lifespan(application: FastAPI):
@@ -122,6 +125,7 @@ def create_app(
         )
         application.state.store = SQLiteStore(database)
         application.state.run_limiter = RunLimiter()
+        application.state.serial_history = None
         loop = asyncio.get_running_loop()
         publishing = True
 
@@ -130,6 +134,12 @@ def create_app(
                 loop.call_soon_threadsafe(live_hub.publish, snapshot)
 
         try:
+            if bound_device_id is not None:
+                from nexus_backend.serial_history import SerialHistory
+
+                history = SerialHistory(application.state.store, bound_device_id)
+                application.state.serial_history = history
+                serial_bridge.set_sample_sink(history.ingest)
             serial_bridge.set_sink(publish_from_thread)
             serial_bridge.start()
             yield
@@ -138,6 +148,7 @@ def create_app(
             # Detach first so a bridge finishing a read cannot publish after shutdown.
             try:
                 serial_bridge.set_sink(None)
+                serial_bridge.set_sample_sink(None)
             finally:
                 try:
                     await asyncio.to_thread(serial_bridge.stop)
@@ -196,6 +207,7 @@ def create_app(
 
     @application.get("/api/diagnosis/capabilities", tags=["Diagnosis"])
     def diagnosis_capabilities() -> dict:
+        history = getattr(application.state, "serial_history", None)
         return {
             "mock_available": True,
             "live_enabled": os.getenv("NEXUS_ENABLE_LIVE_MODEL", "false").lower() == "true",
@@ -203,6 +215,9 @@ def create_app(
                 "NEXUS_NEBIUS_BASE_URL", "NEXUS_NEBIUS_API_KEY", "NEXUS_NVIDIA_MODEL",
             )),
             "physical_commands_enabled": False,
+            "serial_reads_enabled": history is not None,
+            "serial_device_id": bound_device_id,
+            "serial_history_status": history.status if history is not None else "disabled",
         }
 
     @application.post("/api/devices/{device_id}/diagnoses", tags=["Diagnosis"])
@@ -227,6 +242,13 @@ def create_app(
             planner = MockPlanner()
         context = build_context(store.get_hardware_model(device_id),
                                 store.telemetry_history(device_id, 10), body.symptom)
+        adapter = None
+        history = request.app.state.serial_history
+        if (body.mode == "live" and device["source"] == "device"
+                and history is not None and history.device_id == device_id):
+            from nexus_backend.tool_adapter import SerialToolAdapter
+
+            adapter = SerialToolAdapter(context, reads=serial_bridge.reads, history=history)
         denied = request.app.state.run_limiter.acquire()
         if denied:
             raise HTTPException(429 if denied == "rate_limited" else 503,
@@ -239,6 +261,7 @@ def create_app(
             try:
                 result = await asyncio.wait_for(run_diagnosis(
                     context, planner, mode="mock" if body.mode == "mock" else "real",
+                    adapter=adapter,
                     max_steps=body.max_steps,
                     timeout_seconds=25, trace_id=session["trace_id"],
                 ), timeout=30)
