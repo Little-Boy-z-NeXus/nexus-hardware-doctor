@@ -16,6 +16,7 @@ These scripts provide fast, deterministic checks for repository structure and fr
 | [`nexus_u07_vertical_slice.py`](nexus_u07_vertical_slice.py) | Running backend/frontend, physical ESP32 and configured Nebius model | Three strict physical telemetry → Dashboard/WebSocket → Nemotron → read-only serial-tool runs |
 | [`nexus_configure_nebius.py`](nexus_configure_nebius.py) | Python 3.11 standard library | Creates or updates the ignored U07 `.env`; prompts securely only when the Nebius key is absent |
 | [`nexus_h04_acceptance.py`](nexus_h04_acceptance.py) | Python 3.11 standard library | Qualifies the reviewed live Nemotron evidence for H04 without another paid call |
+| [`nexus_h05_acceptance.py`](nexus_h05_acceptance.py) | Python 3.11 standard library + local N03 evidence | Qualifies bounded orchestration against the latest physical adapter run |
 
 `python -m nexus_backend.replay_server` is the N07 no-hardware replay entry point. It serves
 sanitized telemetry through the same live API/WebSocket consumed by the frontend.
