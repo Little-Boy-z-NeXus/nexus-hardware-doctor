@@ -125,6 +125,11 @@ def test_explicit_live_request_calls_configured_planner_with_read_only_tools(tmp
         assert len(calls) == 1
         assert set(calls[0]["available_tools"]) == {"get_hardware_graph", "get_telemetry"}
         assert calls[0]["physical_actions_available"] is False
+        assert len(calls[0]["hardware_model"]["components"]) == 5
+        assert len(calls[0]["hardware_model"]["connections"]) == 18
+        assert calls[0]["hardware_model"]["components"][0]["model"] == (
+            "GOOUUU Tech ESP32-S3-N16R8"
+        )
         assert client.get("/api/devices/nexus-demo-esp32/telemetry").json() == sample
 
 

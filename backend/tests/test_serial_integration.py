@@ -12,6 +12,7 @@ from test_serial_reads import FIXTURES, responses, sample
 
 from nexus_backend.app import create_app
 from nexus_backend.context import build_context
+from nexus_backend.hardware_profile import load_hardware_profile, profile_fingerprint
 from nexus_backend.policy import PolicyDecision, SafetyPolicy
 from nexus_backend.serial_bridge import SerialBridge
 from nexus_backend.serial_history import SerialHistory
@@ -38,6 +39,18 @@ class SimulatedPort:
         self.sequence = 10
         self.malformed = malformed
         self.closed = False
+        profile = load_hardware_profile()
+        controller = profile["controller"]
+        self.emit_raw(
+            "[NEXUS][INFO][HARDWARE_PROFILE] "
+            f"profile_version={profile['schema_version']} "
+            f"profile_id={profile['profile_id']} "
+            f"profile_sha256={profile_fingerprint(profile)} "
+            f"hardware_model_id={profile['hardware_model_id']} "
+            f"controller={controller['board_id']} "
+            f"sensor={profile['firmware']['sensor_profile']} "
+            f"driver={profile['firmware']['driver_profile']}"
+        )
         self.emit(sample(self.sequence))
 
     def __enter__(self):
@@ -47,7 +60,10 @@ class SimulatedPort:
         self.closed = True
 
     def emit(self, value):
-        wire = json.dumps(value).encode() + b"\n"
+        self.emit_raw(json.dumps(value))
+
+    def emit_raw(self, value):
+        wire = value.encode() + b"\n"
         # Split every message to exercise timeout-delimited partial serial lines.
         self.lines.put(wire[:13])
         self.lines.put(wire[13:])
@@ -82,7 +98,8 @@ def wait_until(predicate):
 
 def configured_app(tmp_path, monkeypatch, *, source="device", malformed=False, bind=True):
     database = tmp_path / "nexus.sqlite3"
-    registered_database(database, source).close()
+    if bind:
+        registered_database(database, source).close()
     port = SimulatedPort(malformed=malformed)
     opens = []
 
@@ -126,19 +143,30 @@ def test_serial_history_is_explicit_source_bound_and_durable(tmp_path, monkeypat
         assert len(restarted.get(path + "/events").json()) == 3
 
 
-@pytest.mark.parametrize("source,bind", [("simulator", True), ("device", False)])
-def test_serial_frames_cannot_change_other_sources_or_unbound_history(
-    tmp_path, monkeypatch, source, bind,
-):
-    app, bridge, port, _ = configured_app(tmp_path, monkeypatch, source=source, bind=bind)
+def test_serial_frames_cannot_change_a_registered_simulator(tmp_path, monkeypatch):
+    app, bridge, port, _ = configured_app(tmp_path, monkeypatch, source="simulator")
     with TestClient(app) as client:
         wait_until(lambda: bridge.snapshot()["telemetry"] is not None)
         path = f"/api/devices/{model()['device_id']}"
         assert client.get(path + "/telemetry").status_code == 404
-        assert client.get(path).json()["source"] == source
+        assert client.get(path).json()["source"] == "simulator"
         assert not port.requests
         status = client.get("/api/diagnosis/capabilities").json()["serial_history_status"]
-        assert status == ("serial_history_rejected" if bind else "disabled")
+        assert status == "serial_history_rejected"
+
+
+def test_profile_verified_serial_device_is_discovered_and_registered(tmp_path, monkeypatch):
+    app, bridge, _port, _ = configured_app(tmp_path, monkeypatch, bind=False)
+    path = f"/api/devices/{model()['device_id']}"
+    with TestClient(app) as client:
+        wait_until(lambda: client.get(path + "/telemetry").status_code == 200)
+        device = client.get(path).json()
+        capability = client.get("/api/diagnosis/capabilities").json()
+        assert device["source"] == "device"
+        assert device["hardware_model_id"] == load_hardware_profile()["hardware_model_id"]
+        assert capability["serial_device_id"] == model()["device_id"]
+        assert capability["serial_history_status"] == "receiving"
+        assert bridge.snapshot()["compatibility"]["firmware_profile_verified"] is True
 
 
 class ReadThenStop:
@@ -250,18 +278,19 @@ def test_u07_requires_a_fresh_serial_read_before_live_hypothesis(tmp_path, monke
         assert "private" not in json.dumps(result["model_runtime"])
 
 
-def test_fresh_read_gate_rejects_an_unbound_device_before_creating_a_session(
+def test_fresh_read_gate_accepts_a_discovered_profile_verified_device(
     tmp_path, monkeypatch,
 ):
     app, _bridge, _port, _opens = configured_app(tmp_path, monkeypatch, bind=False)
     live_stub(monkeypatch, ReadThenStop())
     path = f"/api/devices/{model()['device_id']}"
     with TestClient(app) as client:
+        wait_until(lambda: client.get(path + "/telemetry").status_code == 200)
         response = client.post(path + "/diagnoses", json={
             "symptom": "Read fresh telemetry", "mode": "live", "require_fresh_read": True,
         })
-        assert response.status_code == 409
-        assert client.get(path + "/sessions").json() == []
+        assert response.status_code == 200, response.text
+        assert response.json()["result"]["observations"][0]["source"] == "device"
 
 
 def test_history_failure_is_not_a_successful_tool_measurement(tmp_path):

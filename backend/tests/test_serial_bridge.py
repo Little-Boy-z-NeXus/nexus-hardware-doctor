@@ -133,8 +133,10 @@ def test_ina219_like_identity_is_reported_as_wrong_physical_sensor() -> None:
         item for item in snapshot["diagnostics"] if item["code"] == "INA226_ID_MISMATCH"
     )
     assert snapshot["compatibility"]["sensor_identity_verified"] is False
-    assert "INA219" in finding["message"]
-    assert "INA226 R100" in finding["action"]
+    assert "không khớp" in finding["message"]
+    assert "INA226 with R100 0.1 ohm shunt" in finding["message"]
+    assert "INA226 with R100 0.1 ohm shunt" in finding["action"]
+    assert "0x40" in finding["action"]
 
 
 def test_i2c_error_explains_ina226_wiring_repair() -> None:
@@ -212,7 +214,7 @@ def test_ina226_read_failure_never_becomes_telemetry() -> None:
         (
             "[NEXUS][ERROR][INA226_SIGNAL_INCONSISTENT] current_register=35.4mA",
             "INA226_SIGNAL_INCONSISTENT",
-            "R100",
+            "0.1 Ω",
         ),
     ],
 )
@@ -227,6 +229,7 @@ def test_i2c_signal_faults_name_the_wire_and_repair(
     assert finding["active"] is True
     assert finding["severity"] == "error"
     assert finding["component_id"] == "ina226"
+    assert finding["signal_id"] in {"i2c_sda", "i2c_scl", "i2c_bus"}
     assert expected_action in finding["action"]
     assert bridge.snapshot()["telemetry"] is None
     assert bridge.snapshot()["signal_health"]["i2c_verified"] is False
@@ -237,8 +240,8 @@ def test_i2c_signal_faults_name_the_wire_and_repair(
     [
         ("ENCODER_CHANNEL_A_MISSING", "GPIO16"),
         ("ENCODER_CHANNEL_B_MISSING", "GPIO17"),
-        ("ENCODER_SIGNAL_MISSING", "VCC"),
-        ("ENCODER_SIGNAL_INVALID", "OUT1/OUT2"),
+        ("ENCODER_SIGNAL_MISSING", "VCC, GND, A và B"),
+        ("ENCODER_SIGNAL_INVALID", "L298N dual H-bridge module"),
     ],
 )
 def test_encoder_signal_faults_are_immediate_and_actionable(
@@ -251,6 +254,7 @@ def test_encoder_signal_faults_are_immediate_and_actionable(
     finding = next(item for item in bridge.snapshot()["diagnostics"] if item["code"] == code)
     assert finding["active"] is True
     assert finding["component_id"] == "motor"
+    assert finding["signal_id"] in {"encoder_a", "encoder_b", "encoder_bus"}
     assert expected_action in finding["action"]
 
     bridge.ingest_line("[NEXUS][INFO][ENCODER_SIGNAL_OK] A_edges=8 B_edges=8")

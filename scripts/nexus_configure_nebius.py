@@ -27,13 +27,11 @@ MANAGED_VALUES: tuple[tuple[str, str], ...] = (
     ("NEXUS_NEBIUS_MAX_OUTPUT_TOKENS", "4096"),
     ("NEXUS_ENABLE_LIVE_MODEL", "true"),
     ("NEXUS_MQTT_URL", "mqtt://localhost:1883"),
-    ("NEXUS_DEVICE_ID", "nexus-demo-esp32"),
     ("NEXUS_SERIAL_ENABLED", "true"),
     ("NEXUS_SERIAL_PORT", ""),
-    ("NEXUS_SERIAL_DEVICE_ID", "nexus-demo-esp32"),
+    ("NEXUS_SERIAL_DEVICE_ID", ""),
     ("NEXUS_LOG_ENABLED", "true"),
     ("NEXUS_LOG_DIR", "logs"),
-    ("NEXUS_MAX_PWM_PERCENT", "80"),
 )
 
 

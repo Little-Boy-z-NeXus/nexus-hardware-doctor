@@ -11,13 +11,20 @@ assert SPEC is not None and SPEC.loader is not None
 u07 = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(u07)
 
+DEVICE_ID = "nexus-test-controller-a1b2c3d4e5f6"
+MODEL_ID = "nexus-test-hardware-model-v1"
+
 
 def snapshot(source="device"):
     return {
         "connection": {"status": "connected", "port": "COM8"},
         "telemetry": {
-            "device_id": u07.DEVICE_ID, "hardware_model_id": u07.MODEL_ID,
+            "device_id": DEVICE_ID, "hardware_model_id": MODEL_ID,
             "sample_id": "sample-1", "sequence": 1, "quality": {"source": source},
+        },
+        "compatibility": {
+            "firmware_profile_verified": True,
+            "sensor_identity_verified": True,
         },
     }
 
@@ -25,8 +32,14 @@ def snapshot(source="device"):
 def capabilities(**changed):
     value = {
         "live_enabled": True, "live_configured": True, "serial_reads_enabled": True,
-        "serial_device_id": u07.DEVICE_ID, "serial_history_status": "receiving",
+        "serial_device_id": DEVICE_ID, "serial_history_status": "receiving",
     }
+    value.update(changed)
+    return value
+
+
+def hardware_model(**changed):
+    value = {"device_id": DEVICE_ID, "hardware_model_id": MODEL_ID}
     value.update(changed)
     return value
 
@@ -52,12 +65,18 @@ def successful_session():
 
 
 def test_preflight_accepts_only_bound_physical_device() -> None:
-    telemetry = u07.require_runtime_preflight(capabilities(), snapshot())
+    telemetry = u07.require_runtime_preflight(capabilities(), snapshot(), hardware_model())
     assert telemetry["quality"]["source"] == "device"
     with pytest.raises(u07.AcceptanceError, match="replay/simulator"):
-        u07.require_runtime_preflight(capabilities(), snapshot("replay"))
+        u07.require_runtime_preflight(capabilities(), snapshot("replay"), hardware_model())
     with pytest.raises(u07.AcceptanceError, match="NEXUS_ENABLE_LIVE_MODEL"):
-        u07.require_runtime_preflight(capabilities(live_enabled=False), snapshot())
+        u07.require_runtime_preflight(
+            capabilities(live_enabled=False), snapshot(), hardware_model(),
+        )
+    with pytest.raises(u07.AcceptanceError, match="hardware model"):
+        u07.require_runtime_preflight(
+            capabilities(), snapshot(), hardware_model(hardware_model_id="nexus-other-v1"),
+        )
 
 
 def test_live_run_requires_model_hypothesis_serial_read_and_audit() -> None:

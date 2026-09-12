@@ -14,7 +14,7 @@ Available now:
 - GOOUUU ESP32-S3 serial auto-detection and reconnect
 - timestamped session logs under `logs/hardware-live-*.ndjson`
 - `/api/v1/live` snapshot plus `/api/v1/live/ws` realtime stream
-- deterministic Vietnamese diagnostics for the fixed INA226 R100/L298N/motor rig
+- deterministic Vietnamese diagnostics derived from the selected Hardware-as-Code profile
 - realtime signal-wire diagnostics for INA226 SDA/SCL integrity and Hall encoder A/B liveness
 - pre-power Health Check rules for voltage, wiring, pin direction, supply and metadata
 - strict Python contract mirrors, JSON Schema/fixture validation, automated tests and Ruff linting
@@ -155,13 +155,17 @@ The root [`.env.example`](../.env.example) is the canonical backend/device templ
 | `NEXUS_NEBIUS_ENABLE_THINKING` | No | Optional Nemotron template control: `true`, `false`, or empty |
 | `NEXUS_NEBIUS_MAX_OUTPUT_TOKENS` | No | Reasoning plus answer budget, 256–8192; default 2048 |
 | `NEXUS_MQTT_URL` | Later | Device transport broker |
-| `NEXUS_DEVICE_ID` | Yes | Device identity matching contract v1 and the firmware default |
 | `NEXUS_HARDWARE_PROFILE_PATH` | No | Selected versioned JSON hardware profile; blank uses the certified ESP32 MVP profile |
 | `NEXUS_SERIAL_ENABLED` | Yes | Set `false` only for a software-only run |
 | `NEXUS_SERIAL_PORT` | No | Leave blank to use profile USB discovery; set `COM8` only to force one port |
+| `NEXUS_SERIAL_DEVICE_ID` | No | Optional strict bind; leave blank to discover a profile-verified firmware device ID |
 | `NEXUS_LOG_ENABLED` | Yes | Keep `true` to persist every backend/firmware log entry locally |
 | `NEXUS_LOG_DIR` | Yes | Log directory; relative paths resolve from the repository root |
-| `NEXUS_MAX_PWM_PERCENT` | Yes | Backend safety ceiling; firmware clamps independently too |
+
+When `NEXUS_SERIAL_DEVICE_ID` is blank, the backend registers the physical device only after the
+firmware-reported profile ID and canonical JSON SHA-256 match the active profile. The generated
+hardware graph, persistence identity and UI then use the reported device ID; no demo ID is
+invented by the backend.
 
 The server reads configuration from its process environment. Use Uvicorn's `--env-file .env`; the Windows launcher adds this automatically when the file exists. Keep the same database path across restarts. Live mode still requires an explicit live request, and physical writes remain disabled. Local development has no API authentication; use the loopback binding shown above.
 

@@ -27,7 +27,7 @@ def test_prepare_creates_complete_env_without_api_key(tmp_path: Path) -> None:
     assert result.created is True
     assert result.key_configured is False
     assert "NEXUS_DB_PATH=artifacts/nexus-u07.sqlite3" in content
-    assert "NEXUS_SERIAL_DEVICE_ID=nexus-demo-esp32" in content
+    assert "NEXUS_SERIAL_DEVICE_ID=\n" in content
     assert "NEXUS_ENABLE_LIVE_MODEL=true" in content
     assert "NEXUS_NEBIUS_API_KEY=\n" in content
     assert content.startswith("# local\n")
