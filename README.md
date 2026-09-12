@@ -11,7 +11,7 @@ The INA226 `VBUS` input must be bridged to `VIN−` (the load side of the R100 s
 | Area | What works now | Next integration |
 | --- | --- | --- |
 | Frontend | Realtime Dashboard/Hardware Graph, ESP32 live log, reconnect and human-readable fault cards | Connect AI Doctor to the same evidence stream |
-| Backend | Persistent sessions/telemetry, explicit serial-history binding, verified live Nebius client, read-only orchestration, policy/evaluation and Docker runbook | Run U07 physical 3/3; keep motor writes behind later policy gates |
+| Backend | Persistent sessions/telemetry, explicit serial-history binding, verified live Nebius client, read-only orchestration, policy/evaluation and U07 physical 3/3 | Keep motor writes behind the separate H05/H06 and N03/N06 safety gates |
 | Firmware | Safe PWM clamp, strict telemetry v1, calibrated INA226 logs, bounded device command protocol | Connect the physical adapter through H05 policy; add encoder calibration |
 | Contracts | Four frozen JSON Schemas, fixtures and migration enforcement | Change only through a reviewed migration note or v2 |
 
@@ -83,6 +83,10 @@ every other frozen MVP setting automatically. Later runs reuse that local key wi
 mock data intentionally fail the gate. See the
 [U07 vertical-slice runbook](docs/u07-vertical-slice.md) for the exact 3/3 evidence and safe
 internal-video checklist.
+
+The physical U07 gate passed 3/3 on 12 September 2026. The redacted result is recorded in
+[`docs/evidence/u07-final-acceptance.md`](docs/evidence/u07-final-acceptance.md); the detailed
+report and internal video stay local and Git-ignored.
 
 ## Clone and validate the repository
 

@@ -75,3 +75,13 @@ def test_live_run_requires_model_hypothesis_serial_read_and_audit() -> None:
     replay["result"]["observations"][0]["source"] = "replay"
     with pytest.raises(u07.AcceptanceError, match="get_telemetry"):
         u07.validate_live_run(replay, 3)
+
+
+def test_live_websocket_requires_snapshot_envelope_with_device_telemetry() -> None:
+    telemetry = u07.telemetry_from_live_message({"type": "snapshot", "data": snapshot()})
+    assert telemetry["sample_id"] == "sample-1"
+
+    with pytest.raises(u07.AcceptanceError, match="snapshot hợp lệ"):
+        u07.telemetry_from_live_message(snapshot())
+    with pytest.raises(u07.AcceptanceError, match="device thật"):
+        u07.telemetry_from_live_message({"type": "snapshot", "data": snapshot("replay")})
