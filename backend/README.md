@@ -26,15 +26,14 @@ Model and diagnosis support:
 - synthetic evaluation, container packaging and a reproducible runbook
 - an explicit `require_fresh_read` live gate for the U07 physical read-only vertical slice
 
-Still awaiting live acceptance/integration:
+Outside the accepted H04-H08 MVP scope:
 
-- physical diagnosis acceptance beyond the [verified live calls on synthetic data](../docs/evidence/h01-h04-live-nebius.md)
 - actual device command transport and verified physical actions
 - cloud telemetry storage and automatic retention policies
 
 Those capabilities are separate backlog items. Simulated/replayed samples carry an explicit source and do not prove physical hardware behavior. See the [H02/H03 API guide](../docs/backend-api.md) for endpoint semantics, limitations and acceptance checks.
 
-See [H resources and completion gates](../docs/h-resource-checklist.md) for the remaining inputs and [H08 runbook](../docs/h08-runbook.md) for installation, live opt-in and controlled failures. Physical H05–H08 acceptance remains separate from the recorded live-model checks.
+See [H resources and completion gates](../docs/h-resource-checklist.md) and the [H08 runbook](../docs/h08-runbook.md) for installation, live opt-in and controlled failures. Final task-specific evidence is recorded under [`docs/evidence`](../docs/evidence/).
 
 ## Prerequisites
 

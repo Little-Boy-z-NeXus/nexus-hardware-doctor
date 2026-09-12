@@ -103,11 +103,12 @@ jobs:
           assert len(cases) == 12;
           [case_inputs(case) for case in cases];
           print("Installed serial integration and challenge fixtures: PASS")'
-      - name: Verify installed application startup and both API families
+      - name: Verify startup, both API families and controlled model outage
         run: |
           docker run --detach --name nexus-backend-ci --publish 127.0.0.1:18000:8000 nexus-backend:ci
           trap 'docker logs nexus-backend-ci; docker rm --force nexus-backend-ci' EXIT
           python scripts/check_backend_startup.py http://127.0.0.1:18000
+          python scripts/nexus_h08_release_acceptance.py http://127.0.0.1:18000 --output /tmp/nexus-h08-release-acceptance.json
 
   frontend:
     name: Frontend unit tests and build
