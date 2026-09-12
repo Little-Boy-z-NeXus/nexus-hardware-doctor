@@ -55,7 +55,7 @@ cp frontend/.env.example frontend/.env.local
 npm --prefix frontend run dev
 ```
 
-Open <http://127.0.0.1:5173>. Vite prints the actual URL if the default port is unavailable.
+Open <http://127.0.0.1:5173>. The development server uses this fixed port so the backend origin policy and realtime WebSocket always agree. Running the one-click launcher again reuses the existing NeXus frontend instead of opening a second instance.
 
 ## Install and run from inside `frontend`
 
@@ -171,4 +171,4 @@ The canonical schemas are under [`../nexus-contracts/v1`](../nexus-contracts/v1/
 - Frontend cannot reach backend: confirm the backend health endpoint, `VITE_API_BASE_URL`, browser console, and CORS configuration.
 - Hardware page stays on “Đang chờ ESP32”: keep the backend window open, close every CLI Serial Monitor, and reconnect the board.
 - Environment change is ignored: restart Vite after editing `.env.local`.
-- Port 5173 is busy: Vite prints another local port; use that URL or stop the existing process.
+- Port 5173 is busy: if NeXus is already running, reuse <http://127.0.0.1:5173>; otherwise stop the process occupying that port before starting the frontend. Vite intentionally does not fall through to port 5174 because that would break the fixed local WebSocket origin policy.
