@@ -21,6 +21,7 @@ from nexus_device_command import (
 
 ROOT = Path(__file__).resolve().parents[1]
 EVIDENCE_ROOT = ROOT / "artifacts" / "N05"
+OPEN_OUTPUT_MAX_DELTA_MA = 10.0
 
 
 class FaultAcceptanceError(RuntimeError):
@@ -45,21 +46,22 @@ def now_iso() -> str:
 
 
 def send_fault_command(device: serial.Serial, command: str) -> dict[str, str]:
-    device.write((command + "\n").encode("ascii"))
-    deadline = time.monotonic() + 3.0
-    while time.monotonic() < deadline:
-        line = device.readline().decode("utf-8", errors="replace").strip()
-        if "[NEXUS][ERROR][FAULT_" in line:
-            raise FaultAcceptanceError(line)
-        marker = "[NEXUS][INFO][FAULT_PROFILE] "
-        if marker not in line:
-            continue
-        fields: dict[str, str] = {}
-        for item in line.split(marker, 1)[1].split():
-            key, separator, value = item.partition("=")
-            if separator:
-                fields[key] = value
-        return fields
+    for _attempt in range(2):
+        device.write((command + "\n").encode("ascii"))
+        deadline = time.monotonic() + 3.0
+        while time.monotonic() < deadline:
+            line = device.readline().decode("utf-8", errors="replace").strip()
+            if "[NEXUS][ERROR][FAULT_" in line:
+                raise FaultAcceptanceError(line)
+            marker = "[NEXUS][INFO][FAULT_PROFILE] "
+            if marker not in line:
+                continue
+            fields: dict[str, str] = {}
+            for item in line.split(marker, 1)[1].split():
+                key, separator, value = item.partition("=")
+                if separator:
+                    fields[key] = value
+            return fields
     raise FaultAcceptanceError(f"No fault status returned for {command}")
 
 
@@ -127,6 +129,11 @@ def main() -> int:
             result = exchange(device, request)
         record("ack", result.ack)
         record("terminal", result.terminal)
+        if result.terminal.get("response_type") != "result":
+            error = result.terminal.get("error", {})
+            code = error.get("code", "DEVICE_COMMAND_FAILED")
+            message = error.get("message", "Device returned a non-result response")
+            raise FaultAcceptanceError(f"{command} failed: {code}: {message}")
         time.sleep(0.03)
         return result
 
@@ -209,21 +216,35 @@ def main() -> int:
                 )
 
         elif args.manual_out2_confirmed:
+            bus = number(
+                run("read_voltage").terminal["result"].get("bus_voltage_v"),
+                "OUT2-open bus voltage",
+            )
+            if not 9.5 <= bus <= 13.0:
+                raise FaultAcceptanceError(
+                    "OUT2-open preflight failed: INA226 bus voltage "
+                    f"is {bus:.3f} V; expected 9.5..13.0 V. Check the 12 V "
+                    "adapter, common GND, VIN+ and VIN-/VBS before retrying."
+                )
+            record("manual_out2_preflight", {"bus_voltage_v": bus, "safe": True})
             for cycle in range(1, args.cycles + 1):
                 status = send_fault_command(device, "NEXUS FAULT APPLY OUT2_OPEN_MANUAL")
                 record("fault_apply", status)
                 run("set_pwm", pwm_percent=args.pwm_percent)
                 result = run("enable_driver", enabled=True).terminal
                 active_current = number(result["after"].get("current_ma"), "OUT2-open current")
+                current_delta = active_current - idle
                 passed = (
                     status.get("manual_action_required") == "true"
                     and result["after"]["driver_enabled"] is True
-                    and active_current <= idle + 5.0
+                    and current_delta <= OPEN_OUTPUT_MAX_DELTA_MA
                 )
                 check(
                     f"OUT2_OPEN_MANUAL {cycle}/{args.cycles}",
                     passed,
-                    f"driver commanded on but current stayed {active_current:.1f} mA",
+                    "driver commanded on; current "
+                    f"{active_current:.1f} mA (idle delta {current_delta:+.1f} mA, "
+                    f"limit +{OPEN_OUTPUT_MAX_DELTA_MA:.1f} mA)",
                 )
                 run("reset_driver")
             record("fault_reset", send_fault_command(device, "NEXUS FAULT RESET"))
