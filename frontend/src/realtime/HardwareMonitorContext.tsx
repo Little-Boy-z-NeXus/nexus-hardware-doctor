@@ -59,6 +59,10 @@ export interface HardwareSnapshot {
     last_encoder_verified_at: string | null;
   };
   compatibility?: {
+    expected_profile_id: string;
+    reported_profile_id: string | null;
+    expected_profile_sha256: string;
+    reported_profile_sha256: string | null;
     expected_hardware_model_id: string;
     reported_hardware_model_id: string | null;
     firmware_profile_version: string | null;
@@ -67,13 +71,22 @@ export interface HardwareSnapshot {
     last_verified_at: string | null;
   };
   hardware: {
+    profile_id: string;
+    profile_schema_version: string;
+    profile_sha256: string;
     hardware_model_id: string;
     controller: string;
     sensor: string;
     driver: string;
     motor: string;
     power: string;
-    limits: { min_bus_voltage_v: number; max_current_ma: number; max_pwm_percent: number };
+    capabilities: string[];
+    limits: {
+      min_bus_voltage_v: number;
+      max_bus_voltage_v: number;
+      max_current_ma: number;
+      max_pwm_percent: number;
+    };
   };
 }
 
@@ -99,6 +112,10 @@ const initialSnapshot: HardwareSnapshot = {
     last_encoder_verified_at: null,
   },
   compatibility: {
+    expected_profile_id: "nexus-profile-goouuu-esp32-s3-ina226-l298n-jgb37-v1",
+    reported_profile_id: null,
+    expected_profile_sha256: "",
+    reported_profile_sha256: null,
     expected_hardware_model_id: "nexus-s3-ina226-l298n-motor-rig-v1",
     reported_hardware_model_id: null,
     firmware_profile_version: null,
@@ -107,13 +124,30 @@ const initialSnapshot: HardwareSnapshot = {
     last_verified_at: null,
   },
   hardware: {
+    profile_id: "nexus-profile-goouuu-esp32-s3-ina226-l298n-jgb37-v1",
+    profile_schema_version: "1.0.0",
+    profile_sha256: "",
     hardware_model_id: "nexus-s3-ina226-l298n-motor-rig-v1",
     controller: "GOOUUU Tech ESP32-S3-N16R8",
     sensor: "INA226 (R100 shunt)",
     driver: "L298N",
     motor: "JGB37-520 12V + Hall encoder",
     power: "12V DC (không dùng pin vuông 9V)",
-    limits: { min_bus_voltage_v: 9.5, max_current_ma: 1500, max_pwm_percent: 80 },
+    capabilities: [
+      "telemetry.publish",
+      "power.voltage.read",
+      "power.current.read",
+      "motor.control",
+      "motor.rpm.read",
+      "signal.i2c.health",
+      "signal.encoder.health",
+    ],
+    limits: {
+      min_bus_voltage_v: 9.5,
+      max_bus_voltage_v: 13,
+      max_current_ma: 1500,
+      max_pwm_percent: 80,
+    },
   },
 };
 
