@@ -33,6 +33,11 @@ constexpr uint32_t kMaxCommandTimeoutMs = 5000;
 constexpr uint32_t kMaxMotorTestDurationMs = 3000;
 constexpr uint32_t kCommandMeasurementSettleMs = 150;
 constexpr uint32_t kTelemetryIntervalMs = 1000;
+#ifdef NEXUS_ENABLE_FAULT_INJECTION
+constexpr uint32_t kNormalPwmFrequencyHz = 1000;
+constexpr uint32_t kFaultPwmFrequencyHz = 100;
+constexpr float kFaultCurrentOffsetMa = 200.0f;
+#endif
 #ifdef NEXUS_ENABLE_BASELINE_CONTROL
 constexpr uint32_t kBaselineKeepaliveTimeoutMs = 4000;
 #endif
@@ -75,11 +80,22 @@ String serialCommandBuffer;
 bool discardOversizedCommand = false;
 CachedResponse responseCache[kRequestCacheSize];
 size_t nextCacheIndex = 0;
+#ifdef NEXUS_ENABLE_FAULT_INJECTION
+String activeFaultProfile = "none";
+float injectedCurrentOffsetMa = 0.0f;
+uint32_t activePwmFrequencyHz = kNormalPwmFrequencyHz;
+#endif
 #ifdef NEXUS_ENABLE_BASELINE_CONTROL
 uint32_t lastBaselineKeepaliveMs = 0;
 #endif
 
 void applySafeMotorState(uint8_t requestedPercent, bool enable) {
+#ifdef NEXUS_ENABLE_FAULT_INJECTION
+  if (activeFaultProfile == "pwm_zero" && enable) {
+    requestedPercent = 0;
+    enable = false;
+  }
+#endif
   pwmPercent = min(requestedPercent, kMaxPwmPercent);
   driverEnabled = enable && pwmPercent > 0;
 
@@ -154,8 +170,13 @@ bool readMeasurements(MeasurementSnapshot& snapshot, bool logFailure = true) {
   const bool busReadOk = currentSensor.getLastError() == 0;
   const float shuntVoltageMv = currentSensor.getShuntVoltage_mV();
   const bool shuntReadOk = currentSensor.getLastError() == 0;
-  const float currentMa = currentSensor.getCurrent_mA();
+  const float measuredCurrentMa = currentSensor.getCurrent_mA();
   const bool currentReadOk = currentSensor.getLastError() == 0;
+#ifdef NEXUS_ENABLE_FAULT_INJECTION
+  const float currentMa = measuredCurrentMa + injectedCurrentOffsetMa;
+#else
+  const float currentMa = measuredCurrentMa;
+#endif
   const float powerMw = busVoltageV * currentMa;
 
   if (!busReadOk || !shuntReadOk || !currentReadOk) {
@@ -754,6 +775,69 @@ void enforceBaselineFailsafe() {
 }
 #endif
 
+#ifdef NEXUS_ENABLE_FAULT_INJECTION
+void emitFaultProfileStatus(bool manualActionRequired = false) {
+  Serial.printf(
+      "[NEXUS][INFO][FAULT_PROFILE] profile=%s active=%s pwm_frequency_hz=%lu "
+      "current_offset_ma=%.1f manual_action_required=%s motor_safe=%s\n",
+      activeFaultProfile.c_str(),
+      activeFaultProfile == "none" ? "false" : "true",
+      static_cast<unsigned long>(activePwmFrequencyHz),
+      injectedCurrentOffsetMa,
+      manualActionRequired ? "true" : "false",
+      !driverEnabled && pwmPercent == 0 ? "true" : "false");
+}
+
+void resetFaultProfile() {
+  activeFaultProfile = "none";
+  injectedCurrentOffsetMa = 0.0f;
+  activePwmFrequencyHz = kNormalPwmFrequencyHz;
+  analogWriteFrequency(activePwmFrequencyHz);
+  applySafeMotorState(0, false);
+}
+
+void processFaultInjectionCommand(const String& command) {
+  if (command == "NEXUS FAULT RESET") {
+    resetFaultProfile();
+    emitFaultProfileStatus();
+    return;
+  }
+  if (command == "NEXUS FAULT STATUS") {
+    emitFaultProfileStatus(activeFaultProfile == "out2_open_manual");
+    return;
+  }
+
+  constexpr char kApplyPrefix[] = "NEXUS FAULT APPLY ";
+  if (!command.startsWith(kApplyPrefix)) {
+    Serial.println(
+        "[NEXUS][ERROR][FAULT_COMMAND_UNKNOWN] Use APPLY <profile>, STATUS or RESET");
+    return;
+  }
+
+  const String requested = command.substring(sizeof(kApplyPrefix) - 1);
+  resetFaultProfile();
+  if (requested == "PWM_ZERO") {
+    activeFaultProfile = "pwm_zero";
+  } else if (requested == "PWM_FREQUENCY_LOW") {
+    activeFaultProfile = "pwm_frequency_low";
+    activePwmFrequencyHz = kFaultPwmFrequencyHz;
+    analogWriteFrequency(activePwmFrequencyHz);
+  } else if (requested == "CURRENT_OFFSET") {
+    activeFaultProfile = "current_offset";
+    injectedCurrentOffsetMa = kFaultCurrentOffsetMa;
+  } else if (requested == "OUT2_OPEN_MANUAL") {
+    activeFaultProfile = "out2_open_manual";
+  } else {
+    Serial.println(
+        "[NEXUS][ERROR][FAULT_PROFILE_NOT_ALLOWED] Allowed: PWM_ZERO, "
+        "PWM_FREQUENCY_LOW, CURRENT_OFFSET, OUT2_OPEN_MANUAL");
+    return;
+  }
+  applySafeMotorState(0, false);
+  emitFaultProfileStatus(requested == "OUT2_OPEN_MANUAL");
+}
+#endif
+
 void processSerialLine(String line) {
   line.trim();
   if (line.isEmpty()) {
@@ -763,6 +847,12 @@ void processSerialLine(String line) {
     processJsonCommand(line);
     return;
   }
+#ifdef NEXUS_ENABLE_FAULT_INJECTION
+  if (line.startsWith("NEXUS FAULT ")) {
+    processFaultInjectionCommand(line);
+    return;
+  }
+#endif
 #ifdef NEXUS_ENABLE_BASELINE_CONTROL
   processBaselineCommand(line);
 #else
@@ -822,11 +912,18 @@ void setup() {
   Serial.println(
       "[NEXUS][WARNING][BASELINE_CONTROL_ENABLED] USB-only supervised hardware test mode");
 #endif
+#ifdef NEXUS_ENABLE_FAULT_INJECTION
+  Serial.println(
+      "[NEXUS][WARNING][FAULT_INJECTION_ENABLED] Test-only profiles; never use for demo baseline");
+#endif
   pinMode(kMotorEnablePin, OUTPUT);
   pinMode(kMotorIn1Pin, OUTPUT);
   pinMode(kMotorIn2Pin, OUTPUT);
   pinMode(kEncoderAPin, INPUT);
   pinMode(kEncoderBPin, INPUT);
+#ifdef NEXUS_ENABLE_FAULT_INJECTION
+  analogWriteFrequency(kNormalPwmFrequencyHz);
+#endif
   Wire.begin(kInaSdaPin, kInaSclPin);
   applySafeMotorState(0, false);
   initializeCurrentSensor();

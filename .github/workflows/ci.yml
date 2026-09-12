@@ -59,7 +59,7 @@ jobs:
         run: python -m nexus_backend.evaluation --output /tmp/nexus-evaluation.json
 
   firmware:
-    name: Firmware safe, baseline and command builds
+    name: Firmware safe, baseline, command and fault builds
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -80,6 +80,7 @@ jobs:
           --environment nexus-goouuu-esp32-s3-n16r8
           --environment nexus-goouuu-esp32-s3-n16r8-baseline
           --environment nexus-goouuu-esp32-s3-n16r8-command-test
+          --environment nexus-goouuu-esp32-s3-n16r8-fault-test
 
   packaging:
     name: Backend container and simulated regression

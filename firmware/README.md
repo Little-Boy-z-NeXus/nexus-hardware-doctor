@@ -211,6 +211,15 @@ client refuses motor writes without `--confirm-write`; firmware independently en
 current, PWM and duration bounds. See
 [`../docs/n03-command-adapter.md`](../docs/n03-command-adapter.md) for the acceptance matrix.
 
+## N05 fault-test mode
+
+`nexus-goouuu-esp32-s3-n16r8-fault-test` extends the supervised command build with four
+explicit test-only profiles: PWM forced to zero, PWM frequency reduced to 100 Hz, INA226
+reading offset by +200 mA, and a marker for the operator-controlled OUT2/M− disconnect.
+It never changes the default-safe build. Double-click `nexus-run-n05-fault-acceptance.cmd`
+to run every profile 5/5, restore normal settings and save local evidence. Read
+[`../docs/n05-fault-injection.md`](../docs/n05-fault-injection.md) before touching OUT2.
+
 ## Firmware contract files
 
 - Field-name constants: [`include/nexus_contract_v1.h`](include/nexus_contract_v1.h)
