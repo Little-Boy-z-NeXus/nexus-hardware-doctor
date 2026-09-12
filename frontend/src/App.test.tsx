@@ -294,4 +294,16 @@ describe("NeXus application routes", () => {
       screen.getByText("INA226 R100 từ profile đã khớp identity khai báo trong profile."),
     ).toBeInTheDocument();
   });
+
+  it("keeps long component names accessible in a horizontally scrollable BOM", async () => {
+    renderAt("/hardware");
+
+    const flow = await screen.findByTestId("hardware-flow-scroll");
+    expect(flow).toHaveAttribute("tabindex", "0");
+    expect(flow).toHaveAccessibleName("Chuỗi 5 thành phần phần cứng. Có thể cuộn ngang để xem đầy đủ.");
+    expect(
+      screen.getByTitle("INA226 R100 từ profile"),
+    ).toHaveTextContent("INA226 R100 từ profile");
+    expect(screen.getByTitle("Test 12V supply")).toBeInTheDocument();
+  });
 });
