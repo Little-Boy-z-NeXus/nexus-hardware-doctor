@@ -51,6 +51,9 @@ def test_signal_monitor_handshake_allows_latest_i2c_sample_to_be_verified() -> N
     assert status["monitor_ready"] is True
     assert status["i2c_verified"] is True
     assert status["last_i2c_verified_at"] is not None
+    compatibility = bridge.snapshot()["compatibility"]
+    assert compatibility["sensor_identity_verified"] is True
+    assert compatibility["last_verified_at"] is not None
 
 
 def test_locked_hardware_profile_is_verified_before_measurements() -> None:

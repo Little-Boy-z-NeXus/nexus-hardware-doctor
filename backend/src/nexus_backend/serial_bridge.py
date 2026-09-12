@@ -476,9 +476,14 @@ class SerialBridge:
                 message=f"Đang nhận telemetry realtime từ {self._connection.get('port') or 'ESP32'}.",
             )
             if self._signal_health["monitor_ready"]:
+                verified_at = utc_now()
                 self._signal_health.update(
                     i2c_verified=True,
-                    last_i2c_verified_at=utc_now(),
+                    last_i2c_verified_at=verified_at,
+                )
+                self._compatibility.update(
+                    sensor_identity_verified=True,
+                    last_verified_at=verified_at,
                 )
             self._compatibility["reported_hardware_model_id"] = sample.hardware_model_id
 
