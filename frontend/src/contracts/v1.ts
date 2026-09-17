@@ -53,6 +53,17 @@ export interface TelemetryMeasurements {
   pwm_percent: number;
   driver_enabled: boolean;
   motor_rpm: number | null;
+  /** Optional extension emitted by the dual-motor profile. */
+  total_current_ma?: number | null;
+  rpm_left?: number | null;
+  rpm_right?: number | null;
+  rpm_delta?: number | null;
+  pwm_left_percent?: number | null;
+  pwm_right_percent?: number | null;
+  pid_state?: string | null;
+  yaw_rate_dps?: number | null;
+  temperature_c?: number | null;
+  humidity_percent?: number | null;
 }
 
 export interface TelemetryQuality {

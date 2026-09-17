@@ -7,20 +7,21 @@ This directory records the decisions required to build and demonstrate the hacka
 1. [`mvp-scope.md`](mvp-scope.md) — the user, problem, three golden paths, and explicit exclusions.
 2. [`architecture.md`](architecture.md) — runtime flow, Auto Heal sequence, service boundaries, and contract versioning.
 3. [`nexus-wiring-jgb37-520.svg`](nexus-wiring-jgb37-520.svg) — exact GOOUUU ESP32-S3-N16R8, INA226, L298N and encoder wiring.
-4. [`ownership.md`](ownership.md) — responsibilities for Hiếu, Hoàng, Nguyễn, and Nguyên.
-5. [`hardware-baseline-u05.md`](hardware-baseline-u05.md) — supervised 30-minute electrical and safety acceptance.
-6. [`n03-command-adapter.md`](n03-command-adapter.md) — firmware command protocol, safety gates and physical acceptance cases.
-7. [`n04-health-check.md`](n04-health-check.md) — deterministic pre-power rule checks that can run without hardware.
-8. [`n05-fault-injection.md`](n05-fault-injection.md) — supervised repeatable hardware faults and reset procedure.
-9. [`n06-auto-heal-acceptance.md`](n06-auto-heal-acceptance.md) — physical PWM fault-to-recovery loop and evidence gate.
-10. [`n07-quality-replay.md`](n07-quality-replay.md) — no-hardware replay, automation and soak evidence.
-11. [`n08-demo-kit-recovery.md`](n08-demo-kit-recovery.md) — backup firmware, spare kit and timed recovery runbook.
-12. [`u07-vertical-slice.md`](u07-vertical-slice.md) — one-click physical telemetry, dashboard, Nemotron and read-only-tool gate.
-13. [`evidence/u07-final-acceptance.md`](evidence/u07-final-acceptance.md) — redacted 3/3 physical U07 acceptance and local evidence hashes.
-14. [`signal-wire-monitoring.md`](signal-wire-monitoring.md) — realtime SDA/SCL and encoder wire checks, fault codes and safe acceptance cases.
-15. [`security.md`](security.md) — secret handling, redaction, model/tool boundaries, and incident basics.
-16. [`backlog.md`](backlog.md) — link to the live Google Sheet and local working rules.
-17. [`nexus-integration/README.md`](nexus-integration/README.md) — U06 daily integration cadence, blocker SLA, merge gate and decision format.
+4. [`nexus-dual-motor-pid-hardware-v1.md`](nexus-dual-motor-pid-hardware-v1.md) — draft two-motor robot wiring, PID feedback and safety boundaries.
+5. [`ownership.md`](ownership.md) — responsibilities for Hiếu, Hoàng, Nguyễn, and Nguyên.
+6. [`hardware-baseline-u05.md`](hardware-baseline-u05.md) — supervised 30-minute electrical and safety acceptance.
+7. [`n03-command-adapter.md`](n03-command-adapter.md) — firmware command protocol, safety gates and physical acceptance cases.
+8. [`n04-health-check.md`](n04-health-check.md) — deterministic pre-power rule checks that can run without hardware.
+9. [`n05-fault-injection.md`](n05-fault-injection.md) — supervised repeatable hardware faults and reset procedure.
+10. [`n06-auto-heal-acceptance.md`](n06-auto-heal-acceptance.md) — physical PWM fault-to-recovery loop and evidence gate.
+11. [`n07-quality-replay.md`](n07-quality-replay.md) — no-hardware replay, automation and soak evidence.
+12. [`n08-demo-kit-recovery.md`](n08-demo-kit-recovery.md) — backup firmware, spare kit and timed recovery runbook.
+13. [`u07-vertical-slice.md`](u07-vertical-slice.md) — one-click physical telemetry, dashboard, Nemotron and read-only-tool gate.
+14. [`evidence/u07-final-acceptance.md`](evidence/u07-final-acceptance.md) — redacted 3/3 physical U07 acceptance and local evidence hashes.
+15. [`signal-wire-monitoring.md`](signal-wire-monitoring.md) — realtime SDA/SCL and encoder wire checks, fault codes and safe acceptance cases.
+16. [`security.md`](security.md) — secret handling, redaction, model/tool boundaries, and incident basics.
+17. [`backlog.md`](backlog.md) — link to the live Google Sheet and local working rules.
+18. [`nexus-integration/README.md`](nexus-integration/README.md) — U06 daily integration cadence, blocker SLA, merge gate and decision format.
 
 ## Document index
 
@@ -29,6 +30,7 @@ This directory records the decisions required to build and demonstrate the hacka
 | [`mvp-scope.md`](mvp-scope.md) | Deciding whether a feature belongs in the hackathon MVP | Hiếu |
 | [`architecture.md`](architecture.md) | Changing a service boundary, data flow, tool, or schema | Hiếu + Hoàng |
 | [`nexus-wiring-jgb37-520.svg`](nexus-wiring-jgb37-520.svg) | Building or checking the physical ESP32-S3/L298N motor rig | Hiếu + Nguyễn |
+| [`nexus-dual-motor-pid-hardware-v1.md`](nexus-dual-motor-pid-hardware-v1.md) | Planning and wiring the draft two-motor PID robot | Hiếu + Nguyễn |
 | [`ownership.md`](ownership.md) | Assigning work or choosing a reviewer | Hiếu |
 | [`hardware-baseline-u05.md`](hardware-baseline-u05.md) | Running and evidencing the U05 hardware/safety gate | Hiếu + Nguyễn |
 | [`n03-command-adapter.md`](n03-command-adapter.md) | Building or physically accepting the N03 serial command layer | Nguyễn |

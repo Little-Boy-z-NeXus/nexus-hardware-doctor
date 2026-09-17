@@ -252,6 +252,10 @@ function renderAt(path: string) {
   );
 }
 
+async function switchToLiveHardwareRig() {
+  fireEvent.click(await screen.findByRole("button", { name: /Rig 1 motor · live/ }));
+}
+
 describe("NeXus application routes", () => {
   it.each([
     ["/dashboard", "Hệ thống đang ổn định", "Tổng quan"],
@@ -307,6 +311,7 @@ describe("NeXus application routes", () => {
 
   it("does not claim idle encoder wires are healthy before a supervised motor run", async () => {
     renderAt("/hardware");
+    await switchToLiveHardwareRig();
 
     expect(await screen.findByRole("heading", { name: "Tình trạng dây tín hiệu" })).toBeInTheDocument();
     expect(await screen.findByText("Dây vàng → GPIO16")).toBeInTheDocument();
@@ -318,6 +323,7 @@ describe("NeXus application routes", () => {
 
   it("shows separate firmware and physical sensor identity checks", async () => {
     renderAt("/hardware");
+    await switchToLiveHardwareRig();
 
     const compatibilitySection = (
       await screen.findByRole("heading", { name: "Đối chiếu firmware với BOM" })
@@ -333,6 +339,7 @@ describe("NeXus application routes", () => {
   it("keeps a large BOM compact with search and on-demand component details", async () => {
     const user = userEvent.setup();
     renderAt("/hardware");
+    await switchToLiveHardwareRig();
 
     const search = await screen.findByRole("searchbox", { name: "Tìm linh kiện" });
     expect(screen.getByRole("heading", { name: "5 linh kiện đang theo dõi" })).toBeInTheDocument();
@@ -347,6 +354,7 @@ describe("NeXus application routes", () => {
   it("shows profile-driven wire endpoints, real colors, and incomplete color declarations", async () => {
     const user = userEvent.setup();
     renderAt("/hardware");
+    await switchToLiveHardwareRig();
 
     const guide = await screen.findByTestId("wiring-guide");
     expect(within(guide).getByRole("heading", { name: "Nối đúng chân, đúng màu" })).toBeInTheDocument();
@@ -372,6 +380,7 @@ describe("NeXus application routes", () => {
   it("shows the newest hardware log as a readable summary by default", async () => {
     const user = userEvent.setup();
     renderAt("/hardware");
+    await switchToLiveHardwareRig();
 
     expect(await screen.findByText("Đang theo dõi log mới nhất")).toBeInTheDocument();
     const latestEntry = screen.getByText("Telemetry #42").closest(".terminal-line");
@@ -387,6 +396,7 @@ describe("NeXus application routes", () => {
   it("lets the user return to the newest log after browsing older entries", async () => {
     const user = userEvent.setup();
     renderAt("/hardware");
+    await switchToLiveHardwareRig();
 
     const feed = await screen.findByRole("log", { name: "Log realtime từ ESP32" });
     Object.defineProperties(feed, {
@@ -401,5 +411,43 @@ describe("NeXus application routes", () => {
     expect(screen.getByText("Bạn đang xem log cũ")).toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Về log mới nhất" }));
     expect(screen.getByText("Đang theo dõi log mới nhất")).toBeInTheDocument();
+  });
+
+  it("opens the dual-motor monitor with realtime log controls without inventing values", async () => {
+    const user = userEvent.setup();
+    renderAt("/hardware");
+
+    const architecture = await screen.findByTestId("dual-motor-architecture");
+    expect(within(architecture).getByRole("heading", { name: "Xe hai motor tự cân bằng tốc độ bằng PID" })).toBeInTheDocument();
+    expect(within(architecture).getAllByText("Chờ firmware dual-motor")).toHaveLength(1);
+    expect(within(architecture).getByRole("heading", { name: "Monitor xe hai motor" })).toBeInTheDocument();
+    expect(within(architecture).getAllByText("--").length).toBeGreaterThan(1);
+    expect(within(architecture).getByText("rpm_left")).toBeInTheDocument();
+    expect(within(architecture).getByText("rpm_right")).toBeInTheDocument();
+    expect(within(architecture).getByRole("log", { name: "Log realtime xe hai motor" })).toBeInTheDocument();
+    expect(within(architecture).getByText("Backend đang lưu")).toBeInTheDocument();
+
+    const recordButton = within(architecture).getByRole("button", { name: "Bắt đầu ghi" });
+    await user.click(recordButton);
+    expect(within(architecture).getByRole("button", { name: "Dừng ghi" })).toHaveAttribute("aria-pressed", "true");
+    expect(within(architecture).getByText("Đang ghi phiên kiểm thử")).toBeInTheDocument();
+  });
+
+  it("filters exact right-motor wiring and opens the reference diagram", async () => {
+    const user = userEvent.setup();
+    renderAt("/hardware");
+
+    const architecture = await screen.findByTestId("dual-motor-architecture");
+    await user.click(within(architecture).getByRole("button", { name: "Motor phải 10" }));
+    expect(architecture.querySelector(".architecture-wiring__summary")).toHaveTextContent("Đang xem 10 đường · Motor phải");
+    expect(within(architecture).getByText("GPIO4")).toBeInTheDocument();
+    expect(within(architecture).getByText("GPIO7")).toBeInTheDocument();
+    expect(within(architecture).getByText("GPIO8")).toBeInTheDocument();
+
+    await user.click(within(architecture).getByRole("button", { name: "Xem ảnh tổng" }));
+    expect(within(architecture).getByRole("img", { name: /Sơ đồ đấu dây dạng khối/ })).toHaveAttribute(
+      "src",
+      "/nexus-dual-motor-complete-wiring-simple-v6.png",
+    );
   });
 });
