@@ -6,6 +6,11 @@ reliably validate its pins, limits or identities. The canonical MVP definition i
 
 - schema: [`v1/nexus-hardware-profile.schema.json`](v1/nexus-hardware-profile.schema.json)
 - active profile: [`profiles/nexus-profile-goouuu-esp32-s3-ina226-l298n-jgb37-v1.json`](profiles/nexus-profile-goouuu-esp32-s3-ina226-l298n-jgb37-v1.json)
+- dual-motor design draft: [`designs/nexus-dual-motor-pid-robot-v1.yaml`](designs/nexus-dual-motor-pid-robot-v1.yaml)
+
+The dual-motor YAML is a planning manifest, not an executable v1 profile. It records the proposed
+second motor, encoder, BME680, BNO055, wiring colors and PID acceptance before the JSON schema,
+firmware and telemetry contract are migrated. The certified single-motor JSON remains active.
 
 JSON is used instead of YAML for v1 so the same document has strict JSON Schema validation,
 unambiguous scalar types, deterministic generation and no additional firmware build dependency.

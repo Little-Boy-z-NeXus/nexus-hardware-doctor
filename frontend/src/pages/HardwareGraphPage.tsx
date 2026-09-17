@@ -5,29 +5,24 @@ import {
   Cable,
   CheckCircle2,
   CircleOff,
-  ChevronDown,
-  ChevronsDown,
   Cpu,
-  Download,
   Gauge,
-  Pause,
-  Play,
   RefreshCw,
   RotateCcw,
   Search,
   ShieldCheck,
-  TerminalSquare,
-  Trash2,
   Zap,
 } from "lucide-react";
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { PageHeader } from "../components/PageHeader";
+import { DualMotorArchitecture } from "../components/DualMotorArchitecture";
+import { HardwareDiagnosticsPanel } from "../components/HardwareDiagnosticsPanel";
+import { HardwareLiveLog } from "../components/HardwareLiveLog";
 import { WiringGuide } from "../components/WiringGuide";
 import {
   useHardwareMonitor,
   type HardwareDiagnostic,
-  type LiveLog,
 } from "../realtime/HardwareMonitorContext";
 
 type NodeState = "healthy" | "warning" | "error" | "waiting";
@@ -51,76 +46,6 @@ const timeLabel = (value: string | null) =>
 
 const valueOrDash = (value: number | null | undefined, digits = 2) =>
   typeof value === "number" && Number.isFinite(value) ? value.toFixed(digits) : "--";
-
-interface TelemetryLogPayload {
-  sequence?: number;
-  device_id?: string;
-  measurements?: {
-    bus_voltage_v?: number | null;
-    current_ma?: number | null;
-    power_mw?: number | null;
-    pwm_percent?: number | null;
-    driver_enabled?: boolean | null;
-    motor_rpm?: number | null;
-  };
-}
-
-interface LogPresentation {
-  title: string;
-  summary: string;
-  raw: string;
-  telemetry: TelemetryLogPayload | null;
-}
-
-function logPresentation(item: LiveLog): LogPresentation {
-  const message = item.message.trim();
-  if (message.startsWith("{")) {
-    try {
-      const payload = JSON.parse(message) as TelemetryLogPayload;
-      if (payload.measurements && typeof payload.measurements === "object") {
-        return {
-          title: `Telemetry${payload.sequence == null ? "" : ` #${payload.sequence}`}`,
-          summary: payload.device_id ? `Thiết bị ${payload.device_id}` : "Gói đo mới từ thiết bị",
-          raw: JSON.stringify(payload, null, 2),
-          telemetry: payload,
-        };
-      }
-    } catch {
-      // Dòng JSON chưa hoàn chỉnh vẫn được giữ nguyên để người dùng kiểm tra.
-    }
-  }
-
-  if (message.includes("[HARDWARE_PROFILE]")) {
-    const profileId = message.match(/profile_id=([^\s]+)/)?.[1];
-    return {
-      title: "Cấu hình phần cứng đã xác nhận",
-      summary: profileId ? `Profile ${profileId}` : "Firmware đã gửi hardware fingerprint",
-      raw: message,
-      telemetry: null,
-    };
-  }
-
-  if (message.includes("[SIGNAL_MONITOR_READY]")) {
-    return {
-      title: "Bộ giám sát dây tín hiệu đã sẵn sàng",
-      summary: "SDA/SCL được kiểm tra ở từng mẫu; encoder A/B được kiểm tra khi motor chạy.",
-      raw: message,
-      telemetry: null,
-    };
-  }
-
-  return {
-    title: {
-      error: "Lỗi phần cứng",
-      warning: "Cảnh báo cần kiểm tra",
-      telemetry: "Telemetry",
-      info: "Thông tin hệ thống",
-    }[item.level],
-    summary: message,
-    raw: message,
-    telemetry: null,
-  };
-}
 
 function componentState(
   componentId: string,
@@ -151,15 +76,9 @@ function activeSignalIssue(
 
 export function HardwareGraphPage() {
   const { snapshot, hardwareProfile, streamStatus, reconnect } = useHardwareMonitor();
+  const [viewMode, setViewMode] = useState<"design" | "live">("design");
   const [componentQuery, setComponentQuery] = useState("");
   const [selectedComponentId, setSelectedComponentId] = useState<string | null>(null);
-  const [pausedLogs, setPausedLogs] = useState<LiveLog[] | null>(null);
-  const [hiddenBefore, setHiddenBefore] = useState<string | null>(null);
-  const [logQuery, setLogQuery] = useState("");
-  const [logLevel, setLogLevel] = useState<"all" | LiveLog["level"]>("all");
-  const [followLatest, setFollowLatest] = useState(true);
-  const terminalRef = useRef<HTMLDivElement>(null);
-  const userLogScrollRef = useRef(false);
   const telemetry = snapshot?.telemetry;
   const measurements = telemetry?.measurements;
   const activeDiagnostics = useMemo(
@@ -330,21 +249,7 @@ export function HardwareGraphPage() {
           : "Chỉ kiểm chứng được khi motor chạy trong bài test có giám sát."),
     },
   ];
-  const visibleLogs = (pausedLogs ?? snapshot?.logs ?? []).filter((item) => {
-    const afterClear = !hiddenBefore || item.occurred_at > hiddenBefore;
-    const levelMatches = logLevel === "all" || item.level === logLevel;
-    const queryMatches = item.message.toLocaleLowerCase("vi").includes(logQuery.trim().toLocaleLowerCase("vi"));
-    return afterClear && levelMatches && queryMatches;
-  });
   const deviceLive = streamStatus === "live" && snapshot?.connection.status === "connected";
-  const savedLogName = snapshot?.connection.log_file?.split(/[\\/]/).pop() ?? "đang chờ log";
-  const latestVisibleLog = visibleLogs.at(-1);
-
-  useLayoutEffect(() => {
-    if (!pausedLogs && followLatest && terminalRef.current) {
-      terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
-    }
-  }, [latestVisibleLog?.id, pausedLogs, followLatest, logLevel, logQuery]);
 
   const componentPresentation = {
     controller: { icon: Cpu, tone: "blue" },
@@ -412,62 +317,48 @@ export function HardwareGraphPage() {
   const SelectedComponentIcon = selectedNode?.icon;
   const profileLabel = `Profile ${snapshot?.hardware.profile_schema_version ?? hardwareProfile?.schema_version ?? "--"} · ${snapshot?.hardware.profile_id ?? hardwareProfile?.profile_id ?? "đang tải"}`;
 
-  const jumpToLatest = () => {
-    userLogScrollRef.current = false;
-    setFollowLatest(true);
-    requestAnimationFrame(() => {
-      if (terminalRef.current) {
-        terminalRef.current.scrollTo({ top: terminalRef.current.scrollHeight, behavior: "smooth" });
-      }
-    });
-  };
-  const handleLogScroll = () => {
-    if (!terminalRef.current || !userLogScrollRef.current) return;
-    const distanceFromBottom = terminalRef.current.scrollHeight
-      - terminalRef.current.scrollTop
-      - terminalRef.current.clientHeight;
-    const isAtLatest = distanceFromBottom <= 32;
-    setFollowLatest(isAtLatest);
-    if (isAtLatest) userLogScrollRef.current = false;
-  };
-  const togglePause = () => setPausedLogs((current) => {
-    if (current) {
-      userLogScrollRef.current = false;
-      setFollowLatest(true);
-      return null;
-    }
-    return [...(snapshot?.logs ?? [])];
-  });
-  const clearVisibleLogs = () => {
-    userLogScrollRef.current = false;
-    setHiddenBefore(new Date().toISOString());
-    setFollowLatest(true);
-  };
-  const downloadLogs = () => {
-    const body = visibleLogs
-      .map((item) => `[${item.occurred_at}] [${item.level.toUpperCase()}] [${item.source}] ${item.message}`)
-      .join("\n");
-    const url = URL.createObjectURL(new Blob([body], { type: "text/plain;charset=utf-8" }));
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `nexus-live-log-${new Date().toISOString().replaceAll(":", "-")}.txt`;
-    anchor.click();
-    URL.revokeObjectURL(url);
-  };
-
   return (
     <div className="page-stack">
       <PageHeader
-        eyebrow="Bác sĩ phần cứng realtime"
+        eyebrow={viewMode === "design" ? "Xe 2 motor · realtime monitor" : "Bác sĩ phần cứng realtime"}
         title="Sơ đồ phần cứng"
-        description="Theo dõi đúng bộ MVP đã chốt, xem log từ ESP32 và nhận hướng dẫn xử lý lỗi mà không cần mở CMD."
+        description={viewMode === "design"
+          ? "Theo dõi hai RPM, PID, tín hiệu, cảnh báo và log trong cùng một màn hình; số đo chỉ hiện khi firmware gửi đúng contract."
+          : "Theo dõi rig một motor đang chạy, xem log từ ESP32 và nhận hướng dẫn xử lý lỗi mà không cần mở CMD."}
         action={
           <span className={`status-pill status-pill--${deviceLive ? "healthy" : "warning"}`}>
             {deviceLive ? <CheckCircle2 size={15} /> : <CircleOff size={15} />}
-            {deviceLive ? `${snapshot?.connection.port} đang live` : `Đang chờ ${controller?.model ?? "hardware profile"}`}
+            {deviceLive
+              ? `${snapshot?.connection.port} đang live`
+              : viewMode === "design" ? "Monitor chờ backend" : `Đang chờ ${controller?.model ?? "hardware profile"}`}
           </span>
         }
       />
+
+      <nav className="hardware-mode-switch" aria-label="Chọn kiến trúc phần cứng">
+        <button
+          type="button"
+          className={viewMode === "design" ? "is-active" : ""}
+          onClick={() => setViewMode("design")}
+          aria-pressed={viewMode === "design"}
+        >
+          <span className="hardware-mode-switch__icon"><RotateCcw size={18} /></span>
+          <span><strong>Xe 2 motor · Monitor</strong><small>Telemetry, PID, cảnh báo và log</small></span>
+          <span className={`hardware-mode-switch__dot${deviceLive ? " is-live" : ""}`} aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          className={viewMode === "live" ? "is-active" : ""}
+          onClick={() => setViewMode("live")}
+          aria-pressed={viewMode === "live"}
+        >
+          <span className="hardware-mode-switch__icon"><Activity size={18} /></span>
+          <span><strong>Rig 1 motor · live</strong><small>COM, telemetry và log thật</small></span>
+          <span className={`hardware-mode-switch__dot${deviceLive ? " is-live" : ""}`} aria-hidden="true" />
+        </button>
+      </nav>
+
+      {viewMode === "design" ? <DualMotorArchitecture /> : <>
 
       <section
         className={`connection-banner connection-banner--${deviceLive ? "healthy" : snapshot?.connection.status === "error" ? "error" : "warning"}`}
@@ -686,145 +577,8 @@ export function HardwareGraphPage() {
       </section>
 
       <section className="monitor-grid">
-        <article className="card panel diagnostic-panel">
-          <div className="panel__header">
-            <div><p className="eyebrow">Nhận biết lỗi</p><h2>Việc cần xử lý</h2></div>
-            <AlertTriangle size={21} />
-          </div>
-          <div className="diagnostic-list">
-            {streamStatus !== "live" && (
-              <div className="diagnostic-item diagnostic-item--error" role="alert">
-                <div><strong>Không kết nối được backend</strong><span>UI không thể nhận log realtime.</span></div>
-                <p><b>Làm ngay:</b> Double-click <code>nexus-start-app.cmd</code> và giữ cửa sổ Backend mở.</p>
-              </div>
-            )}
-            {streamStatus === "live" && activeDiagnostics.length === 0 && (
-              <div className="diagnostic-empty">
-                <CheckCircle2 size={24} />
-                <strong>Chưa phát hiện lỗi</strong>
-                <span>NeXus vẫn đang kiểm tra từng gói mới.</span>
-              </div>
-            )}
-            {activeDiagnostics.map((item) => (
-              <div className={`diagnostic-item diagnostic-item--${item.severity}`} key={item.code}>
-                <div><strong>{item.title}</strong><span>{item.code} · {item.occurrences} mẫu liên tiếp</span></div>
-                <p>{item.message}</p>
-                <p><b>Làm ngay:</b> {item.action}</p>
-              </div>
-            ))}
-          </div>
-        </article>
-
-        <article className="card terminal-card">
-          <div className="terminal-card__header">
-            <div className="terminal-card__title">
-              <span className="terminal-card__icon"><TerminalSquare size={18} /></span>
-              <span>
-                <strong>ESP32 Live Log</strong>
-                <small className={pausedLogs ? "is-paused" : followLatest ? "is-following" : "is-browsing"}>
-                  <i aria-hidden="true" />
-                  {pausedLogs
-                    ? "Đã tạm dừng"
-                    : followLatest
-                      ? "Đang theo dõi log mới nhất"
-                      : "Bạn đang xem log cũ"}
-                </small>
-              </span>
-            </div>
-            <div className="terminal-actions">
-              <button type="button" onClick={togglePause}>
-                {pausedLogs ? <Play size={14} /> : <Pause size={14} />}
-                {pausedLogs ? "Tiếp tục" : "Tạm dừng"}
-              </button>
-              <button type="button" onClick={clearVisibleLogs}><Trash2 size={14} />Ẩn log cũ</button>
-              <button type="button" onClick={downloadLogs} disabled={!visibleLogs.length}><Download size={14} />Tải log</button>
-            </div>
-          </div>
-          <div className="terminal-toolbar">
-            <label>
-              <Search size={15} aria-hidden="true" />
-              <span className="sr-only">Tìm trong log</span>
-              <input value={logQuery} onChange={(event) => setLogQuery(event.target.value)} placeholder="Tìm mã lỗi hoặc giá trị…" />
-            </label>
-            <select value={logLevel} onChange={(event) => setLogLevel(event.target.value as typeof logLevel)} aria-label="Lọc log theo mức">
-              <option value="all">Tất cả mức</option>
-              <option value="error">Lỗi</option>
-              <option value="warning">Cảnh báo</option>
-              <option value="telemetry">Telemetry</option>
-              <option value="info">Thông tin</option>
-            </select>
-            <span className="terminal-toolbar__count"><strong>{visibleLogs.length}</strong> bản ghi</span>
-          </div>
-          <div className="terminal-card__meta">
-            <span>Đang lưu <strong title={savedLogName}>{savedLogName}</strong></span>
-            {latestVisibleLog && <span>Mới nhất lúc <strong>{timeLabel(latestVisibleLog.occurred_at)}</strong></span>}
-          </div>
-          <div
-            className="terminal-feed"
-            ref={terminalRef}
-            role="log"
-            aria-label="Log realtime từ ESP32"
-            aria-live="off"
-            tabIndex={0}
-            onScroll={handleLogScroll}
-            onWheel={() => { userLogScrollRef.current = true; }}
-            onTouchStart={() => { userLogScrollRef.current = true; }}
-            onPointerDown={(event) => {
-              if (event.target === event.currentTarget) userLogScrollRef.current = true;
-            }}
-            onKeyDown={(event) => {
-              if (["ArrowUp", "ArrowDown", "PageUp", "PageDown", "Home", "End"].includes(event.key)) {
-                userLogScrollRef.current = true;
-              }
-            }}
-          >
-            {visibleLogs.length === 0 && (
-              <p className="terminal-empty">Log từ firmware sẽ hiện tại đây ngay khi ESP32 gửi dữ liệu.</p>
-            )}
-            {visibleLogs.map((item, index) => {
-              const presentation = logPresentation(item);
-              const metrics = presentation.telemetry?.measurements;
-              return (
-                <article
-                  className={`terminal-line terminal-line--${item.level}`}
-                  data-latest={index === visibleLogs.length - 1 ? "true" : undefined}
-                  key={item.id}
-                >
-                  <div className="terminal-line__meta">
-                    <time>{timeLabel(item.occurred_at)}</time>
-                    <span>{item.level === "telemetry" ? "Telemetry" : item.level === "info" ? "Thông tin" : item.level === "warning" ? "Cảnh báo" : "Lỗi"}</span>
-                  </div>
-                  <div className="terminal-line__content">
-                    <div className="terminal-line__heading">
-                      <strong>{presentation.title}</strong>
-                      <small>{item.source === "firmware" ? "Firmware" : "Backend"}</small>
-                    </div>
-                    {metrics ? (
-                      <div className="terminal-metrics" aria-label={`Số đo ${presentation.title}`}>
-                        <span><small>Điện áp</small><strong>{valueOrDash(metrics.bus_voltage_v, 3)} V</strong></span>
-                        <span><small>Dòng</small><strong>{valueOrDash(metrics.current_ma, 1)} mA</strong></span>
-                        <span><small>Công suất</small><strong>{valueOrDash(metrics.power_mw, 1)} mW</strong></span>
-                        <span><small>Motor</small><strong>{metrics.driver_enabled ? `Bật · ${metrics.pwm_percent ?? 0}%` : "Tắt"}</strong></span>
-                      </div>
-                    ) : (
-                      <p>{presentation.summary}</p>
-                    )}
-                    <details className="terminal-raw">
-                      <summary><ChevronDown size={14} /> Xem dữ liệu gốc</summary>
-                      <pre>{presentation.raw}</pre>
-                    </details>
-                  </div>
-                </article>
-              );
-            })}
-            {!followLatest && visibleLogs.length > 0 && !pausedLogs && (
-              <button className="terminal-jump" type="button" onClick={jumpToLatest}>
-                <ChevronsDown size={16} />
-                Về log mới nhất
-              </button>
-            )}
-          </div>
-        </article>
+        <HardwareDiagnosticsPanel mode="single" />
+        <HardwareLiveLog mode="single" />
       </section>
 
       <section className="dashboard-grid">
@@ -849,6 +603,7 @@ export function HardwareGraphPage() {
           </dl>
         </article>
       </section>
+      </>}
     </div>
   );
 }

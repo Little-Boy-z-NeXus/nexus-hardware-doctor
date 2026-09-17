@@ -1,0 +1,279 @@
+schema_version: "1.0.0-draft"
+design_id: nexus-dual-motor-pid-robot-v1
+name: NeXus dual-motor PID robot
+status: design-draft
+updated_at: "2026-09-14T00:00:00+07:00"
+purpose: >-
+  Measure the two wheel speeds independently, detect left/right RPM mismatch,
+  correct the mismatch with bounded PID control, and correlate electrical,
+  vibration and environmental telemetry for diagnosis.
+
+controller:
+  component_id: esp32_s3
+  model: GOOUUU Tech ESP32-S3-N16R8
+  logic_voltage_v: 3.3
+  power_source: Micro-USB data cable
+  restrictions:
+    - Never connect the 3S LiPo rail to ESP32 3V3 or 5V.
+    - Camera, microSD and display expansion are not used with this pin map.
+    - GPIO0, GPIO3, GPIO19, GPIO20, GPIO26-GPIO37, GPIO45 and GPIO46 remain unused.
+
+power:
+  battery:
+    component_id: battery
+    type: 3S LiPo
+    nominal_voltage_v: 11.1
+    fully_charged_voltage_v: 12.6
+    minimum_capacity_mah: 1000
+    requirements:
+      - Use a 3S balance charger and a protected pack or low-voltage alarm.
+      - Disconnect the robot load before charging.
+  chain:
+    - from: battery.positive
+      to: fuse.input
+      wire_color: red
+      wire_gauge_awg: 20-22
+    - from: fuse.output
+      to: master_switch.input
+      wire_color: red
+      wire_gauge_awg: 20-22
+    - from: master_switch.output
+      to: fault_estop_nc.input
+      wire_color: red
+      wire_gauge_awg: 20-22
+    - from: fault_estop_nc.output
+      to: ina226.vin_plus
+      wire_color: red
+      wire_gauge_awg: 20-22
+    - from: ina226.vin_minus
+      to: l298n.vs_12v
+      wire_color: red
+      wire_gauge_awg: 20-22
+    - from: ina226.vin_minus
+      to: ina226.vbus_vbs
+      wire_color: red
+      purpose: bus-voltage sense jumper for the current module
+    - from: battery.negative
+      to: ground_star
+      wire_color: black
+      wire_gauge_awg: 20-22
+  fuse:
+    component_id: fuse
+    provisional_rating_a: 1.5
+    rule: >-
+      Keep 1.5 A only after measuring combined run, startup and stall current.
+      Final fuse rating must remain below the safe continuous rating of the
+      battery, switches, driver and 20-22 AWG power wiring.
+  switches:
+    master_switch:
+      type: latching DC-rated switch
+      series_with_battery_positive: true
+    fault_estop_nc:
+      type: normally-closed DC-rated switch
+      series_with_battery_positive: true
+      warning: Do not route motor current through a small breadboard pushbutton.
+  decoupling:
+    - component: electrolytic_capacitor
+      value_uf: 470-1000
+      placement: directly across L298N +12V/VS and GND
+      polarity: positive to +12V/VS, negative stripe to GND
+    - component: ceramic_capacitor_left
+      value_nf: 100
+      placement: directly across left motor M+ and M-
+    - component: ceramic_capacitor_right
+      value_nf: 100
+      placement: directly across right motor M+ and M-
+  common_ground:
+    topology: star
+    members:
+      - battery.negative
+      - l298n.gnd
+      - esp32_s3.gnd
+      - ina226.gnd
+      - bme680.gnd
+      - bno055.gnd
+      - motor_left.encoder_gnd
+      - motor_right.encoder_gnd
+
+i2c_bus:
+  voltage_v: 3.3
+  frequency_hz: 100000
+  pins:
+    sda: esp32_s3.gpio_1
+    scl: esp32_s3.gpio_2
+  wire_colors:
+    sda: green
+    scl: yellow
+    vcc_3v3: red
+    gnd: black
+  devices:
+    - component_id: ina226
+      model: INA226 R100 0.1-ohm module
+      address: "0x40"
+      supply: esp32_s3.3v3
+      measurement_scope: combined motor-driver rail
+    - component_id: bme680
+      model: BME680 3.3V-compatible I2C breakout
+      address: "0x76"
+      alternate_address: "0x77"
+      supply: esp32_s3.3v3
+      placement: away from the L298N heat sink and motor airflow
+    - component_id: bno055
+      model: BNO055 3.3V-compatible I2C breakout
+      address: "0x29"
+      alternate_address: "0x28"
+      supply: esp32_s3.3v3
+      placement: rigidly mounted near the chassis center, axes documented
+  validation:
+    expected_scan_addresses:
+      - "0x40"
+      - "0x76"
+      - "0x29"
+    note: >-
+      If a breakout selects an alternate address, update this manifest before
+      changing firmware. Verify the combined value of any onboard I2C pull-ups.
+
+motor_driver:
+  component_id: l298n
+  model: L298N dual H-bridge module
+  motor_supply: ina226.vin_minus
+  logic_input_voltage_v: 3.3
+  setup:
+    - Remove both ENA and ENB jumpers before applying PWM from the ESP32-S3.
+    - Keep the module 5V regulator/output isolated from ESP32 3V3.
+    - Stop both channels before changing any motor or encoder wire.
+  channel_left:
+    enable_pwm:
+      from: esp32_s3.gpio_12
+      to: l298n.ena
+      wire_color: blue
+    direction_1:
+      from: esp32_s3.gpio_13
+      to: l298n.in1
+      wire_color: orange
+    direction_2:
+      from: esp32_s3.gpio_14
+      to: l298n.in2
+      wire_color: purple
+    motor_positive:
+      from: l298n.out1
+      to: motor_left.motor_plus
+      wire_color: red
+    motor_negative:
+      from: l298n.out2
+      to: motor_left.motor_minus
+      wire_color: white
+  channel_right:
+    enable_pwm:
+      from: esp32_s3.gpio_4
+      to: l298n.enb
+      wire_color: blue
+    direction_1:
+      from: esp32_s3.gpio_5
+      to: l298n.in3
+      wire_color: orange
+    direction_2:
+      from: esp32_s3.gpio_6
+      to: l298n.in4
+      wire_color: purple
+    motor_positive:
+      from: l298n.out3
+      to: motor_right.motor_plus
+      wire_color: red
+    motor_negative:
+      from: l298n.out4
+      to: motor_right.motor_minus
+      wire_color: white
+
+motors:
+  harness_order_from_left: [red, black, yellow, green, blue, white]
+  harness_meaning:
+    red: motor_plus
+    black: encoder_gnd
+    yellow: encoder_a
+    green: encoder_b
+    blue: encoder_vcc_3v3
+    white: motor_minus
+  left:
+    component_id: motor_left
+    model: JGB37-520 12V DC gearmotor with Hall A/B encoder
+    encoder_vcc: esp32_s3.3v3
+    encoder_gnd: ground_star
+    encoder_a:
+      to: esp32_s3.gpio_16
+      wire_color: yellow
+    encoder_b:
+      to: esp32_s3.gpio_17
+      wire_color: green
+  right:
+    component_id: motor_right
+    model: JGB37-520 12V DC gearmotor with Hall A/B encoder
+    encoder_vcc: esp32_s3.3v3
+    encoder_gnd: ground_star
+    encoder_a:
+      to: esp32_s3.gpio_7
+      wire_color: yellow
+    encoder_b:
+      to: esp32_s3.gpio_8
+      wire_color: green
+
+project_wire_color_standard:
+  red: positive power or motor M+
+  black: ground only
+  green: I2C SDA or encoder B; both endpoints must be tagged
+  yellow: I2C SCL or encoder A; both endpoints must be tagged
+  blue: PWM or encoder 3.3V VCC; both endpoints must be tagged
+  orange: L298N IN1 or IN3
+  purple: L298N IN2 or IN4
+  white: motor M-
+
+control:
+  mode: dual-wheel closed-loop speed balance
+  sample_period_ms: 20
+  rpm_update_period_ms: 100
+  speed_targets:
+    left_field: target_rpm_left
+    right_field: target_rpm_right
+  feedback:
+    - rpm_left
+    - rpm_right
+    - yaw_rate_dps
+    - total_current_ma
+    - bus_voltage_v
+  pid:
+    left_output: pwm_left_percent
+    right_output: pwm_right_percent
+    output_limits_percent: [0, 80]
+    anti_windup: required
+    slew_rate_limit: required
+    initial_gains: null
+    note: Tune Kp, Ki and Kd from measured response; do not guess final gains.
+  synchronization:
+    error_field: rpm_delta
+    formula: rpm_left - rpm_right
+    target: 0
+    tolerance_percent: 5
+  safety_stop_conditions:
+    - emergency switch opened
+    - either encoder has no edge while its channel is enabled
+    - INA226 reports overcurrent or invalid data
+    - battery is outside the configured 3S voltage range
+    - firmware loses the hardware-profile identity check
+
+measurement_limitations:
+  - One INA226 measures only combined driver current, not individual motor current.
+  - Per-motor electrical diagnosis requires a second current channel or one INA226 per branch with distinct addresses.
+  - BNO055 measures chassis motion; it does not replace either motor encoder for wheel RPM.
+  - L298N voltage drop reduces the voltage that reaches each 12V motor and must be included in the baseline.
+
+acceptance_targets:
+  - Both encoders count forward without invalid quadrature transitions.
+  - At constant target speed, absolute left/right RPM mismatch is at most 5 percent after settling.
+  - A temporary load on one wheel causes bounded PWM correction and returns to tolerance without oscillation.
+  - Removing one encoder channel stops both motors and identifies the exact side and A/B wire.
+  - Opening the NC E-stop removes motor voltage while ESP32 USB logging remains available.
+  - I2C scan and identity checks confirm INA226, BME680 and BNO055 before enabling either motor.
+
+artifacts:
+  wiring_image: docs/nexus-dual-motor-pid-wiring-v1.png
+  wiring_document: docs/nexus-dual-motor-pid-hardware-v1.md

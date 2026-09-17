@@ -1,68 +1,58 @@
-# Design QA — profile-driven wiring guide
+# Design QA — dual-motor PID hardware architecture
 
 ## Comparison target
 
-- Source visual truth path: `cua-session://iab/1/tab/8/wiringBeforeShot` (existing BOM explorer,
-  captured before implementation in this run).
-- Implementation screenshot path: `cua-session://iab/1/tab/8/wiringFinalShot` (selected INA226
-  wiring view after implementation).
+- Source visual truth: `docs/nexus-dual-motor-pid-wiring-v1.png` (1672 × 941 px).
+- Source browser capture: `cua-session://iab/1/tab/2/sourceCompareShot`.
+- Implementation browser capture: `cua-session://iab/1/tab/1/implementationCompareShot`.
+- Desktop capture: `cua-session://iab/1/tab/1/desktopReadyShot` at 1440 × 900 CSS px.
+- Mobile capture: `cua-session://iab/1/tab/1/mobileCroppedShot` at 390 × 844 CSS px.
 - URL: `http://localhost:5173/hardware`.
-- Viewport: 818 × 698 CSS px at device pixel ratio 1.25.
-- Source and implementation image pixels: both in-app Browser captures normalized to 800 × 686 px.
-- State: Hardware page, light theme, active profile loaded; implementation filtered to the selected
-  INA226 component.
 
 ## Full-view comparison evidence
 
-The source and implementation captures were emitted together in one comparison input. The new
-section preserves the source card surface, green eyebrow, heading scale, warning status pill,
-rounded corners, muted supporting copy and sidebar proportions. It adds a bounded wiring list
-below the existing BOM rather than changing the accepted BOM explorer.
+The source wiring diagram and the implemented Hardware page were emitted together in one visual
+comparison input. The frontend preserves the source hierarchy: protected 3S power chain, shared
+3.3 V I²C bus, ESP32-S3 control center, L298N dual channels and separate left/right motors. The UI
+translates that dense technical diagram into a scan-first architecture view plus a bounded,
+filterable wiring list.
 
-## Focused region comparison evidence
+## Findings and corrections
 
-The wiring section was inspected in selected-component and all-18-connections states at the same
-viewport. A focused pass confirmed that long component names remain within endpoint cards, pin
-labels and IDs remain visible, literal wire colors have text labels, incomplete colors use a
-dashed treatment, and the internal scrollbar prevents page-length growth. A separate close-up was
-not needed because the current narrow viewport already renders the section at readable scale.
+- P2 fixed: the wiring eyebrow initially said 40 paths while the manifest projection contains 43;
+  the heading now reads the data length dynamically.
+- No remaining P0/P1/P2 visual differences.
+- Typography and spacing: long hardware names wrap or truncate inside bounded regions; the two
+  motor cards stay balanced at desktop and stack cleanly on mobile.
+- Color fidelity: red, black, green, yellow, blue, orange, purple and white are rendered literally,
+  with a text label beside every swatch so color is never the only signal.
+- Information density: the 43 paths are constrained to a 520 px scroll area and can be reduced to
+  Power, I²C, Motor left or Motor right without growing the page.
+- State honesty: all dual-motor readings remain `--` and the page says `Chờ firmware dual-motor`;
+  the live single-motor runtime stays available in its own mode.
+- Asset quality: the 1672 × 941 reference diagram loads at natural resolution and has descriptive
+  alternative text.
 
-## Findings
+## Responsive and interaction checks
 
-- No actionable P0/P1/P2 visual differences remain.
-- Typography: heading/body hierarchy matches the existing Hardware page; pin and connection text
-  remains readable without overflowing the cards.
-- Spacing and layout: the compact BOM remains unchanged; wiring rows stack cleanly at this viewport
-  and stay inside a 470–520 px scroll region.
-- Colors and tokens: existing NeXus green, slate and warning tokens are reused. Known physical wire
-  colors are literal; white includes a border and incomplete colors are visually distinct.
-- Image quality: no raster assets are needed for this structured hardware view. All icons come from
-  the project's existing Lucide icon family; the wire itself is a data-driven connection mark.
-- Copy and content: Vietnamese setup instructions state the safe order and explicitly prohibit
-  guessing missing colors.
-- Accessibility: controls are native buttons, selected state is exposed with `aria-pressed`, focus
-  is visible, and every color has a text name.
+- Desktop 1440 px: architecture hero, three-column PID balance and two evidence panels align.
+- Mobile 390 px: no horizontal body overflow; mode switch, motor cards and evidence panels stack.
+- Mobile wiring list: 10 right-motor rows fit without horizontal overflow.
+- Right-motor filter: exposes GPIO4, GPIO5, GPIO6, GPIO7 and GPIO8 and exactly 10 paths.
+- Reference diagram toggle: opens and closes the source image successfully.
+- Live-mode switch: restores current BOM, telemetry and ESP32 realtime log.
+- Browser console: no errors.
+- Accessibility smoke: no unnamed buttons, duplicate IDs or images without alt text.
 
-## Interaction and runtime checks
+## Automated verification
 
-- Selected-component scope: passed.
-- All 18 connections scope: passed.
-- Selecting INA226 from a wire endpoint and returning to filtered scope: passed.
-- Browser DOM contains exact profile endpoints, signal types and connection IDs: passed.
-- No visible error overlay or broken interaction was observed. Frontend lint, 18 tests and
-  production build all pass.
-
-## Comparison history
-
-1. Initial implementation: core layout passed; pin metadata at 9 px was judged too small for a
-   hardware setup aid (P2).
-2. Fix: increased endpoint labels, pin IDs, electrical metadata and wire labels by 1–2 px.
-3. Post-fix comparison: the same filtered INA226 state remained stable and the metadata became
-   easier to scan. No actionable P0/P1/P2 finding remains.
+- ESLint: passed.
+- Vitest: 20 tests passed.
+- TypeScript + Vite production build: passed.
 
 ## Follow-up polish
 
-- P3: after the seven real jumper colors are physically confirmed, replace the legacy profile
-  placeholders so the completion pill can reach 18/18.
+- P3: connect the planned dual-motor telemetry contract after the firmware exposes independent
+  left/right RPM and PWM fields.
 
 final result: passed
