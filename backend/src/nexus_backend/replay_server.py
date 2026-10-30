@@ -23,7 +23,8 @@ from nexus_backend.serial_bridge import EXPECTED_HARDWARE_MODEL_ID, SerialBridge
 
 
 def default_replay_path() -> Path:
-    packaged = Path(__file__).with_name("fixtures") / "telemetry-replay.example.ndjson"
+    fixture_name = "telemetry-replay-ina219-v2.ndjson"
+    packaged = Path(__file__).with_name("fixtures") / fixture_name
     if packaged.is_file():
         return packaged
     return (
@@ -31,7 +32,7 @@ def default_replay_path() -> Path:
         / "nexus-contracts"
         / "v1"
         / "fixtures"
-        / "telemetry-replay.example.ndjson"
+        / fixture_name
     )
 
 

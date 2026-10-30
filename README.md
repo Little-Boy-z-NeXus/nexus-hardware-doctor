@@ -201,6 +201,9 @@ The Hardware Graph also shows a dedicated SDA/SCL/encoder wire-health panel. See
 [signal-wire monitoring runbook](docs/signal-wire-monitoring.md) for what can be proven with the
 current BOM and the safe disconnect/recovery test procedure.
 
+The [English wiring sheets, system design and system architecture](docs/diagrams-v10/README.md)
+provide editable diagrams.net sources and PNG exports for the active INA219 three-wheel profile.
+
 ## Quick start: firmware
 
 PlatformIO is optional unless you are working with the ESP32:

@@ -5,6 +5,7 @@ import pytest
 
 from nexus_backend.replay_server import (
     ReplayError,
+    default_replay_path,
     load_replay,
     publish_replay,
     sanitize_for_replay,
@@ -50,6 +51,13 @@ def test_loader_rejects_missing_or_empty_inputs(tmp_path) -> None:
     empty.write_text(json.dumps({"kind": "serial", "value": "log only"}), encoding="utf-8")
     with pytest.raises(ReplayError, match="no valid"):
         load_replay(empty)
+
+
+def test_default_replay_matches_active_profile() -> None:
+    samples = load_replay(default_replay_path())
+    assert samples
+    assert all(sample["hardware_model_id"] == EXPECTED_HARDWARE_MODEL_ID for sample in samples)
+    assert all(sample["quality"]["source"] == "replay" for sample in samples)
 
 
 def test_replay_is_explicitly_sanitized_and_reaches_live_snapshot() -> None:
