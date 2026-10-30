@@ -66,8 +66,9 @@ export default function () {
     check(response, {
       "live snapshot returns HTTP 200": (result) => result.status === 200,
       "snapshot contains connection state": () => typeof payload.connection?.status === "string",
-      "snapshot is pinned to MVP hardware": () =>
-        payload.hardware?.hardware_model_id === "nexus-s3-ina226-l298n-motor-rig-v1",
+      "snapshot is pinned to active three-wheel hardware": () =>
+        payload.hardware?.hardware_model_id ===
+        "nexus-s3-devkitc-ina219-dual-l298n-3wheel-ps2-v2",
     });
 
     let receivedSnapshot = false;

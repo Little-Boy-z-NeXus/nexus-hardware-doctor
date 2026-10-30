@@ -1106,6 +1106,14 @@ void enforceBaselineFailsafe() {
 #endif
 
 #ifdef NEXUS_ENABLE_FAULT_INJECTION
+void setMotorPwmFrequency(uint32_t frequencyHz) {
+#if ESP_ARDUINO_VERSION_MAJOR >= 3
+  analogWriteFrequency(kMotorEnablePin, frequencyHz);
+#else
+  analogWriteFrequency(frequencyHz);
+#endif
+}
+
 void emitFaultProfileStatus(bool manualActionRequired = false) {
   Serial.printf(
       "[NEXUS][INFO][FAULT_PROFILE] profile=%s active=%s pwm_frequency_hz=%lu "
@@ -1122,7 +1130,7 @@ void resetFaultProfile() {
   activeFaultProfile = "none";
   injectedCurrentOffsetMa = 0.0f;
   activePwmFrequencyHz = kNormalPwmFrequencyHz;
-  analogWriteFrequency(activePwmFrequencyHz);
+  setMotorPwmFrequency(activePwmFrequencyHz);
   applySafeMotorState(0, false);
 }
 
@@ -1151,7 +1159,7 @@ void processFaultInjectionCommand(const String& command) {
   } else if (requested == "PWM_FREQUENCY_LOW") {
     activeFaultProfile = "pwm_frequency_low";
     activePwmFrequencyHz = kFaultPwmFrequencyHz;
-    analogWriteFrequency(activePwmFrequencyHz);
+    setMotorPwmFrequency(activePwmFrequencyHz);
   } else if (requested == "CURRENT_OFFSET") {
     activeFaultProfile = "current_offset";
     injectedCurrentOffsetMa = kFaultCurrentOffsetMa;
@@ -1271,7 +1279,7 @@ void setup() {
       "encoder A/B checked whenever the driver runs");
   lastSignalMonitorHeartbeatMs = millis();
 #ifdef NEXUS_ENABLE_FAULT_INJECTION
-  analogWriteFrequency(kNormalPwmFrequencyHz);
+  setMotorPwmFrequency(kNormalPwmFrequencyHz);
 #endif
   Wire.begin(kInaSdaPin, kInaSclPin);
   applySafeMotorState(0, false);
