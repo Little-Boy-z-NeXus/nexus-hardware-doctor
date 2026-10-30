@@ -20,7 +20,7 @@ This directory records the decisions required to build and demonstrate the hacka
 14. [`evidence/u07-final-acceptance.md`](evidence/u07-final-acceptance.md) — redacted 3/3 physical U07 acceptance and local evidence hashes.
 15. [`signal-wire-monitoring.md`](signal-wire-monitoring.md) — realtime SDA/SCL and encoder wire checks, fault codes and safe acceptance cases.
 16. [`security.md`](security.md) — secret handling, redaction, model/tool boundaries, and incident basics.
-17. [`backlog.md`](backlog.md) — link to the live Google Sheet and local working rules.
+17. [`backlog.md`](backlog.md) — public backlog conventions and local working rules.
 18. [`nexus-integration/README.md`](nexus-integration/README.md) — U06 daily integration cadence, blocker SLA, merge gate and decision format.
 
 ## Document index
@@ -53,13 +53,13 @@ This directory records the decisions required to build and demonstrate the hacka
 
 ## Source-of-truth rules
 
-- Live task status and dates: the [Google Sheet backlog](https://docs.google.com/spreadsheets/d/1EOCmOg-qVQ_2OJV1DkeH9ULjkR7oT8kNMNGyrTKTUFs/edit).
+- Live task status and dates: maintained in the team's private task tracker.
 - Runtime payload definitions: [`nexus-contracts`](../nexus-contracts/README.md).
 - Current executable behavior: firmware, backend, and frontend source code.
 - Scope decision: [`mvp-scope.md`](mvp-scope.md).
 - Contribution process: root [`CONTRIBUTING.md`](../CONTRIBUTING.md).
 
-If a document conflicts with a frozen schema, the schema wins until a migration is approved. If a local backlog note conflicts with the Google Sheet, the Google Sheet wins.
+If a document conflicts with a frozen schema, the schema wins until a migration is approved. The team's private task tracker holds the current assignment status.
 
 ## Updating documentation
 

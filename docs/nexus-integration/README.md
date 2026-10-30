@@ -1,6 +1,6 @@
 # U06 integration operations
 
-This folder contains evidence and decisions for U06. The Google Sheet remains the source of truth for live task status; dated files here are immutable daily snapshots that can be reviewed in pull requests.
+This folder contains evidence and decisions for U06. The team's private tracker holds current task status; dated files here are immutable daily snapshots that can be reviewed in pull requests.
 
 ## Daily 15-minute integration meeting
 

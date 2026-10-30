@@ -4,13 +4,15 @@ NeXus is an AI doctor for physical hardware. The hackathon MVP turns one ESP32 m
 
 This repository targets the [Nebius x NVIDIA Global AI Hackathon](https://nebiusglobalaihackathon.devpost.com/). The active adapter is an ESP32-S3 DevKitC-compatible N16R8 44-pin board with DFRobot Gravity INA219 SEN0291, two L298N drivers, three JGB37-520 encoder motors, a PS2 receiver and a 3S LiPo supply. The versioned JSON Hardware-as-Code profile is the source for firmware generation, backend validation and the UI graph.
 
+For a quick review, watch the [2:50 demo video](https://www.youtube.com/watch?v=ac33K71GrzQ), then follow the [Windows setup](#windows-run-by-double-clicking) or the [backend](#quick-start-backend) and [frontend](#quick-start-frontend) steps below. The physical rig is needed for live device telemetry; `nexus-start-replay-demo.cmd` provides a labeled replay without hardware. Live NVIDIA Nemotron diagnosis requires a Nebius Token Factory API key entered locally with `nexus-configure-nebius.cmd`. The model and hardware evidence are described separately under [NVIDIA model and Nebius Token Factory](#nvidia-model-and-nebius-token-factory).
+
 The SEN0291 power path is `relay NO → IN+ → IN− → MOTOR+`; its separate terminal GND and Gravity/I²C GND both join common ground. There is no legacy INA226 VBUS/VBS jumper.
 
 ## Current build status
 
 | Area | What works now | Next integration |
 | --- | --- | --- |
-| Frontend | Realtime Dashboard/Hardware Graph, compact BOM/wiring explorer, three-wheel monitor, AI Doctor, diagnosis timeline, Manual/Auto Treatment UX, retry and evidence export | Capture final screenshots and the submission video on the physical rig |
+| Frontend | Realtime Dashboard/Hardware Graph, compact BOM/wiring explorer, three-wheel monitor, AI Doctor, diagnosis timeline, Manual/Auto Treatment UX, retry and evidence export | Verify the public demo against the final physical rig |
 | Backend | Persistent sessions/telemetry, explicit serial-history binding, verified live Nebius client, read-only orchestration, policy/evaluation and U07 physical 3/3 | Keep motor writes behind the separate H05/H06 and N03/N06 safety gates |
 | Firmware | Safe PWM clamp, strict telemetry v1, calibrated INA219 logs, PS2 failsafe and three-wheel PID balancing | Calibrate encoder counts and balance gains on the physical chassis |
 | Contracts | Four frozen JSON Schemas, fixtures and migration enforcement | Change only through a reviewed migration note or v2 |
@@ -328,7 +330,7 @@ Schema v1 changes require a new note under `nexus-contracts/migrations/` in the 
 
 ## Project links
 
-- [MVP scope and team backlog](https://docs.google.com/spreadsheets/d/1EOCmOg-qVQ_2OJV1DkeH9ULjkR7oT8kNMNGyrTKTUFs/edit?gid=9060801#gid=9060801)
+- [Public MVP scope](docs/mvp-scope.md)
 - [Hackathon page](https://nebiusglobalaihackathon.devpost.com/)
 - [Latest CI runs](https://github.com/Little-Boy-z-NeXus/nexus-hardware-doctor/actions)
 

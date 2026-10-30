@@ -193,8 +193,8 @@ def main() -> int:
             errors,
         )
         require(
-            "docs.google.com/spreadsheets" in readme,
-            "README must link the shared backlog.",
+            "docs/mvp-scope.md" in readme,
+            "README must link the public MVP scope.",
             errors,
         )
 

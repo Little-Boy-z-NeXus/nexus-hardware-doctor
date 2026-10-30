@@ -1,8 +1,6 @@
 # MVP scope
 
-The Google Sheet is the authoritative scope and backlog:
-
-https://docs.google.com/spreadsheets/d/1EOCmOg-qVQ_2OJV1DkeH9ULjkR7oT8kNMNGyrTKTUFs/edit?gid=9060801#gid=9060801
+This file records the public MVP scope. The team maintains its detailed task tracker separately.
 
 ## Locked product statement
 

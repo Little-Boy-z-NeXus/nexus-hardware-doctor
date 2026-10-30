@@ -25,5 +25,5 @@ Search has an explicit accessible label, list entries are native buttons with `a
 
 ## Evidence
 
-- User-provided original: `C:\Users\lenovo\AppData\Local\Temp\codex-clipboard-b4ef546d-3d0e-4b58-84a0-78f9a594703c.png`.
-- Revised runtime: Codex in-app Browser tab 8, `http://localhost:5173/hardware`, verified with live COM8 data.
+- Original interface: user-provided screenshot reviewed during the UX audit.
+- Revised runtime: `http://localhost:5173/hardware`, verified with live COM8 data.

@@ -10,7 +10,7 @@ test, public-repository state, account registration, video quality, or successfu
 - [ ] Repository structure and all four v1 contracts validate.
 - [ ] Backend lint and full pytest suite pass.
 - [ ] Frontend lint, unit tests, TypeScript, and production build pass.
-- [ ] Three-wheel PS2 firmware builds for `nexus-goouuu-esp32-s3-3wheel-ps2`.
+- [ ] Three-wheel PS2 firmware builds for `nexus-esp32-s3-devkitc-3wheel-ps2`.
 - [ ] Five consecutive offline Prevent, Manual Diagnose, and Auto Heal paths pass.
 - [ ] Tracked-file secret scan passes; `.env`, raw logs, and private evidence remain ignored.
 
@@ -32,10 +32,10 @@ test, public-repository state, account registration, video quality, or successfu
 
 ## Devpost human gate
 
-- [ ] All four people joined the same Devpost team and accepted invitations.
+- [ ] All project members joined the same Devpost team and accepted invitations.
 - [ ] Nebius Builder Program/credits and submission-account requirements are complete.
 - [ ] Repository is public, MIT license is visible at root, and anonymous clone works.
 - [ ] README quick start works on a clean machine and contains no private/local-only link.
-- [ ] Video is public, below 03:00, includes at least 01:00 of real hardware, and captions are enabled.
+- [ ] Video is public, below 03:00, and includes at least 01:00 of real hardware operation. Captions are recommended for accessibility.
 - [ ] English submission copy, NVIDIA model, Nebius usage, open-source link, and honest feedback are filled.
 - [ ] Final form preview was reviewed by Hiếu; a screenshot of successful submission was saved.

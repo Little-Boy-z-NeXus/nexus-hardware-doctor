@@ -2,7 +2,7 @@
 
 ## Audit scope
 
-Khu vực `ESP32 Live Log` trên trang `/hardware`, dựa trên ảnh vấn đề người dùng cung cấp tại `C:\Users\lenovo\AppData\Local\Temp\codex-clipboard-8adc025a-010e-4ef5-9f39-c19d5ee160a1.png` và trạng thái COM8 realtime trong Codex in-app Browser.
+Khu vực `ESP32 Live Log` trên trang `/hardware`, dựa trên ảnh chụp giao diện ban đầu và trạng thái COM8 realtime trong trình duyệt thử nghiệm.
 
 ## User goal
 
