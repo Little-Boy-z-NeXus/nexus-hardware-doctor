@@ -30,6 +30,8 @@ coverage/
 *.swp
 .DS_Store
 Thumbs.db
+.codex-tmp/
+*.dtmp
 
 # Runtime evidence may contain telemetry; commit only redacted fixtures
 logs/

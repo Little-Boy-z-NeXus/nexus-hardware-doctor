@@ -9,13 +9,14 @@ if errorlevel 1 (
   goto :failed
 )
 
-echo [NeXus] Uploading INA226 R100 firmware to GOOUUU Tech ESP32-S3-N16R8...
-pio run --project-dir firmware --target upload
+echo [NeXus] Uploading MVP v1 firmware: GOOUUU ESP32-S3 + INA226 R100 + L298N + one JGB37-520...
+echo [NeXus] Use the USB connector that creates the CH340/CH343 COM port.
+pio run --project-dir firmware --environment nexus-goouuu-esp32-s3-ina226-r100-mvp-v1-uart --target upload
 if errorlevel 1 goto :failed
 
 echo.
-echo [SUCCESS] INA226 firmware was uploaded and verified.
-echo [NEXT] Start the app and confirm the UI shows about 12 V instead of 0 V.
+echo [SUCCESS] MVP v1 INA226 R100 firmware was uploaded and verified.
+echo [NEXT] Start the app; verify sensor=ina226-r100, voltage/current and encoder A/B before running the motor.
 if /I not "%~1"=="--no-pause" pause
 exit /b 0
 

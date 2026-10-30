@@ -1,0 +1,90 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2600" height="1900" viewBox="0 0 2600 1900">
+  <defs>
+    <style>
+      .title{font:800 52px 'Segoe UI',Arial,sans-serif;fill:#102a43}.sub{font:600 24px 'Segoe UI',Arial,sans-serif;fill:#486581}
+      .h{font:800 29px 'Segoe UI',Arial,sans-serif;fill:#102a43}.b{font:800 21px 'Segoe UI',Arial,sans-serif;fill:#102a43}
+      .t{font:600 18px 'Segoe UI',Arial,sans-serif;fill:#243b53}.s{font:500 15px 'Segoe UI',Arial,sans-serif;fill:#486581}
+      .box{fill:#fff;stroke:#cbd5e1;stroke-width:3}.row{fill:#f8fafc;stroke:#e2e8f0;stroke-width:2}
+      .sig{stroke:#2563eb;stroke-width:6;fill:none;stroke-linecap:round}.yellow{stroke:#eab308;stroke-width:7;fill:none;stroke-linecap:round}
+      .green{stroke:#16a34a;stroke-width:7;fill:none;stroke-linecap:round}.red{stroke:#dc2626;stroke-width:8;fill:none;stroke-linecap:round}
+      .black{stroke:#111827;stroke-width:8;fill:none;stroke-linecap:round}.white{stroke:#94a3b8;stroke-width:8;fill:none;stroke-linecap:round}
+      .v3{stroke:#7c3aed;stroke-width:7;fill:none;stroke-linecap:round}
+    </style>
+    <filter id="sh" x="-10%" y="-10%" width="120%" height="135%"><feDropShadow dx="0" dy="5" stdDeviation="7" flood-color="#102a43" flood-opacity=".11"/></filter>
+  </defs>
+  <rect width="2600" height="1900" fill="#f5f8fc"/>
+  <text x="1300" y="70" text-anchor="middle" class="title">NeXus — TRANG 2: MOTOR, ENCODER VÀ PS2</text>
+  <text x="1300" y="110" text-anchor="middle" class="sub">2 × L298N · 3 × JGB37-520 theo tam giác · mọi kết nối đều ghi TỪ → ĐẾN, không có dây chồng nhau</text>
+
+  <rect x="45" y="145" width="2510" height="400" rx="24" class="box" filter="url(#sh)"/>
+  <text x="80" y="190" class="h">1. GPIO ĐIỀU KHIỂN DRIVER — DÂY 22–24AWG</text>
+  <rect x="80" y="225" width="2440" height="55" rx="10" fill="#e0f2fe"/>
+  <text x="120" y="260" class="b">Motor / vị trí</text><text x="630" y="260" class="b">PWM</text><text x="1030" y="260" class="b">Chiều 1</text><text x="1430" y="260" class="b">Chiều 2</text><text x="1860" y="260" class="b">Driver / kênh</text>
+  <g>
+    <rect x="80" y="295" width="2440" height="65" class="row"/><text x="120" y="336" class="t">M1 · bánh trước</text><text x="630" y="336" class="t">GPIO12 → ENA</text><text x="1030" y="336" class="t">GPIO13 → IN1</text><text x="1430" y="336" class="t">GPIO14 → IN2</text><text x="1860" y="336" class="t">L298N #1 · kênh A</text>
+    <rect x="80" y="360" width="2440" height="65" class="row"/><text x="120" y="401" class="t">M2 · bánh sau trái</text><text x="630" y="401" class="t">GPIO15 → ENB</text><text x="1030" y="401" class="t">GPIO18 → IN3</text><text x="1430" y="401" class="t">GPIO21 → IN4</text><text x="1860" y="401" class="t">L298N #1 · kênh B</text>
+    <rect x="80" y="425" width="2440" height="65" class="row"/><text x="120" y="466" class="t">M3 · bánh sau phải</text><text x="630" y="466" class="t">GPIO6 → ENA</text><text x="1030" y="466" class="t">GPIO7 → IN1</text><text x="1430" y="466" class="t">GPIO8 → IN2</text><text x="1860" y="466" class="t">L298N #2 · kênh A</text>
+  </g>
+  <text x="80" y="520" class="t" fill="#991b1b">L298N #2 kênh B không dùng: OUT3/OUT4 để trống. Không gắn jumper ENA/ENB tại các kênh dùng PWM.</text>
+
+  <rect x="45" y="580" width="2510" height="745" rx="24" class="box" filter="url(#sh)"/>
+  <text x="80" y="625" class="h">2. BA MOTOR — THỨ TỰ GIẮC: ĐỎ · ĐEN · VÀNG · XANH LÁ · XANH DƯƠNG · TRẮNG</text>
+
+  <g transform="translate(80,670)" filter="url(#sh)">
+    <rect width="760" height="590" rx="22" fill="#fffaf0" stroke="#f59e0b" stroke-width="3"/>
+    <text x="380" y="48" text-anchor="middle" class="h">M1 · BÁNH TRƯỚC</text><text x="380" y="80" text-anchor="middle" class="s">L298N #1 kênh A</text>
+    <rect x="35" y="112" width="690" height="58" rx="10" class="row"/><path d="M65 141H155" class="red"/><text x="180" y="148" class="t">Đỏ M+ → OUT1</text>
+    <rect x="35" y="178" width="690" height="58" rx="10" class="row"/><path d="M65 207H155" class="black"/><text x="180" y="214" class="t">Đen encoder GND → GND chung</text>
+    <rect x="35" y="244" width="690" height="58" rx="10" class="row"/><path d="M65 273H155" class="yellow"/><text x="180" y="280" class="t">Vàng encoder A → GPIO16</text>
+    <rect x="35" y="310" width="690" height="58" rx="10" class="row"/><path d="M65 339H155" class="green"/><text x="180" y="346" class="t">Xanh lá encoder B → GPIO17</text>
+    <rect x="35" y="376" width="690" height="58" rx="10" class="row"/><path d="M65 405H155" class="v3"/><text x="180" y="412" class="t">Xanh dương VCC encoder → ESP32 3V3</text>
+    <rect x="35" y="442" width="690" height="58" rx="10" class="row"/><path d="M65 471H155" class="white"/><text x="180" y="478" class="t">Trắng M− → OUT2</text>
+    <text x="35" y="545" class="t">Tụ 100 nF: mắc trực tiếp giữa ĐỎ và TRẮNG.</text>
+  </g>
+
+  <g transform="translate(920,670)" filter="url(#sh)">
+    <rect width="760" height="590" rx="22" fill="#f0fdf4" stroke="#34d399" stroke-width="3"/>
+    <text x="380" y="48" text-anchor="middle" class="h">M2 · BÁNH SAU TRÁI</text><text x="380" y="80" text-anchor="middle" class="s">L298N #1 kênh B</text>
+    <rect x="35" y="112" width="690" height="58" rx="10" class="row"/><path d="M65 141H155" class="red"/><text x="180" y="148" class="t">Đỏ M+ → OUT3</text>
+    <rect x="35" y="178" width="690" height="58" rx="10" class="row"/><path d="M65 207H155" class="black"/><text x="180" y="214" class="t">Đen encoder GND → GND chung</text>
+    <rect x="35" y="244" width="690" height="58" rx="10" class="row"/><path d="M65 273H155" class="yellow"/><text x="180" y="280" class="t">Vàng encoder A → GPIO4</text>
+    <rect x="35" y="310" width="690" height="58" rx="10" class="row"/><path d="M65 339H155" class="green"/><text x="180" y="346" class="t">Xanh lá encoder B → GPIO5</text>
+    <rect x="35" y="376" width="690" height="58" rx="10" class="row"/><path d="M65 405H155" class="v3"/><text x="180" y="412" class="t">Xanh dương VCC encoder → ESP32 3V3</text>
+    <rect x="35" y="442" width="690" height="58" rx="10" class="row"/><path d="M65 471H155" class="white"/><text x="180" y="478" class="t">Trắng M− → OUT4</text>
+    <text x="35" y="545" class="t">Tụ 100 nF: mắc trực tiếp giữa ĐỎ và TRẮNG.</text>
+  </g>
+
+  <g transform="translate(1760,670)" filter="url(#sh)">
+    <rect width="760" height="590" rx="22" fill="#eff6ff" stroke="#60a5fa" stroke-width="3"/>
+    <text x="380" y="48" text-anchor="middle" class="h">M3 · BÁNH SAU PHẢI</text><text x="380" y="80" text-anchor="middle" class="s">L298N #2 kênh A</text>
+    <rect x="35" y="112" width="690" height="58" rx="10" class="row"/><path d="M65 141H155" class="red"/><text x="180" y="148" class="t">Đỏ M+ → OUT1</text>
+    <rect x="35" y="178" width="690" height="58" rx="10" class="row"/><path d="M65 207H155" class="black"/><text x="180" y="214" class="t">Đen encoder GND → GND chung</text>
+    <rect x="35" y="244" width="690" height="58" rx="10" class="row"/><path d="M65 273H155" class="yellow"/><text x="180" y="280" class="t">Vàng encoder A → GPIO9</text>
+    <rect x="35" y="310" width="690" height="58" rx="10" class="row"/><path d="M65 339H155" class="green"/><text x="180" y="346" class="t">Xanh lá encoder B → GPIO10</text>
+    <rect x="35" y="376" width="690" height="58" rx="10" class="row"/><path d="M65 405H155" class="v3"/><text x="180" y="412" class="t">Xanh dương VCC encoder → ESP32 3V3</text>
+    <rect x="35" y="442" width="690" height="58" rx="10" class="row"/><path d="M65 471H155" class="white"/><text x="180" y="478" class="t">Trắng M− → OUT2</text>
+    <text x="35" y="545" class="t">Tụ 100 nF: mắc trực tiếp giữa ĐỎ và TRẮNG.</text>
+  </g>
+
+  <rect x="45" y="1360" width="1540" height="455" rx="24" class="box" filter="url(#sh)"/>
+  <text x="80" y="1405" class="h">3. RECEIVER PS2 9 CHÂN → ESP32</text>
+  <rect x="80" y="1440" width="1465" height="55" rx="10" fill="#e0f2fe"/><text x="120" y="1476" class="b">Nhìn đúng chữ in trên receiver</text><text x="830" y="1476" class="b">Nối vào GOOUUU ESP32-S3</text>
+  <rect x="80" y="1505" width="1465" height="55" class="row"/><text x="120" y="1540" class="t">VCC đỏ</text><text x="830" y="1540" class="t">3V3</text>
+  <rect x="80" y="1560" width="1465" height="55" class="row"/><text x="120" y="1595" class="t">GND đen</text><text x="830" y="1595" class="t">GND chung</text>
+  <rect x="80" y="1615" width="1465" height="55" class="row"/><text x="120" y="1650" class="t">CLK xám · ATTN cam</text><text x="830" y="1650" class="t">GPIO41 · GPIO40</text>
+  <rect x="80" y="1670" width="1465" height="55" class="row"/><text x="120" y="1705" class="t">CMD xanh lá · DATA xanh dương</text><text x="830" y="1705" class="t">GPIO39 · GPIO38</text>
+  <rect x="80" y="1725" width="1465" height="55" class="row"/><text x="120" y="1760" class="t">ACK · NC · VIBR</text><text x="830" y="1760" class="t">Không nối, bọc riêng từng đầu</text>
+
+  <rect x="1625" y="1360" width="930" height="455" rx="24" class="box" filter="url(#sh)"/>
+  <text x="1660" y="1405" class="h">4. TỤ LỌC PHẢI GẮN</text>
+  <rect x="1660" y="1450" width="855" height="130" rx="16" fill="#fff7ed" stroke="#fb923c" stroke-width="3"/>
+  <text x="1695" y="1492" class="b">1000 µF / 25 V — mỗi L298N một tụ</text>
+  <text x="1695" y="1530" class="t">Chân + → VS/+12V · chân − có sọc → GND</text><text x="1695" y="1560" class="s">Gắn sát cọc nguồn driver, không đảo cực.</text>
+  <rect x="1660" y="1610" width="855" height="130" rx="16" fill="#eff6ff" stroke="#60a5fa" stroke-width="3"/>
+  <text x="1695" y="1652" class="b">100 nF ceramic — mỗi motor một tụ</text>
+  <text x="1695" y="1690" class="t">Mắc giữa hai chân M+ đỏ và M− trắng</text><text x="1695" y="1720" class="s">Không phân cực; gắn càng sát motor càng tốt.</text>
+  <text x="1660" y="1790" class="t" fill="#991b1b">Không dùng BNO055, INA226, BME680 hoặc còi trong cấu hình này.</text>
+
+  <rect x="45" y="1840" width="2510" height="42" rx="12" fill="#102a43"/>
+  <text x="1300" y="1868" text-anchor="middle" style="font:700 18px 'Segoe UI',Arial,sans-serif;fill:#fff">Nếu bánh quay ngược: đổi OUTx/OUTy của đúng motor hoặc đổi cấu hình direction trong firmware — không đổi dây encoder A/B để sửa chiều.</text>
+</svg>

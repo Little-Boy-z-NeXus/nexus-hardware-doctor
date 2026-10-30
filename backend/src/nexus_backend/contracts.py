@@ -64,6 +64,27 @@ class TelemetryMeasurements(StrictContract):
     pwm_percent: int = Field(ge=0, le=100)
     driver_enabled: bool
     motor_rpm: float | None = Field(default=None, ge=0)
+    total_current_ma: float | None = None
+    rpm_left: float | None = Field(default=None, ge=0)
+    rpm_right: float | None = Field(default=None, ge=0)
+    rpm_rear: float | None = Field(default=None, ge=0)
+    rpm_delta: float | None = Field(default=None, ge=0)
+    pwm_left_percent: int | None = Field(default=None, ge=0, le=100)
+    pwm_right_percent: int | None = Field(default=None, ge=0, le=100)
+    pwm_rear_percent: int | None = Field(default=None, ge=0, le=100)
+    pid_state: str | None = Field(default=None, max_length=64)
+    ps2_connected: bool | None = None
+    ps2_failsafe_active: bool | None = None
+    ps2_last_packet_age_ms: int | None = Field(default=None, ge=0)
+    control_mode: Literal["ps2_manual", "failsafe"] | None = None
+    drive_armed: bool | None = None
+    bno055_connected: bool | None = None
+    imu_heading_deg: float | None = None
+    imu_roll_deg: float | None = None
+    imu_pitch_deg: float | None = None
+    imu_accel_x_mps2: float | None = None
+    imu_accel_y_mps2: float | None = None
+    imu_accel_z_mps2: float | None = None
 
 
 class TelemetryQuality(StrictContract):

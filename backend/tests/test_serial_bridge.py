@@ -13,10 +13,18 @@ FIXTURE = (
     / "fixtures"
     / "telemetry.example.json"
 )
+THREE_WHEEL_PROFILE = (
+    Path(__file__).resolve().parents[2]
+    / "nexus-hardware"
+    / "profiles"
+    / "nexus-profile-esp32-s3-devkitc-ina219-dual-l298n-3wheel-ps2-v2.json"
+)
 
 
 def fixture_payload() -> dict[str, object]:
-    return json.loads(FIXTURE.read_text(encoding="utf-8"))
+    payload = json.loads(FIXTURE.read_text(encoding="utf-8"))
+    payload["hardware_model_id"] = EXPECTED_HARDWARE_MODEL_ID
+    return payload
 
 
 def active_codes(bridge: SerialBridge) -> set[str]:
@@ -42,6 +50,40 @@ def test_valid_mvp_telemetry_becomes_latest_snapshot() -> None:
     assert snapshot["signal_health"]["i2c_verified"] is False
 
 
+def test_three_wheel_ps2_telemetry_becomes_latest_snapshot() -> None:
+    bridge = SerialBridge(
+        enabled=False,
+        persist_logs=False,
+        hardware_profile_path=THREE_WHEEL_PROFILE,
+    )
+    payload = fixture_payload()
+    payload["hardware_model_id"] = "nexus-s3-devkitc-ina219-dual-l298n-3wheel-ps2-v2"
+    payload["measurements"].update(
+        {
+            "total_current_ma": 840.0,
+            "rpm_left": 101.0,
+            "rpm_right": 100.0,
+            "rpm_rear": 99.0,
+            "rpm_delta": 2.0,
+            "pwm_left_percent": 35,
+            "pwm_right_percent": 34,
+            "pwm_rear_percent": 35,
+            "pid_state": "manual_ps2",
+            "ps2_connected": True,
+            "ps2_failsafe_active": False,
+            "ps2_last_packet_age_ms": 8,
+            "control_mode": "ps2_manual",
+        }
+    )
+
+    bridge.ingest_line(json.dumps(payload), port="COM8")
+
+    snapshot = bridge.snapshot()
+    assert snapshot["telemetry"]["measurements"]["rpm_rear"] == 99.0
+    assert snapshot["telemetry"]["measurements"]["ps2_connected"] is True
+    assert snapshot["hardware"]["profile_id"].endswith("3wheel-ps2-v2")
+
+
 def test_signal_monitor_handshake_allows_latest_i2c_sample_to_be_verified() -> None:
     bridge = SerialBridge(enabled=False, persist_logs=False)
     bridge.ingest_line("[NEXUS][INFO][SIGNAL_MONITOR_READY] I2C and encoder watchdog active")
@@ -62,12 +104,13 @@ def test_locked_hardware_profile_is_verified_before_measurements() -> None:
     fingerprint = profile_fingerprint(load_hardware_profile())
     bridge.ingest_line(
         "[NEXUS][INFO][HARDWARE_PROFILE] profile_version=1.0.0 "
-        "profile_id=nexus-profile-goouuu-esp32-s3-ina226-l298n-jgb37-v1 "
+        "profile_id=nexus-profile-esp32-s3-devkitc-ina219-dual-l298n-3wheel-ps2-v2 "
         f"profile_sha256={fingerprint} "
-        "hardware_model_id=nexus-s3-ina226-l298n-motor-rig-v1 "
-        "controller=goouuu-esp32-s3-n16r8 sensor=ina226-r100 driver=l298n"
+        "hardware_model_id=nexus-s3-devkitc-ina219-dual-l298n-3wheel-ps2-v2 "
+        "controller=esp32-s3-devkitc-1-44pin sensor=dfrobot-ina219-sen0291-r010 "
+        "driver=dual-l298n-three-wheel-ps2"
     )
-    bridge.ingest_line("[NEXUS][INFO][INA226_READY] identity verified")
+    bridge.ingest_line("[NEXUS][INFO][INA219_READY] configuration verified")
 
     compatibility = bridge.snapshot()["compatibility"]
     assert compatibility["firmware_profile_verified"] is True
@@ -121,30 +164,30 @@ def test_wrong_firmware_profile_is_named_without_trusting_telemetry() -> None:
     assert "nạp firmware" in finding["action"].lower()
 
 
-def test_ina219_like_identity_is_reported_as_wrong_physical_sensor() -> None:
+def test_ina219_configuration_mismatch_is_reported_as_wrong_sensor_setup() -> None:
     bridge = SerialBridge(enabled=False, persist_logs=False)
     bridge.ingest_line(
-        "[NEXUS][ERROR][INA226_ID_MISMATCH] Expected manufacturer=0x5449 "
-        "die=0x226x; received manufacturer=0x0000 die=0x0000"
+        "[NEXUS][ERROR][INA219_CONFIGURATION_MISMATCH] address=0x40 "
+        "expected_config=0x3DDF expected_calibration=4096"
     )
 
     snapshot = bridge.snapshot()
     finding = next(
-        item for item in snapshot["diagnostics"] if item["code"] == "INA226_ID_MISMATCH"
+        item for item in snapshot["diagnostics"]
+        if item["code"] == "INA219_CONFIGURATION_MISMATCH"
     )
     assert snapshot["compatibility"]["sensor_identity_verified"] is False
     assert "không khớp" in finding["message"]
-    assert "INA226 with R100 0.1 ohm shunt" in finding["message"]
-    assert "INA226 with R100 0.1 ohm shunt" in finding["action"]
+    assert "SEN0291" in finding["action"]
     assert "0x40" in finding["action"]
 
 
-def test_i2c_error_explains_ina226_wiring_repair() -> None:
+def test_i2c_error_explains_ina219_wiring_repair() -> None:
     bridge = SerialBridge(enabled=False, persist_logs=False)
     bridge.ingest_line("[133521][E][Wire.cpp:499] requestFrom(): i2cWriteReadNonStop returned Error -1")
 
     snapshot = bridge.snapshot()
-    finding = next(item for item in snapshot["diagnostics"] if item["code"] == "INA226_I2C_FAILURE")
+    finding = next(item for item in snapshot["diagnostics"] if item["code"] == "INA219_I2C_FAILURE")
 
     assert finding["active"] is True
     assert finding["severity"] == "error"
@@ -170,27 +213,26 @@ def test_zero_voltage_with_current_reports_reference_and_supply_problems() -> No
     bridge.ingest_line(json.dumps(payload))
 
     assert {
-        "INA226_REFERENCE_INVALID",
+            "INA219_REFERENCE_INVALID",
         "MOTOR_SUPPLY_NOT_DETECTED",
     }.issubset(active_codes(bridge))
     reference_finding = next(
         item
         for item in bridge.snapshot()["diagnostics"]
-        if item["code"] == "INA226_REFERENCE_INVALID"
+        if item["code"] == "INA219_REFERENCE_INVALID"
     )
-    assert "VBUS" in reference_finding["action"]
+    assert "IN+/IN−" in reference_finding["action"]
 
 
-def test_ina226_read_failure_never_becomes_telemetry() -> None:
+def test_ina219_read_failure_never_becomes_telemetry() -> None:
     bridge = SerialBridge(enabled=False, persist_logs=False)
 
     bridge.ingest_line(
-        "[NEXUS][ERROR][INA226_I2C_READ_FAILED] "
-        "bus_ok=false shunt_ok=true current_ok=true; sample discarded"
+        "[NEXUS][ERROR][INA219_I2C_READ_FAILED] sample discarded"
     )
 
     assert bridge.snapshot()["telemetry"] is None
-    assert "INA226_I2C_FAILURE" in active_codes(bridge)
+    assert "INA219_I2C_FAILURE" in active_codes(bridge)
 
 
 @pytest.mark.parametrize(
@@ -207,14 +249,14 @@ def test_ina226_read_failure_never_becomes_telemetry() -> None:
             "GPIO2",
         ),
         (
-            "[NEXUS][ERROR][INA226_I2C_NO_ACK] address=0x40 ack_error=2",
-            "INA226_I2C_NO_ACK",
+            "[NEXUS][ERROR][INA219_I2C_NO_ACK] address=0x40 error=2",
+            "INA219_I2C_NO_ACK",
             "SDA→GPIO1",
         ),
         (
-            "[NEXUS][ERROR][INA226_SIGNAL_INCONSISTENT] current_register=35.4mA",
-            "INA226_SIGNAL_INCONSISTENT",
-            "0.1 Ω",
+            "[NEXUS][ERROR][INA219_SIGNAL_INVALID] register_ma=35.4 shunt_ma=0",
+            "INA219_SIGNAL_INVALID",
+            "0.01 Ω",
         ),
     ],
 )
@@ -228,7 +270,7 @@ def test_i2c_signal_faults_name_the_wire_and_repair(
     finding = next(item for item in bridge.snapshot()["diagnostics"] if item["code"] == code)
     assert finding["active"] is True
     assert finding["severity"] == "error"
-    assert finding["component_id"] == "ina226"
+    assert finding["component_id"] == "ina219"
     assert finding["signal_id"] in {"i2c_sda", "i2c_scl", "i2c_bus"}
     assert expected_action in finding["action"]
     assert bridge.snapshot()["telemetry"] is None
@@ -253,7 +295,7 @@ def test_encoder_signal_faults_are_immediate_and_actionable(
 
     finding = next(item for item in bridge.snapshot()["diagnostics"] if item["code"] == code)
     assert finding["active"] is True
-    assert finding["component_id"] == "motor"
+    assert finding["component_id"] == "motor_1"
     assert finding["signal_id"] in {"encoder_a", "encoder_b", "encoder_bus"}
     assert expected_action in finding["action"]
 
@@ -284,7 +326,7 @@ def test_measurement_findings_are_not_current_after_disconnect() -> None:
 
     bridge._set_connection("disconnected", None, "USB disconnected")
 
-    assert "INA226_REFERENCE_INVALID" not in active_codes(bridge)
+    assert "INA219_REFERENCE_INVALID" not in active_codes(bridge)
     assert "MOTOR_SUPPLY_NOT_DETECTED" not in active_codes(bridge)
 
 

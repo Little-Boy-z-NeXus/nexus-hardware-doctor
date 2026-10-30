@@ -1,0 +1,169 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="3200" height="2100" viewBox="0 0 3200 2100">
+  <defs>
+    <style>
+      .title{font:800 54px 'Segoe UI',Arial,sans-serif;fill:#102a43}.subtitle{font:600 26px 'Segoe UI',Arial,sans-serif;fill:#486581}
+      .panelTitle{font:800 28px 'Segoe UI',Arial,sans-serif;fill:#102a43}.blockTitle{font:800 23px 'Segoe UI',Arial,sans-serif;fill:#102a43}
+      .pin{font:700 18px 'Segoe UI',Arial,sans-serif;fill:#102a43}.label{font:600 17px 'Segoe UI',Arial,sans-serif;fill:#243b53}
+      .small{font:600 15px 'Segoe UI',Arial,sans-serif;fill:#486581}.tiny{font:600 13px 'Segoe UI',Arial,sans-serif;fill:#486581}
+      .warning{font:800 18px 'Segoe UI',Arial,sans-serif;fill:#b42318}.wire{fill:none;stroke-linecap:round;stroke-linejoin:round}
+    </style>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%"><feDropShadow dx="0" dy="4" stdDeviation="7" flood-color="#102a43" flood-opacity=".10"/></filter>
+    <marker id="arrowRed" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#dc2626"/></marker>
+  </defs>
+
+  <rect width="3200" height="2100" fill="#f8fafc"/>
+  <text x="1600" y="64" text-anchor="middle" class="title">NeXus — SƠ ĐỒ ĐẤU DÂY XE 3 BÁNH</text>
+  <text x="1600" y="106" text-anchor="middle" class="subtitle">GOOUUU ESP32-S3-N16R8 · đầu thu PS2 9 chân · INA226 · 2 × L298N · 3 × JGB37-520 encoder</text>
+
+  <!-- POWER -->
+  <g filter="url(#shadow)"><rect x="30" y="135" width="3140" height="330" rx="22" fill="#fff8f8" stroke="#fb7185" stroke-width="3"/></g>
+  <text x="65" y="176" class="panelTitle">A. NGUỒN MOTOR, BẢO VỆ VÀ GND CHUNG</text>
+  <text x="3125" y="176" text-anchor="end" class="warning">ESP32 CHỈ CẤP NGUỒN QUA USB — KHÔNG NỐI 12V VÀO ESP32</text>
+
+  <g>
+    <rect x="60" y="205" width="190" height="115" rx="14" fill="#fff" stroke="#fb7185" stroke-width="2"/><text x="155" y="242" text-anchor="middle" class="blockTitle">LiPo 3S / 12V</text><text x="155" y="272" text-anchor="middle" class="small">+ đỏ · − đen</text>
+    <circle cx="240" cy="292" r="9" fill="#dc2626"/><circle cx="90" cy="315" r="9" fill="#111827"/>
+    <rect x="300" y="220" width="175" height="85" rx="13" fill="#fff" stroke="#f59e0b" stroke-width="2"/><text x="388" y="254" text-anchor="middle" class="blockTitle">Cầu chì 1.5A</text><text x="388" y="282" text-anchor="middle" class="tiny">chỉ test tải nhẹ</text>
+    <rect x="525" y="220" width="180" height="85" rx="13" fill="#fff" stroke="#94a3b8" stroke-width="2"/><text x="615" y="254" text-anchor="middle" class="blockTitle">Công tắc chính</text><text x="615" y="282" text-anchor="middle" class="tiny">DC-rated</text>
+    <rect x="755" y="220" width="205" height="85" rx="13" fill="#fff" stroke="#94a3b8" stroke-width="2"/><text x="858" y="251" text-anchor="middle" class="blockTitle">Nút ngắt lỗi</text><text x="858" y="279" text-anchor="middle" class="tiny">NC · cắt nguồn motor</text>
+    <rect x="1010" y="198" width="320" height="130" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="1170" y="232" text-anchor="middle" class="blockTitle">INA226 · R100 · 0x40</text><text x="1170" y="260" text-anchor="middle" class="small">VIN+ → shunt → VIN−</text><text x="1170" y="286" text-anchor="middle" class="small">VBS / VBUS nối ngắn vào VIN−</text>
+    <circle cx="1010" cy="292" r="9" fill="#dc2626"/><circle cx="1330" cy="292" r="9" fill="#dc2626"/>
+    <rect x="1500" y="195" width="290" height="130" rx="14" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/><text x="1645" y="232" text-anchor="middle" class="blockTitle">L298N #1</text><text x="1645" y="260" text-anchor="middle" class="small">Kênh A → Motor 1</text><text x="1645" y="286" text-anchor="middle" class="small">Kênh B → Motor 2</text>
+    <circle cx="1500" cy="292" r="9" fill="#dc2626"/><circle cx="1645" cy="325" r="9" fill="#111827"/>
+    <rect x="1880" y="195" width="290" height="130" rx="14" fill="#f0fdf4" stroke="#4ade80" stroke-width="2"/><text x="2025" y="232" text-anchor="middle" class="blockTitle">L298N #2</text><text x="2025" y="260" text-anchor="middle" class="small">Kênh A → Motor 3</text><text x="2025" y="286" text-anchor="middle" class="small">Kênh B → DISABLED</text>
+    <circle cx="1880" cy="292" r="9" fill="#dc2626"/><circle cx="2025" cy="325" r="9" fill="#111827"/>
+    <rect x="2270" y="195" width="305" height="130" rx="14" fill="#fff" stroke="#f59e0b" stroke-width="2"/><text x="2423" y="232" text-anchor="middle" class="blockTitle">Tụ 470–1000µF</text><text x="2423" y="260" text-anchor="middle" class="small">+ → BUS 12V</text><text x="2423" y="286" text-anchor="middle" class="small">− → GND chung</text>
+    <rect x="2670" y="195" width="440" height="130" rx="14" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/><text x="2890" y="230" text-anchor="middle" class="blockTitle">LƯU Ý DÒNG</text><text x="2890" y="260" text-anchor="middle" class="small">Đo dòng chạy, khởi động và stall của 3 motor.</text><text x="2890" y="286" text-anchor="middle" class="warning">Chọn lại cầu chì/driver trước khi chạy tải thật.</text>
+  </g>
+
+  <path d="M249 292H300M475 292H525M705 292H755M960 292H1010M1330 292H1430" class="wire" stroke="#dc2626" stroke-width="8" marker-end="url(#arrowRed)"/>
+  <path d="M1430 292H1500M1430 292V260H1835V292H1880M1430 292V235H2215V235H2270" class="wire" stroke="#dc2626" stroke-width="7"/>
+  <text x="1430" y="214" class="pin" fill="#dc2626">+12V MOTOR BUS</text>
+  <path d="M90 315V405H2530" class="wire" stroke="#111827" stroke-width="8"/><path d="M1645 334V405M2025 334V405M2423 325V405" class="wire" stroke="#111827" stroke-width="5"/>
+  <circle cx="1645" cy="405" r="8" fill="#111827"/><circle cx="2025" cy="405" r="8" fill="#111827"/><circle cx="2423" cy="405" r="8" fill="#111827"/><text x="2525" y="395" text-anchor="end" class="pin">GND CHUNG / ĐIỂM SAO</text>
+
+  <!-- PS2 RECEIVER + I2C -->
+  <g filter="url(#shadow)"><rect x="30" y="495" width="3140" height="330" rx="22" fill="#f8fbff" stroke="#60a5fa" stroke-width="3"/></g>
+  <text x="65" y="538" class="panelTitle">B. TAY CẦM PS2 + ĐẦU THU 9 CHÂN + INA226 — MỖI TÍN HIỆU MỘT LÀN RIÊNG</text>
+  <g>
+    <rect x="65" y="570" width="700" height="230" rx="15" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/>
+    <text x="415" y="603" text-anchor="middle" class="blockTitle">ĐẦU THU PS2 · GIẮC 9 CHÂN</text>
+    <text x="105" y="646" class="pin">DATA · xanh dương · kéo lên 3V3 qua 10 kΩ</text><circle cx="735" cy="640" r="8" fill="#2563eb"/>
+    <text x="105" y="674" class="pin">CMD · xanh lá</text><circle cx="735" cy="668" r="8" fill="#16a34a"/>
+    <text x="105" y="702" class="pin">ATTN · cam</text><circle cx="735" cy="696" r="8" fill="#f97316"/>
+    <text x="105" y="730" class="pin">CLK · xám</text><circle cx="735" cy="724" r="8" fill="#64748b"/>
+    <text x="105" y="758" class="pin">VCC · đỏ · 3.3V</text><circle cx="735" cy="752" r="8" fill="#dc2626"/>
+    <text x="105" y="786" class="pin">GND · đen</text><circle cx="735" cy="780" r="8" fill="#111827"/>
+    <text x="415" y="817" text-anchor="middle" class="tiny">ACK · NC · VIBR: để trống cho MVP</text>
+
+    <rect x="930" y="570" width="820" height="230" rx="15" fill="#f5f3ff" stroke="#a78bfa" stroke-width="2"/>
+    <text x="1340" y="603" text-anchor="middle" class="blockTitle">GOOUUU ESP32-S3-N16R8</text>
+    <text x="1340" y="625" text-anchor="middle" class="small">PS2 serial host · USB data + nguồn logic riêng</text>
+    <circle cx="950" cy="640" r="8" fill="#2563eb"/><text x="975" y="646" class="pin">GPIO38 ← DATA</text>
+    <circle cx="950" cy="668" r="8" fill="#16a34a"/><text x="975" y="674" class="pin">GPIO39 → CMD</text>
+    <circle cx="950" cy="696" r="8" fill="#f97316"/><text x="975" y="702" class="pin">GPIO40 → ATTN</text>
+    <circle cx="950" cy="724" r="8" fill="#64748b"/><text x="975" y="730" class="pin">GPIO41 → CLK</text>
+    <circle cx="950" cy="752" r="8" fill="#dc2626"/><text x="975" y="758" class="pin">3V3 → VCC</text>
+    <circle cx="950" cy="780" r="8" fill="#111827"/><text x="975" y="786" class="pin">GND → GND</text>
+    <line x1="1370" y1="635" x2="1370" y2="790" stroke="#cbd5e1" stroke-width="2"/>
+    <text x="1400" y="654" class="pin">3V3</text><circle cx="1725" cy="648" r="8" fill="#7c3aed"/>
+    <text x="1400" y="694" class="pin">GND</text><circle cx="1725" cy="688" r="8" fill="#111827"/>
+    <text x="1400" y="734" class="pin">GPIO1 / SDA</text><circle cx="1725" cy="728" r="8" fill="#06b6d4"/>
+    <text x="1400" y="774" class="pin">GPIO2 / SCL</text><circle cx="1725" cy="768" r="8" fill="#2563eb"/>
+
+    <rect x="1960" y="570" width="500" height="230" rx="15" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/>
+    <text x="2210" y="603" text-anchor="middle" class="blockTitle">INA226 · 0x40</text>
+    <text x="2210" y="625" text-anchor="middle" class="small">cùng module đo nguồn ở panel A</text>
+    <circle cx="1980" cy="648" r="8" fill="#7c3aed"/><text x="2010" y="654" class="pin">VCC 3.3V</text>
+    <circle cx="1980" cy="688" r="8" fill="#111827"/><text x="2010" y="694" class="pin">GND</text>
+    <circle cx="1980" cy="728" r="8" fill="#06b6d4"/><text x="2010" y="734" class="pin">SDA</text>
+    <circle cx="1980" cy="768" r="8" fill="#2563eb"/><text x="2010" y="774" class="pin">SCL</text>
+
+    <rect x="2580" y="570" width="520" height="230" rx="15" fill="#fff" stroke="#94a3b8" stroke-width="2"/>
+    <text x="2840" y="603" text-anchor="middle" class="blockTitle">KIỂM TRA TRƯỚC KHI CHẠY</text>
+    <text x="2840" y="646" text-anchor="middle" class="label">PS2 trả dữ liệu joystick hợp lệ</text>
+    <text x="2840" y="680" text-anchor="middle" class="label">I²C scan thấy INA226 tại 0x40</text>
+    <text x="2840" y="714" text-anchor="middle" class="label">Mất tay cầm → cả 3 PWM về 0</text>
+    <text x="2840" y="758" text-anchor="middle" class="warning">Không cấp 5V vào GPIO ESP32</text>
+  </g>
+  <path d="M735 640H950" class="wire" stroke="#2563eb" stroke-width="5"/>
+  <path d="M735 668H950" class="wire" stroke="#16a34a" stroke-width="5"/>
+  <path d="M735 696H950" class="wire" stroke="#f97316" stroke-width="5"/>
+  <path d="M735 724H950" class="wire" stroke="#64748b" stroke-width="5"/>
+  <path d="M735 752H950" class="wire" stroke="#dc2626" stroke-width="5"/>
+  <path d="M735 780H950" class="wire" stroke="#111827" stroke-width="5"/>
+  <path d="M1725 648H1980" class="wire" stroke="#7c3aed" stroke-width="5"/>
+  <path d="M1725 688H1980" class="wire" stroke="#111827" stroke-width="5"/>
+  <path d="M1725 728H1980" class="wire" stroke="#06b6d4" stroke-width="5"/>
+  <path d="M1725 768H1980" class="wire" stroke="#2563eb" stroke-width="5"/>
+
+  <!-- MOTOR CHANNEL PANELS -->
+  <text x="65" y="872" class="panelTitle">C. BA KÊNH MOTOR / ENCODER — MỖI DÂY MỘT LÀN RIÊNG</text>
+
+  <!-- reusable-like panel 1 -->
+  <g transform="translate(30,900)">
+    <rect width="1015" height="790" rx="22" fill="#f8fbff" stroke="#60a5fa" stroke-width="3" filter="url(#shadow)"/>
+    <text x="507" y="42" text-anchor="middle" class="panelTitle">MOTOR 1 — BÁNH TRÁI</text><text x="507" y="70" text-anchor="middle" class="small">L298N #1 · Kênh A · tháo jumper ENA</text>
+    <rect x="35" y="100" width="245" height="620" rx="14" fill="#f5f3ff" stroke="#a78bfa" stroke-width="2"/><text x="157" y="135" text-anchor="middle" class="blockTitle">ESP32 PIN</text>
+    <rect x="375" y="100" width="250" height="365" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="500" y="135" text-anchor="middle" class="blockTitle">L298N #1 · A</text>
+    <rect x="720" y="100" width="260" height="620" rx="14" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text x="850" y="135" text-anchor="middle" class="blockTitle">JGB37-520 #1</text>
+    <g class="pin"><text x="58" y="195">GPIO12 · PWM</text><text x="58" y="245">GPIO13 · DIR1</text><text x="58" y="295">GPIO14 · DIR2</text><text x="410" y="195">ENA</text><text x="410" y="245">IN1</text><text x="410" y="295">IN2</text><text x="535" y="370">OUT1</text><text x="535" y="420">OUT2</text><text x="748" y="370">M+ · ĐỎ</text><text x="748" y="420">M− · TRẮNG</text><text x="58" y="520">3V3</text><text x="58" y="570">GND★</text><text x="58" y="620">GPIO16</text><text x="58" y="670">GPIO17</text><text x="748" y="520">VCC · XANH DƯƠNG</text><text x="748" y="570">GND enc · ĐEN</text><text x="748" y="620">A · VÀNG</text><text x="748" y="670">B · XANH LÁ</text></g>
+    <path d="M250 189H385M250 239H385M250 289H385" class="wire" stroke="#f97316" stroke-width="5"/><path d="M615 364H735" class="wire" stroke="#dc2626" stroke-width="7"/><path d="M615 414H735" class="wire" stroke="#64748b" stroke-width="10"/><path d="M615 414H735" class="wire" stroke="#fff" stroke-width="5"/>
+    <path d="M250 514H735" class="wire" stroke="#7c3aed" stroke-width="5"/><path d="M250 564H735" class="wire" stroke="#111827" stroke-width="5"/><path d="M250 614H735" class="wire" stroke="#eab308" stroke-width="5"/><path d="M250 664H735" class="wire" stroke="#16a34a" stroke-width="5"/>
+    <path d="M900 364V414" class="wire" stroke="#dc2626" stroke-width="3"/><rect x="884" y="378" width="32" height="22" fill="#fff" stroke="#64748b"/><text x="900" y="454" text-anchor="middle" class="tiny">100nF giữa M+ / M−</text>
+    <text x="850" y="700" text-anchor="middle" class="tiny">ĐỎ · ĐEN · VÀNG · XANH LÁ · XANH DƯƠNG · TRẮNG</text>
+  </g>
+
+  <!-- panel 2 -->
+  <g transform="translate(1092,900)">
+    <rect width="1015" height="790" rx="22" fill="#f8fbff" stroke="#60a5fa" stroke-width="3" filter="url(#shadow)"/>
+    <text x="507" y="42" text-anchor="middle" class="panelTitle">MOTOR 2 — BÁNH PHẢI</text><text x="507" y="70" text-anchor="middle" class="small">L298N #1 · Kênh B · tháo jumper ENB</text>
+    <rect x="35" y="100" width="245" height="620" rx="14" fill="#f5f3ff" stroke="#a78bfa" stroke-width="2"/><text x="157" y="135" text-anchor="middle" class="blockTitle">ESP32 PIN</text>
+    <rect x="375" y="100" width="250" height="365" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="500" y="135" text-anchor="middle" class="blockTitle">L298N #1 · B</text>
+    <rect x="720" y="100" width="260" height="620" rx="14" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text x="850" y="135" text-anchor="middle" class="blockTitle">JGB37-520 #2</text>
+    <g class="pin"><text x="58" y="195">GPIO15 · PWM</text><text x="58" y="245">GPIO18 · DIR1</text><text x="58" y="295">GPIO21 · DIR2</text><text x="410" y="195">ENB</text><text x="410" y="245">IN3</text><text x="410" y="295">IN4</text><text x="535" y="370">OUT3</text><text x="535" y="420">OUT4</text><text x="748" y="370">M+ · ĐỎ</text><text x="748" y="420">M− · TRẮNG</text><text x="58" y="520">3V3</text><text x="58" y="570">GND★</text><text x="58" y="620">GPIO4</text><text x="58" y="670">GPIO5</text><text x="748" y="520">VCC · XANH DƯƠNG</text><text x="748" y="570">GND enc · ĐEN</text><text x="748" y="620">A · VÀNG</text><text x="748" y="670">B · XANH LÁ</text></g>
+    <path d="M250 189H385M250 239H385M250 289H385" class="wire" stroke="#f97316" stroke-width="5"/><path d="M615 364H735" class="wire" stroke="#dc2626" stroke-width="7"/><path d="M615 414H735" class="wire" stroke="#64748b" stroke-width="10"/><path d="M615 414H735" class="wire" stroke="#fff" stroke-width="5"/>
+    <path d="M250 514H735" class="wire" stroke="#7c3aed" stroke-width="5"/><path d="M250 564H735" class="wire" stroke="#111827" stroke-width="5"/><path d="M250 614H735" class="wire" stroke="#eab308" stroke-width="5"/><path d="M250 664H735" class="wire" stroke="#16a34a" stroke-width="5"/>
+    <path d="M900 364V414" class="wire" stroke="#dc2626" stroke-width="3"/><rect x="884" y="378" width="32" height="22" fill="#fff" stroke="#64748b"/><text x="900" y="454" text-anchor="middle" class="tiny">100nF giữa M+ / M−</text>
+    <text x="850" y="700" text-anchor="middle" class="tiny">ĐỎ · ĐEN · VÀNG · XANH LÁ · XANH DƯƠNG · TRẮNG</text>
+  </g>
+
+  <!-- panel 3 -->
+  <g transform="translate(2155,900)">
+    <rect width="1015" height="790" rx="22" fill="#f8fbff" stroke="#60a5fa" stroke-width="3" filter="url(#shadow)"/>
+    <text x="507" y="42" text-anchor="middle" class="panelTitle">MOTOR 3 — BÁNH SAU</text><text x="507" y="70" text-anchor="middle" class="small">L298N #2 · Kênh A · tháo jumper ENA</text>
+    <rect x="35" y="100" width="245" height="620" rx="14" fill="#f5f3ff" stroke="#a78bfa" stroke-width="2"/><text x="157" y="135" text-anchor="middle" class="blockTitle">ESP32 PIN</text>
+    <rect x="375" y="100" width="250" height="365" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="2"/><text x="500" y="135" text-anchor="middle" class="blockTitle">L298N #2 · A</text>
+    <rect x="720" y="100" width="260" height="620" rx="14" fill="#fffbeb" stroke="#fbbf24" stroke-width="2"/><text x="850" y="135" text-anchor="middle" class="blockTitle">JGB37-520 #3</text>
+    <g class="pin"><text x="58" y="195">GPIO6 · PWM</text><text x="58" y="245">GPIO7 · DIR1</text><text x="58" y="295">GPIO8 · DIR2</text><text x="410" y="195">ENA</text><text x="410" y="245">IN1</text><text x="410" y="295">IN2</text><text x="535" y="370">OUT1</text><text x="535" y="420">OUT2</text><text x="748" y="370">M+ · ĐỎ</text><text x="748" y="420">M− · TRẮNG</text><text x="58" y="520">3V3</text><text x="58" y="570">GND★</text><text x="58" y="620">GPIO9</text><text x="58" y="670">GPIO10</text><text x="748" y="520">VCC · XANH DƯƠNG</text><text x="748" y="570">GND enc · ĐEN</text><text x="748" y="620">A · VÀNG</text><text x="748" y="670">B · XANH LÁ</text></g>
+    <path d="M250 189H385M250 239H385M250 289H385" class="wire" stroke="#f97316" stroke-width="5"/><path d="M615 364H735" class="wire" stroke="#dc2626" stroke-width="7"/><path d="M615 414H735" class="wire" stroke="#64748b" stroke-width="10"/><path d="M615 414H735" class="wire" stroke="#fff" stroke-width="5"/>
+    <path d="M250 514H735" class="wire" stroke="#7c3aed" stroke-width="5"/><path d="M250 564H735" class="wire" stroke="#111827" stroke-width="5"/><path d="M250 614H735" class="wire" stroke="#eab308" stroke-width="5"/><path d="M250 664H735" class="wire" stroke="#16a34a" stroke-width="5"/>
+    <path d="M900 364V414" class="wire" stroke="#dc2626" stroke-width="3"/><rect x="884" y="378" width="32" height="22" fill="#fff" stroke="#64748b"/><text x="900" y="454" text-anchor="middle" class="tiny">100nF giữa M+ / M−</text>
+    <text x="850" y="700" text-anchor="middle" class="tiny">ĐỎ · ĐEN · VÀNG · XANH LÁ · XANH DƯƠNG · TRẮNG</text>
+    <rect x="375" y="475" width="250" height="32" rx="9" fill="#fff7ed" stroke="#fb923c" stroke-width="2"/><text x="500" y="497" text-anchor="middle" class="tiny">Kênh B: ENB/IN3/IN4 LOW · OUT3/OUT4 trống</text>
+  </g>
+
+  <!-- CHASSIS + LEGEND -->
+  <g filter="url(#shadow)"><rect x="30" y="1735" width="3140" height="300" rx="22" fill="#fff" stroke="#cbd5e1" stroke-width="3"/></g>
+  <text x="65" y="1778" class="panelTitle">D. BỐ TRÍ TAM GIÁC VÀ QUY ƯỚC MÀU</text>
+  <g transform="translate(90,1810)">
+    <path d="M170 20L60 180H280Z" fill="#e0f2fe" stroke="#60a5fa" stroke-width="5"/>
+    <rect x="18" y="60" width="70" height="125" rx="18" fill="#ef4444"/><rect x="252" y="60" width="70" height="125" rx="18" fill="#2563eb"/><rect x="135" y="165" width="70" height="90" rx="18" fill="#16a34a"/>
+    <text x="0" y="35" class="pin">M1 · BÁNH TRÁI</text><text x="245" y="35" class="pin">M2 · BÁNH PHẢI</text><text x="215" y="245" class="pin">M3 · BÁNH SAU</text>
+    <circle cx="170" cy="115" r="30" fill="#7c3aed"/><text x="170" y="109" text-anchor="middle" font-family="Segoe UI,Arial" font-size="11" font-weight="800" fill="#fff">ESP32</text><text x="170" y="125" text-anchor="middle" font-family="Segoe UI,Arial" font-size="9" font-weight="700" fill="#fff">PS2 RX</text>
+  </g>
+  <g transform="translate(560,1830)">
+    <line x1="0" y1="0" x2="65" y2="0" stroke="#dc2626" stroke-width="10"/><text x="82" y="6" class="label">+12V / M+</text>
+    <line x1="250" y1="0" x2="315" y2="0" stroke="#111827" stroke-width="10"/><text x="332" y="6" class="label">GND</text>
+    <line x1="465" y1="0" x2="530" y2="0" stroke="#7c3aed" stroke-width="10"/><text x="547" y="6" class="label">3.3V</text>
+    <line x1="665" y1="0" x2="730" y2="0" stroke="#06b6d4" stroke-width="10"/><text x="747" y="6" class="label">I²C SDA</text>
+    <line x1="915" y1="0" x2="980" y2="0" stroke="#2563eb" stroke-width="10"/><text x="997" y="6" class="label">I²C SCL</text>
+    <line x1="1170" y1="0" x2="1235" y2="0" stroke="#f97316" stroke-width="10"/><text x="1252" y="6" class="label">PWM / DIR</text>
+    <line x1="1460" y1="0" x2="1525" y2="0" stroke="#eab308" stroke-width="10"/><text x="1542" y="6" class="label">Encoder A</text>
+    <line x1="1760" y1="0" x2="1825" y2="0" stroke="#16a34a" stroke-width="10"/><text x="1842" y="6" class="label">Encoder B</text>
+    <line x1="2050" y1="0" x2="2115" y2="0" stroke="#64748b" stroke-width="12"/><line x1="2050" y1="0" x2="2115" y2="0" stroke="#fff" stroke-width="6"/><text x="2132" y="6" class="label">M− / trắng</text>
+    <text x="0" y="65" class="warning">AN TOÀN: ngắt pin trước khi đấu dây · không chạy dòng motor qua breadboard · kiểm tra đúng cực tụ và GND chung.</text>
+    <text x="0" y="105" class="label">Ba encoder đều dùng: ĐỎ=M+ · ĐEN=GND encoder · VÀNG=A · XANH LÁ=B · XANH DƯƠNG=VCC 3.3V · TRẮNG=M−.</text>
+    <text x="0" y="145" class="label">2 × L298N dùng 3 kênh: #1A=M1, #1B=M2, #2A=M3; #2B disabled. PS2: DATA=GPIO38, CMD=39, ATTN=40, CLK=41; ACK/NC/VIBR để trống.</text>
+  </g>
+</svg>

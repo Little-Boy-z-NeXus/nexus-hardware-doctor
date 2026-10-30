@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2600" height="1800" viewBox="0 0 2600 1800">
+  <defs>
+    <style>
+      .title{font:800 54px 'Segoe UI',Arial,sans-serif;fill:#102a43}.sub{font:600 25px 'Segoe UI',Arial,sans-serif;fill:#486581}
+      .h{font:800 30px 'Segoe UI',Arial,sans-serif;fill:#102a43}.b{font:800 23px 'Segoe UI',Arial,sans-serif;fill:#102a43}
+      .t{font:600 19px 'Segoe UI',Arial,sans-serif;fill:#243b53}.s{font:500 16px 'Segoe UI',Arial,sans-serif;fill:#486581}
+      .red{stroke:#dc2626;stroke-width:10;fill:none;stroke-linecap:round;stroke-linejoin:round}.black{stroke:#111827;stroke-width:9;fill:none;stroke-linecap:round;stroke-linejoin:round}
+      .orange{stroke:#f97316;stroke-width:7;fill:none;stroke-linecap:round;stroke-linejoin:round}.blue{stroke:#2563eb;stroke-width:7;fill:none;stroke-linecap:round;stroke-linejoin:round}
+      .internal{stroke:#64748b;stroke-width:5;stroke-dasharray:10 8;fill:none;stroke-linecap:round}
+      .box{fill:#fff;stroke:#cbd5e1;stroke-width:3}.warn{fill:#fff7ed;stroke:#fb923c;stroke-width:3}.safe{fill:#ecfdf5;stroke:#34d399;stroke-width:3}
+      .pill{font:800 15px 'Segoe UI',Arial,sans-serif;fill:#fff}
+    </style>
+    <filter id="sh" x="-10%" y="-15%" width="120%" height="140%"><feDropShadow dx="0" dy="5" stdDeviation="7" flood-color="#102a43" flood-opacity=".11"/></filter>
+    <marker id="ar" markerWidth="12" markerHeight="12" refX="9" refY="4" orient="auto"><path d="M0 0L10 4L0 8Z" fill="#dc2626"/></marker>
+    <marker id="ab" markerWidth="12" markerHeight="12" refX="9" refY="4" orient="auto"><path d="M0 0L10 4L0 8Z" fill="#111827"/></marker>
+    <marker id="ao" markerWidth="12" markerHeight="12" refX="9" refY="4" orient="auto"><path d="M0 0L10 4L0 8Z" fill="#f97316"/></marker>
+    <marker id="ablue" markerWidth="12" markerHeight="12" refX="9" refY="4" orient="auto"><path d="M0 0L10 4L0 8Z" fill="#2563eb"/></marker>
+  </defs>
+  <rect width="2600" height="1800" fill="#f5f8fc"/>
+  <text x="1300" y="72" text-anchor="middle" class="title">NeXus — TRANG 1: ĐẤU NGUỒN TỪNG DÂY</text>
+  <text x="1300" y="112" text-anchor="middle" class="sub">Không INA226 · không BNO055/BME680 · CHƯA LẮP CÒI · không đưa dòng motor qua breadboard</text>
+
+  <rect x="45" y="145" width="2510" height="130" rx="22" class="warn"/>
+  <text x="80" y="190" class="h">TRƯỚC KHI CẮM PIN</text>
+  <text x="80" y="230" class="t">Rút XT60 + rút USB · kê 3 bánh · relay chọn LOW · tháo 5V-EN trên cả hai L298N · E-STOP dùng đúng cặp NC</text>
+
+  <rect x="45" y="310" width="2510" height="420" rx="24" class="box" filter="url(#sh)"/>
+  <text x="80" y="355" class="h">1. DÂY ĐỎ 14AWG — ĐƯỜNG CÔNG SUẤT</text>
+
+  <g filter="url(#sh)">
+    <rect x="85" y="410" width="255" height="125" rx="16" fill="#fff1f2" stroke="#fb7185" stroke-width="3"/>
+    <text x="212" y="452" text-anchor="middle" class="b">LiPo 3S XT60 +</text><text x="212" y="487" text-anchor="middle" class="s">tối đa 12,6 V</text>
+    <rect x="430" y="410" width="270" height="125" rx="16" fill="#fff7ed" stroke="#f59e0b" stroke-width="3"/>
+    <text x="565" y="452" text-anchor="middle" class="b">ĐẾ + CẦU CHÌ</text><text x="565" y="487" text-anchor="middle" class="s">4 A chạy thử kê bánh</text>
+    <rect x="790" y="410" width="255" height="125" rx="16" fill="#ecfeff" stroke="#06b6d4" stroke-width="3"/>
+    <text x="917" y="452" text-anchor="middle" class="b">PCT +12V-A</text><text x="917" y="487" text-anchor="middle" class="s">3 cổng nối chung</text>
+    <rect x="1135" y="410" width="255" height="125" rx="16" fill="#eff6ff" stroke="#60a5fa" stroke-width="3"/>
+    <text x="1262" y="450" text-anchor="middle" class="b">RELAY: COM</text><text x="1262" y="487" text-anchor="middle" class="s">NC bỏ trống</text>
+    <rect x="1480" y="410" width="255" height="125" rx="16" fill="#eff6ff" stroke="#60a5fa" stroke-width="3"/>
+    <text x="1607" y="450" text-anchor="middle" class="b">RELAY: NO</text><text x="1607" y="487" text-anchor="middle" class="s">chỉ có điện khi relay ON</text>
+    <rect x="1825" y="410" width="265" height="125" rx="16" fill="#ecfeff" stroke="#06b6d4" stroke-width="3"/>
+    <text x="1957" y="452" text-anchor="middle" class="b">PCT MOTOR+</text><text x="1957" y="487" text-anchor="middle" class="s">3 cổng nối chung</text>
+    <rect x="2180" y="380" width="300" height="80" rx="14" fill="#f0fdf4" stroke="#4ade80" stroke-width="3"/>
+    <text x="2330" y="430" text-anchor="middle" class="b">L298N #1: VS/+12V</text>
+    <rect x="2180" y="490" width="300" height="80" rx="14" fill="#f0fdf4" stroke="#4ade80" stroke-width="3"/>
+    <text x="2330" y="540" text-anchor="middle" class="b">L298N #2: VS/+12V</text>
+  </g>
+  <path d="M340 472H430" class="red" marker-end="url(#ar)"/><path d="M700 472H790" class="red" marker-end="url(#ar)"/>
+  <path d="M1045 472H1135" class="red" marker-end="url(#ar)"/><path d="M1390 472H1480" class="internal"/>
+  <path d="M1735 472H1825" class="red" marker-end="url(#ar)"/>
+  <path d="M2090 442H2140V420H2180" class="red" marker-end="url(#ar)"/><path d="M2090 502H2140V530H2180" class="red" marker-end="url(#ar)"/>
+  <g><rect x="360" y="440" width="52" height="24" rx="12" fill="#dc2626"/><text x="386" y="457" text-anchor="middle" class="pill">P01</text>
+  <rect x="718" y="440" width="52" height="24" rx="12" fill="#dc2626"/><text x="744" y="457" text-anchor="middle" class="pill">P02</text>
+  <rect x="1062" y="440" width="52" height="24" rx="12" fill="#dc2626"/><text x="1088" y="457" text-anchor="middle" class="pill">P03</text>
+  <text x="1436" y="456" text-anchor="middle" class="s">nội bộ relay</text>
+  <rect x="1752" y="440" width="52" height="24" rx="12" fill="#dc2626"/><text x="1778" y="457" text-anchor="middle" class="pill">P07</text>
+  <rect x="2112" y="396" width="52" height="24" rx="12" fill="#dc2626"/><text x="2138" y="413" text-anchor="middle" class="pill">P08</text>
+  <rect x="2112" y="516" width="52" height="24" rx="12" fill="#dc2626"/><text x="2138" y="533" text-anchor="middle" class="pill">P09</text></g>
+  <text x="85" y="598" class="t">Nhánh phụ sau cầu chì: PCT +12V-A cổng 3 → PCT +12V-B cổng 1; PCT +12V-B cổng 2 → relay DC+; cổng 3 → buck IN+.</text>
+  <text x="85" y="642" class="t">Không kẹp hai dây vào cùng một cổng. Luôn nối theo chữ COM/NO/NC in trên board, không theo vị trí trái/phải trong ảnh bán hàng.</text>
+  <rect x="85" y="668" width="2060" height="38" rx="10" fill="#fef2f2"/><text x="105" y="694" class="t" fill="#991b1b">XT60− tuyệt đối không đi qua cầu chì; nó vào cụm GND chung ở bước 2.</text>
+
+  <rect x="45" y="765" width="2510" height="300" rx="24" class="box" filter="url(#sh)"/>
+  <text x="80" y="810" class="h">2. DÂY ĐEN 14AWG — GND CHUNG</text>
+  <rect x="85" y="860" width="250" height="105" rx="15" fill="#f8fafc" stroke="#475569" stroke-width="3"/><text x="210" y="905" text-anchor="middle" class="b">LiPo XT60 −</text><text x="210" y="938" text-anchor="middle" class="s">G01</text>
+  <rect x="430" y="860" width="240" height="105" rx="15" class="box"/><text x="550" y="905" text-anchor="middle" class="b">PCT GND-A</text><text x="550" y="938" text-anchor="middle" class="s">pin− · L298 #1 · cầu</text>
+  <rect x="765" y="860" width="240" height="105" rx="15" class="box"/><text x="885" y="905" text-anchor="middle" class="b">PCT GND-B</text><text x="885" y="938" text-anchor="middle" class="s">L298 #2 · cầu</text>
+  <rect x="1100" y="860" width="240" height="105" rx="15" class="box"/><text x="1220" y="905" text-anchor="middle" class="b">PCT GND-C</text><text x="1220" y="938" text-anchor="middle" class="s">buck IN− · relay DC−</text>
+  <rect x="1450" y="845" width="995" height="185" rx="16" fill="#f8fafc" stroke="#94a3b8" stroke-width="3"/>
+  <text x="1490" y="885" class="b">Mỗi cổng chỉ nhận một dây:</text>
+  <text x="1490" y="925" class="t">G02 · PCT GND-A → L298N #1 GND</text><text x="1980" y="925" class="t">G04 · PCT GND-B → L298N #2 GND</text>
+  <text x="1490" y="968" class="t">G06 · PCT GND-C → Buck IN−</text><text x="1980" y="968" class="t">G07 · PCT GND-C → Relay DC−</text>
+  <text x="1490" y="1007" class="s">ESP32 nhận GND qua USB buck; encoder và PS2 cũng dùng chính GND chung này.</text>
+  <path d="M335 912H430M670 912H765M1005 912H1100" class="black" marker-end="url(#ab)"/>
+
+  <rect x="45" y="1100" width="1225" height="565" rx="24" class="box" filter="url(#sh)"/>
+  <text x="80" y="1145" class="h">3. ĐIỀU KHIỂN RELAY — DÂY NHỎ 22–24AWG</text>
+  <rect x="85" y="1205" width="240" height="105" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="3"/><text x="205" y="1250" text-anchor="middle" class="b">RELAY IN</text><text x="205" y="1282" text-anchor="middle" class="s">jumper LOW</text>
+  <rect x="410" y="1205" width="260" height="105" rx="14" fill="#fff7ed" stroke="#fb923c" stroke-width="3"/><text x="540" y="1250" text-anchor="middle" class="b">SW1 MOTOR ARM</text><text x="540" y="1282" text-anchor="middle" class="s">2 chân ON/OFF</text>
+  <rect x="755" y="1205" width="285" height="105" rx="14" fill="#fff1f2" stroke="#fb7185" stroke-width="3"/><text x="897" y="1250" text-anchor="middle" class="b">E-STOP: cặp NC</text><text x="897" y="1282" text-anchor="middle" class="s">nhấn = hở mạch</text>
+  <rect x="1090" y="1205" width="135" height="105" rx="14" fill="#f8fafc" stroke="#475569" stroke-width="3"/><text x="1157" y="1265" text-anchor="middle" class="b">GND</text>
+  <path d="M325 1257H410M670 1257H755M1040 1257H1090" class="orange" marker-end="url(#ao)"/>
+  <text x="85" y="1375" class="t">Relay DC+ → +12 V sau cầu chì. Relay DC− → GND. Chân IN đi qua SW1 rồi qua tiếp điểm NC của E-STOP về GND.</text>
+  <rect x="85" y="1415" width="1110" height="82" rx="14" class="safe"/><text x="115" y="1450" class="t">SW1 ON + E-STOP nhả: COM–NO đóng → motor có nguồn.</text><text x="115" y="1480" class="t">SW1 OFF hoặc nhấn E-STOP: relay nhả → motor mất nguồn.</text>
+  <text x="85" y="1555" class="t" fill="#991b1b">Không đưa +12 V vào IN. Nếu module không ghi DC+/DC−/IN, dừng và chụp rõ board.</text>
+  <text x="85" y="1600" class="s">Rút XT60 là công tắc tắt toàn bộ. SW1 ở đây chỉ ARM/ngắt đường motor để ESP32 vẫn có thể ghi log.</text>
+
+  <rect x="1305" y="1100" width="1250" height="565" rx="24" class="box" filter="url(#sh)"/>
+  <text x="1340" y="1145" class="h">4. NGUỒN 5 V LOGIC TỪ BUCK</text>
+  <rect x="1345" y="1205" width="265" height="105" rx="14" fill="#fff7ed" stroke="#fb923c" stroke-width="3"/><text x="1477" y="1250" text-anchor="middle" class="b">BUCK USB #1</text><text x="1477" y="1282" text-anchor="middle" class="s">đo 5,0 V trước</text>
+  <rect x="1710" y="1205" width="300" height="105" rx="14" fill="#f5f3ff" stroke="#a78bfa" stroke-width="3"/><text x="1860" y="1250" text-anchor="middle" class="b">ESP32 USB</text><text x="1860" y="1282" text-anchor="middle" class="s">nguồn + ghi log</text>
+  <path d="M1610 1257H1710" class="blue" marker-end="url(#ablue)"/>
+  <rect x="1345" y="1380" width="265" height="105" rx="14" fill="#fff7ed" stroke="#fb923c" stroke-width="3"/><text x="1477" y="1425" text-anchor="middle" class="b">BUCK USB #2</text><text x="1477" y="1457" text-anchor="middle" class="s">cáp USB-A hy sinh</text>
+  <rect x="1710" y="1380" width="300" height="105" rx="14" fill="#eff6ff" stroke="#60a5fa" stroke-width="3"/><text x="1860" y="1422" text-anchor="middle" class="b">ĐỎ +5V / ĐEN GND</text><text x="1860" y="1455" text-anchor="middle" class="s">bọc kín trắng + xanh</text>
+  <rect x="2110" y="1350" width="370" height="165" rx="14" fill="#f0fdf4" stroke="#4ade80" stroke-width="3"/><text x="2295" y="1395" text-anchor="middle" class="b">CHIA 5V LOGIC</text><text x="2295" y="1430" text-anchor="middle" class="t">→ L298N #1 chân 5V</text><text x="2295" y="1463" text-anchor="middle" class="t">→ L298N #2 chân 5V</text><text x="2295" y="1495" text-anchor="middle" class="s">cả hai đã tháo 5V-EN</text>
+  <path d="M1610 1432H1710M2010 1432H2110" class="blue" marker-end="url(#ablue)"/>
+  <text x="1345" y="1570" class="t">Buck IN+ lấy từ PCT +12V-B; IN− về PCT GND-C.</text>
+  <text x="1345" y="1610" class="t" fill="#991b1b">Không cắm đồng thời 5V ngoài khi jumper 5V-EN vẫn còn.</text>
+
+  <rect x="45" y="1695" width="2510" height="70" rx="18" fill="#102a43"/>
+  <text x="1300" y="1740" text-anchor="middle" style="font:700 21px 'Segoe UI',Arial,sans-serif;fill:#fff">Sau trang này: chưa nối motor. Hãy đo BUCK = 5 V và kiểm tra MOTOR+ đổi giữa 0 V / điện áp pin theo SW1 + E-STOP.</text>
+</svg>

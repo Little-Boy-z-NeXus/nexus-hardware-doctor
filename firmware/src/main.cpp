@@ -41,6 +41,8 @@ constexpr float kIna226ConsistencyRelativeTolerance = 0.20f;
 constexpr uint32_t kEncoderMinimumObservationMs = 250;
 constexpr uint32_t kEncoderObservationWindowMs = 1000;
 constexpr uint32_t kEncoderInvalidTransitionFloor = 3;
+constexpr uint32_t kMinDriveLeaseMs = 200;
+constexpr uint32_t kMaxDriveLeaseMs = 1000;
 #ifdef NEXUS_ENABLE_FAULT_INJECTION
 constexpr uint32_t kNormalPwmFrequencyHz = 1000;
 constexpr uint32_t kFaultPwmFrequencyHz = 100;
@@ -63,8 +65,10 @@ struct ParsedCommand {
   String requestId;
   String command;
   String pinId;
+  String direction;
   int pwmPercent = -1;
   uint32_t durationMs = 0;
+  uint32_t holdMs = 0;
   uint32_t timeoutMs = kDefaultCommandTimeoutMs;
   bool enabledArgument = false;
   uint32_t fingerprint = 0;
@@ -81,6 +85,8 @@ INA226 currentSensor(kIna226Address, &Wire);
 uint8_t pwmPercent = 0;
 bool driverEnabled = false;
 bool currentSensorReady = false;
+bool driveLeaseActive = false;
+uint32_t driveLeaseExpiresAtMs = 0;
 uint32_t telemetrySequence = 0;
 uint32_t lastSensorInitAttemptMs = 0;
 uint32_t lastTelemetryMs = 0;
@@ -202,7 +208,7 @@ void inspectEncoderSignals(bool force = false) {
   resetEncoderObservation();
 }
 
-void applySafeMotorState(uint8_t requestedPercent, bool enable) {
+void applyMotorState(uint8_t requestedPercent, bool enable, bool reverse = false) {
 #ifdef NEXUS_ENABLE_FAULT_INJECTION
   if (activeFaultProfile == "pwm_zero" && enable) {
     requestedPercent = 0;
@@ -213,12 +219,31 @@ void applySafeMotorState(uint8_t requestedPercent, bool enable) {
   pwmPercent = min(requestedPercent, kMaxPwmPercent);
   driverEnabled = enable && pwmPercent > 0;
 
-  digitalWrite(kMotorIn1Pin, driverEnabled ? HIGH : LOW);
-  digitalWrite(kMotorIn2Pin, LOW);
+  digitalWrite(kMotorIn1Pin, driverEnabled && !reverse ? HIGH : LOW);
+  digitalWrite(kMotorIn2Pin, driverEnabled && reverse ? HIGH : LOW);
   analogWrite(kMotorEnablePin, driverEnabled ? map(pwmPercent, 0, 100, 0, 255) : 0);
   if (driverEnabled && !wasEnabled) {
     resetEncoderObservation();
   }
+}
+
+void applySafeMotorState(uint8_t requestedPercent, bool enable) {
+  applyMotorState(requestedPercent, enable, false);
+}
+
+void stopDriveLease() {
+  driveLeaseActive = false;
+  driveLeaseExpiresAtMs = 0;
+  applySafeMotorState(0, false);
+}
+
+void enforceDriveLease() {
+  if (!driveLeaseActive || static_cast<int32_t>(millis() - driveLeaseExpiresAtMs) < 0) {
+    return;
+  }
+  stopDriveLease();
+  Serial.println(
+      "[NEXUS][WARNING][MOTOR_CONTROL_LEASE_EXPIRED] Keyboard keepalive stopped; motor disabled");
 }
 
 bool probeIna226Signal(bool logFailure = true) {
@@ -255,6 +280,32 @@ bool probeIna226Signal(bool logFailure = true) {
           sdaHigh ? "HIGH" : "LOW",
           kInaSclPin,
           sclHigh ? "HIGH" : "LOW");
+
+      String discoveredAddresses;
+      uint8_t discoveredCount = 0;
+      for (uint8_t address = 0x40; address <= 0x4F; ++address) {
+        Wire.beginTransmission(address);
+        if (Wire.endTransmission(true) == 0) {
+          if (discoveredCount > 0) {
+            discoveredAddresses += ',';
+          }
+          char addressText[5];
+          snprintf(addressText, sizeof(addressText), "0x%02X", address);
+          discoveredAddresses += addressText;
+          ++discoveredCount;
+        }
+      }
+      if (discoveredCount == 0) {
+        Serial.println(
+            "[NEXUS][ERROR][INA226_ADDRESS_SCAN_EMPTY] no I2C ACK in 0x40-0x4F; "
+            "verify 3V3, GND, SDA and SCL");
+      } else {
+        Serial.printf(
+            "[NEXUS][ERROR][INA226_ADDRESS_MISMATCH] configured=0x%02X discovered=%s; "
+            "update the hardware profile address\n",
+            kIna226Address,
+            discoveredAddresses.c_str());
+      }
     }
     return false;
   }
@@ -518,7 +569,8 @@ uint32_t fingerprintCommand(const ParsedCommand& parsed) {
   uint32_t hash = 2166136261UL;
   const int inputPwm = parsed.command == "enable_driver" ? -1 : parsed.pwmPercent;
   const String canonical = parsed.command + "|" + parsed.pinId + "|" +
-                           String(inputPwm) + "|" + String(parsed.durationMs) + "|" +
+                           parsed.direction + "|" + String(inputPwm) + "|" +
+                           String(parsed.durationMs) + "|" + String(parsed.holdMs) + "|" +
                            String(parsed.timeoutMs) + "|" + String(parsed.enabledArgument);
   for (size_t index = 0; index < canonical.length(); ++index) {
     hash ^= static_cast<uint8_t>(canonical[index]);
@@ -530,7 +582,8 @@ uint32_t fingerprintCommand(const ParsedCommand& parsed) {
 bool commandKnown(const String& command) {
   return command == "read_voltage" || command == "read_current" || command == "read_gpio" ||
          command == "enable_driver" || command == "run_motor_test" || command == "set_pwm" ||
-         command == "reset_driver" || command == "recalibrate_sensor";
+         command == "reset_driver" || command == "recalibrate_sensor" ||
+         command == "drive_motor";
 }
 
 bool parseCommand(const String& line, ParsedCommand& parsed, String& errorCode,
@@ -611,6 +664,7 @@ bool parseCommand(const String& line, ParsedCommand& parsed, String& errorCode,
 
   const char* const pwmKeys[] = {"pwm_percent"};
   const char* const motorTestKeys[] = {"duration_ms", "pwm_percent"};
+  const char* const driveKeys[] = {"direction", "pwm_percent", "hold_ms"};
   const char* const gpioKeys[] = {"pin_id"};
   const char* const enableKeys[] = {"enabled"};
 
@@ -667,6 +721,32 @@ bool parseCommand(const String& line, ParsedCommand& parsed, String& errorCode,
       parsed.pwmPercent = arguments["pwm_percent"].as<int>();
     } else {
       parsed.pwmPercent = NEXUS_DEFAULT_MOTOR_TEST_PWM_PERCENT;
+    }
+  } else if (parsed.command == "drive_motor") {
+    if (!hasOnlyKeys(arguments, driveKeys, 3) || arguments.size() != 3 ||
+        !arguments["direction"].is<const char*>() ||
+        !arguments["pwm_percent"].is<int>() || !arguments["hold_ms"].is<uint32_t>()) {
+      errorCode = "INVALID_ARGUMENTS";
+      errorMessage = "drive_motor requires direction, pwm_percent and hold_ms";
+      return false;
+    }
+    parsed.direction = arguments["direction"].as<const char*>();
+    parsed.pwmPercent = arguments["pwm_percent"].as<int>();
+    parsed.holdMs = arguments["hold_ms"].as<uint32_t>();
+    if (parsed.direction != "forward" && parsed.direction != "reverse") {
+      errorCode = "INVALID_ARGUMENTS";
+      errorMessage = "direction must be forward or reverse";
+      return false;
+    }
+    if (parsed.pwmPercent < 1) {
+      errorCode = "INVALID_ARGUMENTS";
+      errorMessage = "drive_motor pwm_percent must be at least 1";
+      return false;
+    }
+    if (parsed.holdMs < kMinDriveLeaseMs || parsed.holdMs > kMaxDriveLeaseMs) {
+      errorCode = "INVALID_ARGUMENTS";
+      errorMessage = "hold_ms must be between 200 and 1000";
+      return false;
     }
   }
 
@@ -824,7 +904,7 @@ String executeCommand(const ParsedCommand& parsed) {
     result["pin_id"] = parsed.pinId;
     result["level"] = digitalRead(pin) == HIGH ? 1 : 0;
   } else if (parsed.command == "reset_driver") {
-    applySafeMotorState(0, false);
+    stopDriveLease();
     document["hardware_effect"] = before.pwm != 0 || before.enabled;
     result["reset"] = true;
   } else if (parsed.command == "recalibrate_sensor") {
@@ -854,6 +934,7 @@ String executeCommand(const ParsedCommand& parsed) {
           parsed, "PWM_REQUIRED", "Stage a non-zero PWM before enabling the driver");
     }
     const bool enabling = parsed.command == "run_motor_test" ||
+                          parsed.command == "drive_motor" ||
                           (parsed.command == "enable_driver" && parsed.enabledArgument) ||
                           (parsed.command == "set_pwm" && driverEnabled && parsed.pwmPercent > 0);
     if (enabling && !readingsAllowMotion(before, safetyCode, safetyMessage)) {
@@ -861,7 +942,17 @@ String executeCommand(const ParsedCommand& parsed) {
       return buildErrorResponse(parsed, safetyCode, safetyMessage);
     }
 
-    if (parsed.command == "set_pwm") {
+    if (parsed.command == "drive_motor") {
+      const bool reverse = parsed.direction == "reverse";
+      applyMotorState(static_cast<uint8_t>(parsed.pwmPercent), true, reverse);
+      driveLeaseActive = true;
+      driveLeaseExpiresAtMs = millis() + parsed.holdMs;
+      document["hardware_effect"] = true;
+      result["direction"] = parsed.direction;
+      result["pwm_percent"] = pwmPercent;
+      result["hold_ms"] = parsed.holdMs;
+      result["driver_enabled"] = driverEnabled;
+    } else if (parsed.command == "set_pwm") {
       applySafeMotorState(static_cast<uint8_t>(parsed.pwmPercent), driverEnabled);
       document["hardware_effect"] = before.enabled && before.pwm != pwmPercent;
       result["pwm_percent"] = pwmPercent;
@@ -882,6 +973,7 @@ String executeCommand(const ParsedCommand& parsed) {
         delay(kCommandMeasurementSettleMs);
       }
     } else if (parsed.command == "run_motor_test") {
+      driveLeaseActive = false;
       applySafeMotorState(static_cast<uint8_t>(parsed.pwmPercent), true);
       document["hardware_effect"] = true;
       bool failed = false;
@@ -1189,6 +1281,7 @@ void setup() {
 
 void loop() {
   serviceSerialInput();
+  enforceDriveLease();
 #ifdef NEXUS_ENABLE_BASELINE_CONTROL
   enforceBaselineFailsafe();
 #endif

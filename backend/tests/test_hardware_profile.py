@@ -16,20 +16,20 @@ def test_default_hardware_profile_is_machine_readable_and_valid() -> None:
     profile = load_hardware_profile()
 
     assert profile["profile_id"] == (
-        "nexus-profile-goouuu-esp32-s3-ina226-l298n-jgb37-v1"
+        "nexus-profile-esp32-s3-devkitc-ina219-dual-l298n-3wheel-ps2-v2"
     )
     assert profile["controller"]["family"] == "esp32"
     assert profile["firmware"]["pins"]["i2c_sda"] == 1
-    assert profile["firmware"]["sensor"]["identity"]["manufacturer_id"] == "0x5449"
+    assert profile["firmware"]["sensor"]["current_lsb_ma"] == 1.0
     assert "signal.i2c.health" in profile["capabilities"]
 
 
 def test_profile_summary_contains_no_hardcoded_runtime_values() -> None:
     summary = profile_summary(load_hardware_profile())
 
-    assert summary["controller"] == "GOOUUU Tech ESP32-S3-N16R8"
-    assert summary["sensor"].startswith("INA226")
-    assert summary["limits"]["max_current_ma"] == 1500
+    assert summary["controller"] == "ESP32-S3 DevKitC-compatible N16R8 44-pin"
+    assert summary["sensor"].startswith("DFRobot Gravity INA219")
+    assert summary["limits"]["max_current_ma"] == 3500
 
 
 def test_unknown_connection_pin_is_rejected(tmp_path: Path) -> None:

@@ -25,11 +25,11 @@ The Dashboard shell loaded successfully and `/api/v1/live/ws` delivered device s
 | Artifact | SHA-256 |
 | --- | --- |
 | `artifacts/U07/nexus-u07-vertical-slice.json` | `A5E03FED6754EE1A40B8F3E866F51A0F5982C5337C9EE0FE317679579EFBE1CA` |
-| `artifacts/U07/nexus-u07-internal-demo-complete.mp4` | `707C267727F29156E8D71E16A61F9171B716B8D8997252242068E4B5B8E26FA7` |
+| `artifacts/U07/nexus-u07-internal-demo.mp4` | `F16545FE981383D53273A6EDBE972E92653470AE656B46D836F21DF3DA0C516A` |
 
-The video shows the live Dashboard followed by a summary of all three run statuses, hypotheses,
-read-only tool calls and safety state. The JSON report records the audit evidence and redacted
-model-call metadata. Neither artifact contains the Nebius API key or a raw provider response.
+The video shows the live Dashboard and the 3/3 acceptance overlay. The JSON report records the
+three run statuses, hypotheses, read-only tool calls, audit evidence and redacted model-call
+metadata. Neither artifact contains the Nebius API key or a raw provider response.
 
 ## Scope statement
 

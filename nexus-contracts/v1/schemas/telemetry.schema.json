@@ -45,7 +45,33 @@
         "driver_enabled": { "type": "boolean" },
         "motor_rpm": {
           "oneOf": [{ "type": "number", "minimum": 0 }, { "type": "null" }]
-        }
+        },
+        "total_current_ma": { "oneOf": [{ "type": "number" }, { "type": "null" }] },
+        "rpm_left": { "oneOf": [{ "type": "number", "minimum": 0 }, { "type": "null" }] },
+        "rpm_right": { "oneOf": [{ "type": "number", "minimum": 0 }, { "type": "null" }] },
+        "rpm_rear": { "oneOf": [{ "type": "number", "minimum": 0 }, { "type": "null" }] },
+        "rpm_delta": { "oneOf": [{ "type": "number", "minimum": 0 }, { "type": "null" }] },
+        "pwm_left_percent": { "oneOf": [{ "type": "integer", "minimum": 0, "maximum": 100 }, { "type": "null" }] },
+        "pwm_right_percent": { "oneOf": [{ "type": "integer", "minimum": 0, "maximum": 100 }, { "type": "null" }] },
+        "pwm_rear_percent": { "oneOf": [{ "type": "integer", "minimum": 0, "maximum": 100 }, { "type": "null" }] },
+        "pid_state": { "oneOf": [{ "type": "string", "maxLength": 64 }, { "type": "null" }] },
+        "ps2_connected": { "type": ["boolean", "null"] },
+        "ps2_failsafe_active": { "type": ["boolean", "null"] },
+        "ps2_last_packet_age_ms": { "type": ["integer", "null"], "minimum": 0 },
+        "control_mode": {
+          "oneOf": [
+            { "type": "string", "enum": ["ps2_manual", "failsafe"] },
+            { "type": "null" }
+          ]
+        },
+        "drive_armed": { "type": ["boolean", "null"] },
+        "bno055_connected": { "type": ["boolean", "null"] },
+        "imu_heading_deg": { "type": ["number", "null"] },
+        "imu_roll_deg": { "type": ["number", "null"] },
+        "imu_pitch_deg": { "type": ["number", "null"] },
+        "imu_accel_x_mps2": { "type": ["number", "null"] },
+        "imu_accel_y_mps2": { "type": ["number", "null"] },
+        "imu_accel_z_mps2": { "type": ["number", "null"] }
       }
     },
     "quality": {

@@ -26,6 +26,7 @@ from nexus_backend.hardware_profile import (
     profile_fingerprint,
     profile_summary,
 )
+from nexus_backend.serial_commands import SerialCommandChannel
 from nexus_backend.serial_reads import SerialReadChannel
 from nexus_backend.validation import validate_contract
 
@@ -39,10 +40,12 @@ MAX_PWM_PERCENT = DEFAULT_HARDWARE_PROFILE["safety"]["max_pwm_percent"]
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 MEASUREMENT_DIAGNOSTIC_CODES = (
     "INA226_REFERENCE_INVALID",
+    "INA219_REFERENCE_INVALID",
     "MOTOR_SUPPLY_NOT_DETECTED",
     "MOTOR_UNDERVOLTAGE",
     "MOTOR_OVERCURRENT",
     "INA226_POLARITY_REVERSED",
+    "INA219_POLARITY_REVERSED",
     "PWM_SAFETY_LIMIT_EXCEEDED",
 )
 I2C_SIGNAL_DIAGNOSTIC_CODES = (
@@ -52,6 +55,10 @@ I2C_SIGNAL_DIAGNOSTIC_CODES = (
     "INA226_I2C_FAILURE",
     "INA226_ID_MISMATCH",
     "INA226_SIGNAL_INCONSISTENT",
+    "INA219_I2C_NO_ACK",
+    "INA219_I2C_FAILURE",
+    "INA219_CONFIGURATION_MISMATCH",
+    "INA219_SIGNAL_INVALID",
 )
 ENCODER_SIGNAL_DIAGNOSTIC_CODES = (
     "ENCODER_CHANNEL_A_MISSING",
@@ -72,6 +79,10 @@ DIAGNOSTIC_SIGNALS = {
     "INA226_I2C_NO_ACK": "i2c_bus",
     "INA226_I2C_FAILURE": "i2c_bus",
     "INA226_SIGNAL_INCONSISTENT": "i2c_bus",
+    "INA219_I2C_NO_ACK": "i2c_bus",
+    "INA219_I2C_FAILURE": "i2c_bus",
+    "INA219_CONFIGURATION_MISMATCH": "sensor_configuration",
+    "INA219_SIGNAL_INVALID": "i2c_bus",
     "ENCODER_CHANNEL_A_MISSING": "encoder_a",
     "ENCODER_CHANNEL_B_MISSING": "encoder_b",
     "ENCODER_SIGNAL_MISSING": "encoder_bus",
@@ -183,6 +194,7 @@ class SerialBridge:
         self._sink: SnapshotSink | None = None
         self._sample_sink: SnapshotSink | None = None
         self.reads = SerialReadChannel()
+        self.commands = SerialCommandChannel(max_pwm_percent=self.max_pwm_percent)
         self._latest_sequence: int | None = None
         self._latest_telemetry: dict[str, object] | None = None
         self._logs: deque[dict[str, object]] = deque(maxlen=160)
@@ -243,6 +255,7 @@ class SerialBridge:
     def stop(self) -> None:
         self._stop_event.set()
         self.reads.disconnect()
+        self.commands.disconnect()
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=3)
         self._thread = None
@@ -338,12 +351,13 @@ class SerialBridge:
             self._notify()
             return
 
-        if "INA226_READY" in line:
+        if "INA226_READY" in line or "INA219_READY" in line:
             self._update_compatibility(
                 sensor_identity_verified=True,
                 last_verified_at=utc_now(),
             )
             self._resolve("INA226_ID_MISMATCH")
+            self._resolve("INA219_CONFIGURATION_MISMATCH")
             self._notify()
             return
 
@@ -379,11 +393,15 @@ class SerialBridge:
             self._notify()
             return
 
-        if "INA226_I2C_NO_ACK" in line:
+        if "INA226_I2C_NO_ACK" in line or "INA219_I2C_NO_ACK" in line:
+            diagnostic_code = (
+                "INA219_I2C_NO_ACK" if "INA219_I2C_NO_ACK" in line
+                else "INA226_I2C_NO_ACK"
+            )
             if "ack_error=" in line:
                 self._update_signal_health(monitor_ready=True, i2c_verified=False)
             self._diagnose(
-                "INA226_I2C_NO_ACK",
+                diagnostic_code,
                 "error",
                 self.sensor_component_id,
                 f"{self.sensor_model} không phản hồi trên SDA/SCL",
@@ -395,10 +413,14 @@ class SerialBridge:
             self._notify()
             return
 
-        if "INA226_SIGNAL_INCONSISTENT" in line:
+        if "INA226_SIGNAL_INCONSISTENT" in line or "INA219_SIGNAL_INVALID" in line:
+            diagnostic_code = (
+                "INA219_SIGNAL_INVALID" if "INA219_SIGNAL_INVALID" in line
+                else "INA226_SIGNAL_INCONSISTENT"
+            )
             self._update_signal_health(monitor_ready=True, i2c_verified=False)
             self._diagnose(
-                "INA226_SIGNAL_INCONSISTENT",
+                diagnostic_code,
                 "error",
                 self.sensor_component_id,
                 f"Tín hiệu {self.sensor_model} không nhất quán",
@@ -489,11 +511,18 @@ class SerialBridge:
                 "INA226_I2C_READ_FAILED",
                 "INA226_CALIBRATION_FAILED",
                 "INA226_INVALID_READING",
+                "INA219_I2C_READ_FAILED",
+                "INA219_SIGNAL_INVALID",
             )
         ):
+            diagnostic_code = (
+                "INA219_I2C_FAILURE"
+                if "INA219" in line or "ina219" in self.expected_sensor_profile.lower()
+                else "INA226_I2C_FAILURE"
+            )
             self._update_signal_health(i2c_verified=False)
             self._diagnose(
-                "INA226_I2C_FAILURE",
+                diagnostic_code,
                 "error",
                 self.sensor_component_id,
                 f"Không đọc được {self.sensor_model}",
@@ -521,6 +550,22 @@ class SerialBridge:
             self._notify()
             return
 
+        if "INA219_CONFIGURATION_MISMATCH" in line:
+            self._update_signal_health(i2c_verified=False)
+            self._update_compatibility(sensor_identity_verified=False)
+            self._diagnose(
+                "INA219_CONFIGURATION_MISMATCH",
+                "error",
+                self.sensor_component_id,
+                "Cấu hình INA219 không đúng profile",
+                f"Thiết bị tại {self.sensor_i2c_address} có ACK nhưng thanh ghi cấu hình "
+                f"hoặc calibration không khớp {self.sensor_model}.",
+                "Tắt nguồn motor; xác nhận đúng SEN0291, A0/A1 ở địa chỉ 0x40, "
+                "sau đó reset board để firmware cấu hình lại cảm biến.",
+            )
+            self._notify()
+            return
+
         if not line.startswith("{"):
             self._notify()
             return
@@ -531,6 +576,7 @@ class SerialBridge:
             payload = json.loads(line, parse_constant=reject_non_json_number,
                                  object_pairs_hook=unique_json_object)
             self.reads.receive(payload)
+            self.commands.receive(payload)
             if self._is_device_command_response(payload):
                 self._notify()
                 return
@@ -577,7 +623,7 @@ class SerialBridge:
         previous_sequence = self._latest_sequence
         self._latest_sequence = sample.sequence
         with self._lock:
-            self._latest_telemetry = sample.model_dump(mode="json")
+            self._latest_telemetry = sample.model_dump(mode="json", exclude_unset=True)
             self._connection.update(
                 status="connected",
                 message=f"Đang nhận telemetry realtime từ "
@@ -595,7 +641,7 @@ class SerialBridge:
                 )
             self._compatibility["reported_hardware_model_id"] = sample.hardware_model_id
 
-        record = self.reads.observe(sample.model_dump(mode="json"))
+        record = self.reads.observe(sample.model_dump(mode="json", exclude_unset=True))
         if (
             record is not None
             and self._sample_sink is not None
@@ -628,19 +674,27 @@ class SerialBridge:
 
     def _evaluate_measurements(self, sample: TelemetrySample) -> None:
         values = sample.measurements
+        is_ina219 = "ina219" in self.expected_sensor_profile.lower()
+        reference_code = (
+            "INA219_REFERENCE_INVALID" if is_ina219 else "INA226_REFERENCE_INVALID"
+        )
+        polarity_code = (
+            "INA219_POLARITY_REVERSED" if is_ina219 else "INA226_POLARITY_REVERSED"
+        )
+        power_terminals = "IN+/IN−" if is_ina219 else "VBUS/VIN+/VIN−"
 
         if values.bus_voltage_v <= 0.1 and abs(values.current_ma) > 5:
             self._diagnose(
-                "INA226_REFERENCE_INVALID",
+                reference_code,
                 "error",
                 self.sensor_component_id,
                 f"Số đo {self.sensor_model} không hợp lý",
                 f"Điện áp là {values.bus_voltage_v:.2f} V nhưng dòng vẫn là {values.current_ma:.1f} mA.",
-                f"Kiểm tra GND chung và các kết nối VBUS/VIN trong profile; đường tải "
+                f"Kiểm tra GND chung và các kết nối {power_terminals} trong profile; đường tải "
                 f"phải đi từ {self.sensor_model} tới {self.driver_model}.",
             )
         else:
-            self._resolve("INA226_REFERENCE_INVALID")
+            self._resolve(reference_code)
 
         if values.bus_voltage_v <= 0.1:
             self._diagnose(
@@ -650,7 +704,7 @@ class SerialBridge:
                 "Chưa thấy nguồn motor",
                 f"{self.sensor_model} đang đọc xấp xỉ 0 V. Điều này bình thường nếu "
                 f"{self.power_model} đang tắt.",
-                f"Nếu nguồn đã bật, đối chiếu đường cấp nguồn, VBUS và GND trong "
+                f"Nếu nguồn đã bật, đối chiếu đường cấp nguồn, {power_terminals} và GND trong "
                 f"profile {self.expected_profile_id}.",
             )
         else:
@@ -686,16 +740,16 @@ class SerialBridge:
 
         if values.current_ma < -5:
             self._diagnose(
-                "INA226_POLARITY_REVERSED",
+                polarity_code,
                 "warning",
                 self.sensor_component_id,
                 f"{self.sensor_model} có thể đang đấu ngược chiều",
                 f"Dòng điện đang âm ({values.current_ma:.1f} mA).",
-                f"Đối chiếu chiều VIN+ và VIN− từ {self.power_model} tới "
+                f"Đối chiếu chiều {power_terminals} từ {self.power_model} tới "
                 f"{self.driver_model} trong hardware profile.",
             )
         else:
-            self._resolve("INA226_POLARITY_REVERSED")
+            self._resolve(polarity_code)
 
         if values.pwm_percent > self.max_pwm_percent:
             self._diagnose(
@@ -735,6 +789,7 @@ class SerialBridge:
             try:
                 with serial.Serial(port, self.baud_rate, timeout=0.1, write_timeout=0.25) as device:
                     self.reads.connect()
+                    self.commands.connect()
                     self._set_connection(
                         "connected",
                         port,
@@ -750,6 +805,7 @@ class SerialBridge:
                     discarding = False
                     while not self._stop_event.is_set():
                         self.reads.flush(device)
+                        self.commands.flush(device)
                         raw = device.readline(8193)
                         if raw:
                             last_line = monotonic()
@@ -789,6 +845,7 @@ class SerialBridge:
                     else "Rút/cắm lại cáp USB; backend sẽ tự tìm lại cổng COM."
                 )
                 self.reads.disconnect()
+                self.commands.disconnect()
                 self._set_connection("error", port, title)
                 self._diagnose(
                     code,
@@ -802,6 +859,7 @@ class SerialBridge:
                 self._stop_event.wait(self.retry_seconds)
             finally:
                 self.reads.disconnect()
+                self.commands.disconnect()
 
         self._set_connection("disconnected", None, "Serial bridge đã dừng.")
 

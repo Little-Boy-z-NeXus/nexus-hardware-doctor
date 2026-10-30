@@ -8,19 +8,27 @@ import pytest
 from fastapi.testclient import TestClient
 
 from nexus_backend.app import create_app
+from nexus_backend.hardware_profile import load_hardware_profile, profile_to_hardware_model
 from nexus_backend.runtime import RunLimiter
 
 FIXTURES = Path(__file__).parents[2] / "nexus-contracts/v1/fixtures"
 
 
 def register(client, device_id="nexus-demo-esp32", source="simulator"):
-    model = json.loads((FIXTURES / "hardware-model.example.json").read_text())
-    model["device_id"] = device_id
+    if source == "device":
+        model = profile_to_hardware_model(load_hardware_profile(), device_id)
+    else:
+        model = json.loads((FIXTURES / "hardware-model.example.json").read_text())
+        model["device_id"] = device_id
     assert client.post("/api/devices", json={
         "hardware_model": model, "source": source, "display_name": "Test rig",
     }).status_code == 201
     sample = json.loads((FIXTURES / "telemetry.example.json").read_text())
-    sample.update(device_id=device_id, recorded_at=datetime.now(UTC).isoformat())
+    sample.update(
+        device_id=device_id,
+        hardware_model_id=model["hardware_model_id"],
+        recorded_at=datetime.now(UTC).isoformat(),
+    )
     sample["quality"]["source"] = source
     assert client.post(f"/api/devices/{device_id}/telemetry", json=sample).status_code == 201
     return sample
@@ -56,6 +64,35 @@ def test_simulation_cannot_run_against_real_device(tmp_path):
             "symptom": "motor stopped", "mode": "mock",
         }).status_code == 409
         assert client.get("/api/devices/nexus-demo-esp32/sessions").json() == []
+
+
+def test_demo_simulator_bootstraps_safe_three_wheel_sample(tmp_path):
+    with TestClient(create_app(tmp_path / "nexus.db")) as client:
+        response = client.post("/api/demo/simulator")
+        assert response.status_code == 200, response.text
+        payload = response.json()
+        assert payload["device"]["source"] == "simulator"
+        assert payload["sample"]["quality"]["source"] == "simulator"
+        measurements = payload["sample"]["measurements"]
+        assert measurements["driver_enabled"] is False
+        assert measurements["pwm_percent"] == 0
+        assert measurements["ps2_failsafe_active"] is True
+        assert measurements["rpm_left"] == 0
+        assert measurements["rpm_right"] == 0
+        assert measurements["rpm_rear"] == 0
+        device_id = payload["device"]["device_id"]
+        diagnosis = client.post(f"/api/devices/{device_id}/diagnoses", json={
+            "symptom": "Verify the safe three-wheel simulation", "mode": "mock",
+        })
+        assert diagnosis.status_code == 200, diagnosis.text
+        assert diagnosis.json()["result"]["mode"] == "mock"
+
+
+def test_demo_simulator_is_disabled_in_production(tmp_path, monkeypatch):
+    monkeypatch.setenv("NEXUS_ENV", "production")
+    with TestClient(create_app(tmp_path / "nexus.db")) as client:
+        assert client.get("/api/diagnosis/capabilities").json()["mock_available"] is False
+        assert client.post("/api/demo/simulator").status_code == 404
 
 
 def test_live_mode_requires_configuration_and_explicit_enablement(tmp_path, monkeypatch):
@@ -125,11 +162,8 @@ def test_explicit_live_request_calls_configured_planner_with_read_only_tools(tmp
         assert len(calls) == 1
         assert set(calls[0]["available_tools"]) == {"get_hardware_graph", "get_telemetry"}
         assert calls[0]["physical_actions_available"] is False
-        assert len(calls[0]["hardware_model"]["components"]) == 5
-        assert len(calls[0]["hardware_model"]["connections"]) == 18
-        assert calls[0]["hardware_model"]["components"][0]["model"] == (
-            "GOOUUU Tech ESP32-S3-N16R8"
-        )
+        expected_model = profile_to_hardware_model(load_hardware_profile(), "nexus-demo-esp32")
+        assert calls[0]["hardware_model"] == expected_model
         assert client.get("/api/devices/nexus-demo-esp32/telemetry").json() == sample
 
 

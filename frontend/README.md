@@ -15,8 +15,10 @@ Available now:
 - real ESP32 terminal log with pause/hide-old-log controls
 - searchable, level-filtered and downloadable live logs
 - component-level fault cards with a direct repair action
-- interactive Vietnamese AI Doctor fallback grounded in the current snapshot and safety rules
-- route-level code splitting, local system fonts and Vietnamese SEO metadata
+- English-first interface with a persistent EN/VI language switcher
+- localized navigation, metadata, hardware diagnostics, live logs, wiring guidance, and AI Doctor presentation
+- interactive AI Doctor fallback grounded in the current snapshot and safety rules
+- route-level code splitting, local system fonts and bilingual SEO metadata
 - Vite environment configuration
 - ESLint and production build checks
 
@@ -76,6 +78,18 @@ Copy `.env.example` to `.env.local` only when you need to override the defaults.
 | `/doctor` | Natural-language diagnosis, evidence and safety context |
 
 Unknown paths redirect to `/dashboard`.
+
+## Languages
+
+English is the original and default interface language. Use the `EN` / `VI` switcher at the
+bottom of the sidebar to change language. The selection is stored in browser local storage under
+`nexus.language`, so it remains active after refresh and restart. If no saved selection exists,
+NeXus always starts in English regardless of the browser language.
+
+New React UI copy should use `useI18n().text(english, vietnamese)`. Keep contract keys, hardware
+identifiers, GPIO names, error codes, and raw firmware logs unchanged; localize only their
+presentation. Runtime diagnostic codes are mapped to safe English guidance in
+`src/i18n/runtimeCopy.ts`, while Vietnamese mode preserves the detailed backend wording.
 
 ## Environment variables
 
@@ -145,6 +159,7 @@ frontend/
     ├── components/    Shared application shell and page header
     ├── config/        Validated/defaulted environment access
     ├── contracts/     TypeScript mirrors of contract v1
+    ├── i18n/          Language state plus localized runtime diagnostic copy
     ├── pages/         Dashboard, Hardware Graph and AI Doctor routes
     ├── realtime/      Shared REST/WebSocket hardware monitor state
     ├── test/          Shared Vitest setup

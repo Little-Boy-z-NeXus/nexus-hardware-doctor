@@ -14,14 +14,20 @@ from statistics import fmean
 
 import serial
 from nexus_device_command import detect_port
-from nexus_hardware_runtime import load_active_profile
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 if hasattr(sys.stderr, "reconfigure"):
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
-HARDWARE_PROFILE = load_active_profile()
+REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
+LEGACY_BASELINE_PROFILE = (
+    REPOSITORY_ROOT
+    / "nexus-hardware"
+    / "profiles"
+    / "nexus-profile-goouuu-esp32-s3-ina226-l298n-jgb37-v1.json"
+)
+HARDWARE_PROFILE = json.loads(LEGACY_BASELINE_PROFILE.read_text(encoding="utf-8"))
 COMPONENTS = {item["component_id"]: item for item in HARDWARE_PROFILE["components"]}
 EXPECTED_MODEL = HARDWARE_PROFILE["hardware_model_id"]
 MIN_BUS_VOLTAGE_V = float(HARDWARE_PROFILE["safety"]["min_bus_voltage_v"])
@@ -32,7 +38,6 @@ MAX_LOW_CURRENT_CONSECUTIVE_SAMPLES = 5
 MIN_SAMPLE_COVERAGE = 0.90
 DEFAULT_PWM_PERCENT = int(HARDWARE_PROFILE["firmware"]["default_motor_test_pwm_percent"])
 DEFAULT_DURATION_MINUTES = 30
-REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 SERIAL_BAUD_RATE = int(HARDWARE_PROFILE["transport"].get("baud_rate", 115_200))
 CONTROLLER_MODEL = str(HARDWARE_PROFILE["controller"]["model"])
 SENSOR_MODEL = str(COMPONENTS[HARDWARE_PROFILE["roles"]["power_monitor"]]["model"])

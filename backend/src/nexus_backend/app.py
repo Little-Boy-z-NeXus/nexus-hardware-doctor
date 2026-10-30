@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import hashlib
 import os
 import time
 from contextlib import asynccontextmanager, suppress
@@ -27,6 +28,7 @@ from nexus_backend.hardware_profile import profile_to_hardware_model
 from nexus_backend.health_check import run_health_check
 from nexus_backend.runtime import RunLimiter, configure_logging, log_run
 from nexus_backend.serial_bridge import SerialBridge
+from nexus_backend.serial_commands import SerialCommandError
 from nexus_backend.store import SQLiteStore, StoreConflict, StoreNotFound
 from nexus_backend.validation import ContractValidationError, validate_contract
 
@@ -103,6 +105,12 @@ class DiagnosisRequest(NewSession):
 class HealthCheckRequest(APIRequest):
     hardware_model: dict = Field(description="Complete frozen hardware-model v1 document.")
     profile: dict = Field(default_factory=dict, description="Optional declared electrical evidence.")
+
+
+class MotorControlRequest(APIRequest):
+    action: Literal["forward", "reverse", "stop"]
+    pwm_percent: int = Field(default=20, ge=1, le=100, strict=True)
+    hold_ms: int = Field(default=700, ge=200, le=1000, strict=True)
 
 
 def create_app(
@@ -215,8 +223,12 @@ def create_app(
     @application.get("/api/diagnosis/capabilities", tags=["Diagnosis"])
     def diagnosis_capabilities() -> dict:
         history = getattr(application.state, "serial_history", None)
+        mock_available = (
+            os.getenv("NEXUS_ENABLE_DEMO_SIMULATOR", "true").lower() == "true"
+            and os.getenv("NEXUS_ENV", "development").lower() != "production"
+        )
         return {
-            "mock_available": True,
+            "mock_available": mock_available,
             "live_enabled": os.getenv("NEXUS_ENABLE_LIVE_MODEL", "false").lower() == "true",
             "live_configured": all(os.getenv(key, "").strip() for key in (
                 "NEXUS_NEBIUS_BASE_URL", "NEXUS_NEBIUS_API_KEY", "NEXUS_NVIDIA_MODEL",
@@ -226,6 +238,52 @@ def create_app(
             "serial_device_id": history.device_id if history is not None else None,
             "serial_history_status": history.status if history is not None else "disabled",
         }
+
+    @application.post("/api/demo/simulator", tags=["Diagnosis"])
+    def bootstrap_demo_simulator(request: Request) -> dict:
+        """Create a local, explicitly simulated diagnosis target without touching hardware."""
+        if not diagnosis_capabilities()["mock_available"]:
+            raise HTTPException(404, "The local demo simulator is disabled")
+        profile = serial_bridge.hardware_profile
+        suffix = hashlib.sha256(profile["profile_id"].encode("utf-8")).hexdigest()[:8]
+        device_id = f"nexus-demo-simulator-{suffix}"
+        model = profile_to_hardware_model(profile, device_id)
+        store = request.app.state.store
+        device = store.register_device(model, "NeXus safe diagnosis simulator", "simulator")
+        sequence = int(time.time() * 1000)
+        sample = validate_contract("telemetry", {
+            "schema_version": "1.0.0",
+            "device_id": device_id,
+            "hardware_model_id": model["hardware_model_id"],
+            "sample_id": f"{device_id}-{uuid4().hex[:12]}",
+            "recorded_at": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
+            "sequence": sequence,
+            "measurements": {
+                "bus_voltage_v": 12.0,
+                "current_ma": 0.0,
+                "power_mw": 0.0,
+                "pwm_percent": 0,
+                "driver_enabled": False,
+                "motor_rpm": None,
+                "total_current_ma": 0.0,
+                "rpm_left": 0.0,
+                "rpm_right": 0.0,
+                "rpm_rear": 0.0,
+                "rpm_delta": 0.0,
+                "pwm_left_percent": 0,
+                "pwm_right_percent": 0,
+                "pwm_rear_percent": 0,
+                "pid_state": "idle",
+                "ps2_connected": False,
+                "ps2_failsafe_active": True,
+                "ps2_last_packet_age_ms": 0,
+                "control_mode": "failsafe",
+                "drive_armed": False,
+            },
+            "quality": {"signal_quality_percent": 100.0, "source": "simulator"},
+        })
+        stored, _event, _inserted = store.append_telemetry(sample)
+        return {"device": device, "sample": stored}
 
     @application.post("/api/devices/{device_id}/diagnoses", tags=["Diagnosis"])
     async def diagnose(device_id: str, body: DiagnosisRequest, request: Request) -> dict:
@@ -361,6 +419,47 @@ def create_app(
     def live_diagnostics(active_only: bool = True) -> list[dict[str, object]]:
         items = serial_bridge.snapshot()["diagnostics"]
         return [item for item in items if item["active"]] if active_only else items
+
+    @application.post("/api/v1/motor/control", tags=["Live hardware"])
+    async def motor_control(body: MotorControlRequest) -> dict[str, object]:
+        """Issue a short-lived keyboard lease; firmware remains the final safety gate."""
+        if body.pwm_percent > serial_bridge.max_pwm_percent:
+            raise HTTPException(
+                422,
+                f"PWM vượt giới hạn profile {serial_bridge.max_pwm_percent}%.",
+            )
+        command = "reset_driver" if body.action == "stop" else "drive_motor"
+        arguments = {} if command == "reset_driver" else {
+            "direction": body.action,
+            "pwm_percent": body.pwm_percent,
+            "hold_ms": body.hold_ms,
+        }
+        try:
+            result = await serial_bridge.commands.execute(
+                command, arguments, timeout_seconds=2.0,
+            )
+        except SerialCommandError as exc:
+            code = str(exc)
+            status = 409 if code in {
+                "serial_busy", "serial_device_error", "serial_response_invalid",
+            } else 503
+            detail = {
+                "serial_busy": "Board đang xử lý lệnh khác; hãy nhả phím rồi thử lại.",
+                "serial_device_error": "Firmware đã chặn chuyển động vì điều kiện an toàn.",
+                "serial_response_invalid": "Phản hồi firmware không khớp contract điều khiển.",
+                "serial_device_unavailable": "Backend chưa kết nối được ESP32.",
+                "serial_disconnected": "ESP32 vừa mất kết nối.",
+                "serial_command_timeout": "ESP32 không xác nhận lệnh trong thời gian an toàn.",
+                "serial_write_failed": "Không thể gửi lệnh xuống cổng COM.",
+            }.get(code, "Không thể điều khiển motor an toàn.")
+            raise HTTPException(status, detail) from None
+        return {
+            "status": "ok",
+            "action": body.action,
+            "pwm_percent": 0 if body.action == "stop" else body.pwm_percent,
+            "lease_ms": 0 if body.action == "stop" else body.hold_ms,
+            "device": result,
+        }
 
     @application.websocket("/api/v1/live/ws")
     async def live_websocket(websocket: WebSocket) -> None:

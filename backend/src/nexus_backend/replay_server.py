@@ -71,7 +71,9 @@ def load_replay(path: Path) -> list[dict[str, Any]]:
         if candidate is None:
             continue
         try:
-            checked = TelemetrySample.model_validate(candidate).model_dump(mode="json")
+            checked = TelemetrySample.model_validate(candidate).model_dump(
+                mode="json", exclude_unset=True
+            )
         except ValidationError:
             continue
         measurements = checked["measurements"]
@@ -101,7 +103,7 @@ def sanitize_for_replay(sample: dict[str, Any], *, boot_id: str, sequence: int) 
         recorded_at=datetime.now(UTC).isoformat().replace("+00:00", "Z"),
     )
     value["quality"]["source"] = "replay"
-    return TelemetrySample.model_validate(value).model_dump(mode="json")
+    return TelemetrySample.model_validate(value).model_dump(mode="json", exclude_unset=True)
 
 
 def publish_replay(bridge: SerialBridge, samples: Iterable[dict[str, Any]], *, interval: float,

@@ -18,7 +18,7 @@ set "NEXUS_PORT="
 for /f "usebackq delims=" %%P in (`python "%~dp0scripts\nexus-detect-serial.py" 2^>nul`) do set "NEXUS_PORT=%%P"
 
 if not defined NEXUS_PORT (
-  echo [ERROR] GOOUUU ESP32-S3 serial port was not detected.
+  echo [ERROR] ESP32-S3 DevKitC serial port was not detected.
   echo Reconnect the USB data cable, then run this file again.
   goto :failed
 )
@@ -26,7 +26,7 @@ if not defined NEXUS_PORT (
 if not exist "%~dp0logs" mkdir "%~dp0logs"
 
 echo [NeXus] Monitoring %NEXUS_PORT% at 115200 baud. Press Ctrl+C or close this window to stop.
-echo [NeXus] Expected sensor line: [NEXUS][INFO][INA226_READY] ... shunt=R100 calibration=512
+echo [NeXus] Expected sensor line: [NEXUS][INFO][INA219_READY] model=SEN0291 ... shunt=0.010Ohm
 echo [NeXus] Serial output is saved automatically in:
 echo          %~dp0logs\device-monitor-YYMMDD-HHMMSS.log
 pio device monitor --port %NEXUS_PORT% --baud 115200 --filter log2file

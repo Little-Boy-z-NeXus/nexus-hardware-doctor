@@ -1,8 +1,8 @@
 {
   "name": "NeXus Hardware Doctor",
   "short_name": "NeXus",
-  "description": "Bác sĩ phần cứng realtime cho bộ NeXus MVP.",
-  "lang": "vi",
+  "description": "Real-time hardware doctor for the NeXus MVP.",
+  "lang": "en",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#f3f5f7",

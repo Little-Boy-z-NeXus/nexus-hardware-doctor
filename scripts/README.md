@@ -20,6 +20,7 @@ These scripts provide fast, deterministic checks for repository structure and fr
 | [`nexus_h06_acceptance.py`](nexus_h06_acceptance.py) | Python 3.11 standard library + local N06 evidence | Qualifies default-deny policy and five physical before/after recovery cycles |
 | [`nexus_h07_acceptance.py`](nexus_h07_acceptance.py) | Python 3.11 standard library + reviewed H/N evidence | Aggregates live top-2 scoring, five golden paths and real fault-cycle reproducibility |
 | [`nexus_h08_release_acceptance.py`](nexus_h08_release_acceptance.py) | Python 3.11 standard library + clean packaged backend | Probes fresh startup, telemetry, auditable offline fallback, secret-safe capabilities and controlled model outage |
+| [`nexus_submission_readiness.py`](nexus_submission_readiness.py) | Python 3.11 standard library + completed build/evaluation artifacts | Verifies submission files, 5/5 offline golden paths, final firmware artifact and tracked-file secret safety without claiming human/external gates |
 
 `python -m nexus_backend.replay_server` is the N07 no-hardware replay entry point. It serves
 sanitized telemetry through the same live API/WebSocket consumed by the frontend.

@@ -1,0 +1,39 @@
+1
+00:00:00,000 --> 00:00:15,000
+NeXus is an AI doctor for physical hardware, powered by NVIDIA Nemotron on Nebius.
+
+2
+00:00:15,000 --> 00:00:30,000
+This real ESP32-S3 platform has protected power, current sensing, two motor drivers, three encoder motors, PS2 control, and an emergency stop.
+
+3
+00:00:30,000 --> 00:00:47,000
+A versioned JSON profile defines every component, pin, connection, limit, and telemetry field.
+
+4
+00:00:47,000 --> 00:01:05,000
+NeXus verifies firmware and sensor identity, stores serial telemetry, and reports signal faults separately from a powered-off rail.
+
+5
+00:01:05,000 --> 00:01:20,000
+Each wheel has independent RPM evidence. Releasing the controller returns the vehicle to fail-safe stop.
+
+6
+00:01:20,000 --> 00:01:42,000
+The Hardware Graph and wiring guide expose the same machine-readable topology to people and agents.
+
+7
+00:01:42,000 --> 00:02:08,000
+Nemotron receives grounded context and allowlisted tools, ranks hypotheses, and explains the next safe step.
+
+8
+00:02:08,000 --> 00:02:30,000
+Deterministic policy controls every action. The audit timeline records proposal, approval or rejection, execution, and verification.
+
+9
+00:02:30,000 --> 00:02:47,000
+Recovery requires a newer sample. Manual and Auto Treatment never hide missing safety conditions.
+
+10
+00:02:47,000 --> 00:02:55,000
+NeXus reduces hardware guesswork without giving AI unsafe authority.

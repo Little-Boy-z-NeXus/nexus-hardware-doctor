@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NeXus wiring schematic v9</title>
+<style>
+  :root{--ink:#102334;--muted:#718293;--border:#d9e2e9;--red:#e52b2f;--black:#111923;--orange:#e36b00;--purple:#8848ed;--blue:#246ee8;--cyan:#00a8bd;--green:#129657;--yellow:#e7ad00;--gray:#7e8994;--paper:#fff;--bg:#edf2f6}
+  *{box-sizing:border-box}html,body{margin:0;background:var(--bg);font-family:"Segoe UI",Arial,sans-serif}.sheet{display:none;width:1600px;height:1000px;background:var(--paper);overflow:hidden}.sheet.active{display:block}svg{width:1600px;height:1000px;display:block}.t{font-family:"Segoe UI",Arial,sans-serif;fill:var(--ink)}
+</style>
+</head>
+<body><main id="app"></main>
+<script>
+const C={ink:'#102334',muted:'#718293',border:'#d9e2e9',red:'#e52b2f',black:'#111923',orange:'#e36b00',purple:'#8848ed',blue:'#246ee8',cyan:'#00a8bd',green:'#129657',yellow:'#e7ad00',gray:'#7e8994',power:'#fff2f2',control:'#fff6ed',logic:'#f6f1ff',signal:'#eff7ff',ground:'#f3f5f7',motor:'#fffbed',warn:'#fff4f4'};
+const E=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+const box=(x,y,w,h,title,lines=[],kind='signal',opts={})=>({x,y,w,h,title,lines,kind,...opts});
+const wire=(d,color,label='',lx=0,ly=0,dash=false)=>({d,color,label,lx,ly,dash});
+const kinds={power:[C.power,'#ef8184'],control:[C.control,'#ef9a50'],logic:[C.logic,'#ae82f6'],signal:[C.signal,'#68a9ed'],ground:[C.ground,'#7b8792'],motor:[C.motor,'#e8b229'],warn:[C.warn,'#ed8588']};
+function renderBox(b){const [fill,stroke]=kinds[b.kind]||kinds.signal;let out=`<rect x="${b.x}" y="${b.y}" width="${b.w}" height="${b.h}" rx="${b.r||14}" fill="${fill}" stroke="${stroke}" stroke-width="2"/>`;
+  out+=`<text class="t" x="${b.x+(b.center?b.w/2:24)}" y="${b.y+34}" font-size="${b.titleSize||16}" font-weight="700" ${b.center?'text-anchor="middle"':''}>${E(b.title)}</text>`;
+  (b.lines||[]).forEach((s,i)=>{const isObj=typeof s==='object';const text=isObj?s.text:s;const color=isObj&&s.color?s.color:(isObj&&s.muted?C.muted:C.ink);const weight=isObj&&s.bold?700:400;out+=`<text class="t" x="${b.x+(isObj&&s.x?s.x:24)}" y="${b.y+70+i*(b.gap||26)}" font-size="${isObj&&s.size?s.size:12}" fill="${color}" font-weight="${weight}">${E(text)}</text>`});return out}
+function renderWire(w){const color=C[w.color]||w.color;return `<path d="${w.d}" fill="none" stroke="${color}" stroke-width="${w.width||4}" stroke-linecap="round" stroke-linejoin="round" ${w.dash?'stroke-dasharray="9 8"':''}/>${w.label?`<rect x="${w.lx-6}" y="${w.ly-17}" width="${Math.max(78,w.label.length*6.5+12)}" height="23" rx="5" fill="#fff" stroke="#e0e6eb"/><text class="t" x="${w.lx}" y="${w.ly}" font-size="10" fill="${C.muted}">${E(w.label)}</text>`:''}`}
+function pin(x,y,color){return `<circle cx="${x}" cy="${y}" r="7" fill="${C[color]||color}" stroke="#fff" stroke-width="2"/>`}
+function portCard(x,y,w,title,badge,rows,theme='red'){
+ const colors={red:[C.red,'#fff0f1','#ff8a8e'],black:[C.black,'#f1f4f7','#8090a0'],purple:['#7437ef','#f4efff','#ab86ff']};const [accent,head,stroke]=colors[theme];const h=58+rows.length*43+12;
+ let s=`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="15" fill="#fff" stroke="${stroke}" stroke-width="2"/><path d="M${x+15} ${y}H${x+w-15}Q${x+w} ${y} ${x+w} ${y+15}V${y+57}H${x}V${y+15}Q${x} ${y} ${x+15} ${y}Z" fill="${head}"/><text class="t" x="${x+18}" y="${y+36}" font-size="16" font-weight="700">${E(title)}</text><rect x="${x+w-94}" y="${y+15}" width="76" height="28" rx="14" fill="#fff" stroke="${accent}"/><text class="t" x="${x+w-56}" y="${y+34}" text-anchor="middle" font-size="11" font-weight="700">${E(badge)}</text>`;
+ rows.forEach((r,i)=>{const yy=y+70+i*43;s+=`<rect x="${x+14}" y="${yy}" width="${w-28}" height="34" rx="8" fill="#fbfcfd" stroke="#d9e2e9"/><rect x="${x+14}" y="${yy}" width="48" height="34" rx="8" fill="${accent}"/><rect x="${x+50}" y="${yy}" width="12" height="34" fill="${accent}"/><text class="t" x="${x+38}" y="${yy+23}" text-anchor="middle" font-size="12" font-weight="700" fill="#fff">P${i+1}</text><text class="t" x="${x+74}" y="${yy+23}" font-size="11.5" fill="${r.muted?C.muted:C.ink}" font-weight="${r.bold?700:400}">${E(r.text||r)}</text>`});return s}
+function legend(items,y=955){let x=1040;return items.map(([color,label])=>{const s=`<path d="M${x} ${y}h38" stroke="${C[color]}" stroke-width="4" stroke-linecap="round"/><text class="t" x="${x+48}" y="${y+4}" font-size="11" fill="${C.muted}">${E(label)}</text>`;x+=120;return s}).join('')}
+function page(p,i){return `<section class="sheet${i===0?' active':''}" data-sheet="${i+1}"><svg viewBox="0 0 1600 1000" role="img" aria-label="${E(p.title)}"><rect width="1600" height="1000" fill="#fff"/><text class="t" x="45" y="42" font-size="13" font-weight="800" letter-spacing="2" fill="#078174">SƠ ĐỒ ${i+1}/${pages.length} · ${E(p.eyebrow)}</text><text class="t" x="45" y="79" font-size="27" font-weight="700">${E(p.title)}</text><text class="t" x="45" y="106" font-size="14" fill="${C.muted}">${E(p.sub)}</text>${(p.boxes||[]).map(renderBox).join('')}${(p.wires||[]).map(renderWire).join('')}${p.extra||''}${legend(p.legend||[['red','12 V'],['purple','5 V'],['black','GND']],p.legendY||955)}</svg></section>`}
+
+const pages=[
+{
+ eyebrow:'NGUỒN, BẢO VỆ VÀ ĐO CÔNG SUẤT',
+ title:'LiPo → cầu chì → relay → INA219 SEN0291 → hai L298N',
+ sub:'Dây công suất 14–16 AWG; INA219 đặt high-side. Không còn VBS/VBUS như INA226.',
+ boxes:[
+  box(45,165,145,125,'LiPo 3S',['XT60 · 11.1–12.6 V','Đỏ (+) · Đen (−)'],'power',{center:true}),
+  box(225,190,130,80,'Cầu chì 4 A',['nối tiếp dây (+)'],'power',{center:true}),
+  box(395,165,180,125,'PCT-213 +12V-A',['A1 ← cầu chì','A2 → relay COM','A3 → nhánh logic'],'power'),
+  box(620,165,165,125,'Relay 12 V · 30 A',['COM ← A2','NO → INA IN+','NC để trống'],'power'),
+  box(830,145,235,165,'DFRobot INA219',['SEN0291 · ±8 A','IN+ ← relay NO','IN− → MOTOR+','GND giữa → GND-POWER'],'signal'),
+  box(1110,165,205,125,'PCT-213 MOTOR+',['P1 ← INA IN−','P2 → L298N #1 VS','P3 → L298N #2 VS'],'power'),
+  box(1360,165,185,125,'2 × L298N',['VS/+12 V','tụ 1000 µF/25 V'],'power',{center:true}),
+  box(395,385,180,125,'PCT-213 +12V-B',['B1 ← A3','B2 → relay DC+','B3 → buck IN+'],'power'),
+  box(620,375,175,150,'Relay control',['DC+ ← B2','DC− → GND','IN → SW1 A','jumper LOW'],'control'),
+  box(845,395,155,105,'SW1 ON/OFF',['A ← relay IN','B → E-stop 11'],'control'),
+  box(1055,395,175,105,'E-STOP NC',['11 ← SW1 B','12 → GND','23–24 bỏ trống'],'control'),
+  box(395,610,190,135,'Buck 5 V · 3 A',['IN+ ← B3','IN− → GND','USB OUT = 5.0 V'],'logic'),
+  box(640,600,245,155,'Hai ngõ ra USB 5 V',['USB #1 → USB-C UART/COM','USB #2 → PCT LOGIC-5V','đo 4.9–5.1 V trước cắm'],'logic'),
+  box(940,600,220,155,'Đế mở rộng 44P',['chỉ mở rộng chân S/V/G','jack DC để trống','không đưa LiPo vào đế'],'signal'),
+  box(1215,600,270,155,'PCT-213 LOGIC-5V',['P1 ← USB breakout đỏ','P2 → L298N #1 5V','P3 → L298N #2 5V','đen USB → GND'],'logic'),
+  box(210,820,1180,105,'PCT-218 GND-POWER',['1 LiPo−   · 2 relay DC−   · 3 buck IN−   · 4 L298N #1   · 5 L298N #2   · 6 INA terminal GND   · 7 GND-SIGNAL P1   · 8 USB #2 breakout GND'],'ground',{center:true,gap:23})
+ ],
+ wires:[
+  wire('M82 275 H205 V230 H225','red'),wire('M355 230 H395','red'),wire('M575 230 H620','red'),wire('M785 230 H830','red'),wire('M1065 230 H1110','red'),wire('M1315 230 H1360','red'),
+  wire('M530 290 V345 H485 V385','red'),wire('M525 385 V350 H680 V375','red','B2 → DC+',555,343),wire('M795 475 H820 V447 H845','orange'),wire('M1000 447 H1025 V447 H1055','orange'),
+  wire('M535 510 V570 H480 V610','red'),wire('M585 680 H640','purple'),wire('M885 680 H940','purple'),wire('M885 710 V560 H1340 V600','purple'),
+  wire('M162 290 V785 H300 V820','black'),wire('M705 525 H610 V785 H440 V820','black'),wire('M1140 500 H1185 V785 H580 V820','black'),wire('M490 745 V785 H720 V820','black'),wire('M950 310 H820 V785 H860 V820','black'),wire('M1340 755 V785 H1140 V820','black')
+ ],
+ extra:`<rect x="830" y="320" width="235" height="48" rx="9" fill="#fff4f4" stroke="#ed8588"/><text class="t" x="848" y="342" font-size="11" font-weight="700">KHÔNG NỐI IN− XUỐNG GND</text><text class="t" x="848" y="359" font-size="10" fill="${C.muted}">GND là chân riêng của SEN0291.</text>`,
+ legend:[['red','12 V'],['orange','LOW'],['purple','5 V'],['black','GND']]
+},
+{
+ eyebrow:'ESP32-S3 DEVKITC 44P, INA219 VÀ PS2',
+ title:'Board mới cắm đủ 22 chân mỗi bên; GPIO giữ nguyên',
+ sub:'Dùng ESP32-S3 DevKitC-compatible N16R8 44P. Đầu anten và hai USB-C phải đúng chiều theo chữ in trên đế.',
+ boxes:[
+  box(55,155,350,225,'Đế mở rộng ESP32-S3 44P',['Cắm đủ 22 chân mỗi bên','3V3 trùng 3V3 · GND trùng GND','GPIO1–48 trùng đúng nhãn','jack DC của đế để trống'],'signal'),
+  box(465,155,300,225,'ESP32-S3 DevKitC N16R8 44P',['5 V qua USB-C UART/COM','3V3 → rail V tín hiệu','GND → rail G · GPIO → rail S','đo rail V = 3.3 V trước nối sensor'],'logic'),
+  box(845,145,300,245,'DFRobot INA219 SEN0291',['VCC → 3V3','Gravity GND → GND-SIGNAL P2','SDA → GPIO1','SCL → GPIO2','địa chỉ mặc định 0x40'],'signal'),
+  box(1215,155,320,225,'Cọc vít INA219 · từ trên xuống',['IN+ ← relay NO','GND giữa → GND-POWER P6','IN− → PCT MOTOR+','không có dây VBS/VBUS'],'power'),
+  box(55,535,350,340,'Đầu thu PS2 9 chân',['VCC đỏ → 3V3','GND đen → GND','DATA xanh dương → GPIO38','CMD xanh lá → GPIO39','ATTN cam → GPIO40','CLK xám → GPIO41','ACK · NC · VIBR để trống'],'signal'),
+  box(465,535,300,340,'Rail S/V/G trên đế',['S = Signal/GPIO','V = rail nguồn đã chọn','G = GND','PS2 DATA thêm pull-up 10 kΩ → 3V3','không đặt rail V ở 5 V'],'logic'),
+  box(845,535,300,340,'Hai chế độ cấp nguồn',['LẮP XE: buck 5 V → USB-C UART/COM','NẠP/LOG: PC → USB-C UART/COM','CHỈ CHỌN MỘT nguồn USB','không cắm PC và buck cùng lúc'],'warn'),
+  box(1215,535,320,340,'Kiểm tra trước khi cắm',['1. Tháo XT60/cầu chì','2. Buck OUT đúng 4.9–5.1 V','3. Cắm đủ 44 chân đúng nhãn','4. Rail V tín hiệu đúng 3.3 V','5. GND toàn hệ thống thông nhau'],'ground')
+ ],
+ wires:[
+  wire('M405 225 H465','purple','khớp theo NHÃN',418,215),
+  wire('M765 230 H810 V215 H845','purple','3V3 → VCC',785,205),wire('M765 265 H800 V260 H845','black','GND',785,250),wire('M765 305 H820 V305 H845','cyan','GPIO1 SDA',785,295),wire('M765 345 H800 V350 H845','blue','GPIO2 SCL',785,340),
+  wire('M1145 225 H1215','red'),wire('M1145 270 H1190 V270 H1215','red'),wire('M1145 315 H1180 V315 H1215','black'),
+  wire('M405 610 H465','purple'),wire('M405 650 H445 V650 H465','black'),wire('M405 690 H465','blue'),wire('M405 730 H465','green'),wire('M405 770 H465','orange'),wire('M405 810 H465','gray')
+ ],
+ extra:`<text class="t" x="615" y="425" text-anchor="middle" font-size="13" font-weight="700" fill="${C.red}">NẾU NHÃN CHÂN KHÔNG TRÙNG: DỪNG, KHÔNG CẮM NGUỒN</text>`,
+ legend:[['purple','3.3 V'],['black','GND'],['cyan','SDA'],['blue','SCL/DATA']]
+},
+{
+ eyebrow:'L298N #1 VÀ HAI BÁNH TRƯỚC',
+ title:'ESP32 → L298N #1 → bánh trước trái và bánh trước phải',
+ sub:'Tháo jumper ENA, ENB và 5V-EN; logic 5 V đến từ buck, motor 12 V đến từ INA219.',
+ boxes:[
+  box(55,165,300,620,'ESP32-S3 trên đế',['GPIO12 → ENA / PWM M1','GPIO13 → IN1','GPIO14 → IN2','','GPIO15 → ENB / PWM M2','GPIO18 → IN3','GPIO21 → IN4','','GND → L298N GND'],'signal'),
+  box(540,145,400,675,'L298N #1',['KÊNH A · BÁNH TRƯỚC TRÁI','ENA ← GPIO12','IN1 ← GPIO13','IN2 ← GPIO14','OUT1 → M1 đỏ M+','OUT2 → M1 trắng M−','','KÊNH B · BÁNH TRƯỚC PHẢI','ENB ← GPIO15','IN3 ← GPIO18','IN4 ← GPIO21','OUT3 → M2 đỏ M+','OUT4 → M2 trắng M−'],'signal'),
+  box(1110,160,380,235,'M1 · bánh trước trái',['Đỏ M+ ← OUT1','Trắng M− ← OUT2','Xanh dương encoder VCC 3V3','Đen encoder GND','Vàng A · Xanh lá B'],'motor'),
+  box(1110,455,380,235,'M2 · bánh trước phải',['Đỏ M+ ← OUT3','Trắng M− ← OUT4','Xanh dương encoder VCC 3V3','Đen encoder GND','Vàng A · Xanh lá B'],'motor'),
+  box(540,850,220,100,'Nguồn driver',['VS ← MOTOR+ P2','5V ← LOGIC-5V P2','GND ← GND chung'],'power'),
+  box(800,850,300,100,'Tụ lọc',['1000 µF: (+) VS, (− sọc) GND','100 nF đặt giữa M+ và M− mỗi motor'],'logic')
+ ],
+ wires:[
+  wire('M355 235 H540','blue'),wire('M355 285 H500 V285 H540','blue'),wire('M355 335 H480 V335 H540','blue'),wire('M355 465 H540','blue'),wire('M355 515 H500 V515 H540','blue'),wire('M355 565 H480 V565 H540','blue'),wire('M355 725 H455 V760 H540','black'),
+  wire('M940 250 H1050 V225 H1110','red'),wire('M940 300 H1070 V275 H1110','gray'),wire('M940 535 H1050 V520 H1110','red'),wire('M940 585 H1070 V570 H1110','gray'),
+  wire('M650 820 V850','red'),wire('M730 820 V850','purple'),wire('M850 820 V850','black')
+ ],
+ extra:`<text class="t" x="740" y="115" text-anchor="middle" font-size="12" font-weight="700" fill="${C.red}">ĐIỆN ÁP VS/GND PHẢI ≈ PIN; 5V/GND PHẢI ≈ 5.0 V</text>`,
+ legend:[['blue','GPIO'],['red','M+ / 12 V'],['gray','M−'],['black','GND']]
+},
+{
+ eyebrow:'L298N #2 VÀ BÁNH SAU',
+ title:'ESP32 → L298N #2 kênh A → bánh sau',
+ sub:'Kênh B chưa dùng phải giữ LOW; OUT3/OUT4 để trống và bọc cách điện.',
+ boxes:[
+  box(70,210,330,480,'ESP32-S3 trên đế',['GPIO6 → ENA / PWM M3','GPIO7 → IN1','GPIO8 → IN2','GND → L298N GND'],'signal'),
+  box(610,155,420,620,'L298N #2',['KÊNH A · BÁNH SAU','ENA ← GPIO6','IN1 ← GPIO7','IN2 ← GPIO8','OUT1 → M3 đỏ M+','OUT2 → M3 trắng M−','','KÊNH B KHÔNG DÙNG','ENB → GND','IN3 → GND','IN4 → GND','OUT3/OUT4 để trống'],'signal'),
+  box(1210,225,310,310,'M3 · bánh sau',['Đỏ M+ ← OUT1','Trắng M− ← OUT2','Xanh dương encoder VCC 3V3','Đen encoder GND','Vàng A · Xanh lá B'],'motor'),
+  box(610,820,220,110,'Nguồn driver',['VS ← MOTOR+ P3','5V ← LOGIC-5V P3','GND ← GND chung'],'power'),
+  box(870,820,370,110,'Tụ lọc',['1000 µF: (+) VS, (− sọc) GND','100 nF đặt trực tiếp giữa đỏ M+ và trắng M−'],'logic'),
+  box(1265,650,255,145,'Kê bánh khi test',['PWM 20% trước','thử tiến/lùi từng bánh','E-stop phải ngắt motor'],'warn')
+ ],
+ wires:[
+  wire('M400 315 H610','blue'),wire('M400 395 H570 V395 H610','blue'),wire('M400 475 H550 V475 H610','blue'),wire('M400 610 H520 V690 H610','black'),
+  wire('M1030 325 H1210','red'),wire('M1030 405 H1170 V405 H1210','gray'),
+  wire('M700 775 V820','red'),wire('M770 775 V820','purple'),wire('M900 775 V820','black')
+ ],
+ legend:[['blue','GPIO'],['red','M+ / 12 V'],['gray','M−'],['black','GND']]
+},
+{
+ eyebrow:'BA ENCODER HALL A/B',
+ title:'Ba motor dùng chung 3V3/GND nhưng A/B về GPIO riêng',
+ sub:'Thứ tự giắc nhìn từ phía dây: ĐỎ · ĐEN · VÀNG · XANH LÁ · XANH DƯƠNG · TRẮNG.',
+ boxes:[
+  box(55,150,340,180,'PCT-218 3V3-SIGNAL',['P1 ← ESP32 3V3','P2 → INA219 VCC','P3 → PS2 VCC','P4 → M1 xanh dương','P5 → M2 xanh dương','P6 → M3 xanh dương'],'logic'),
+  box(55,390,340,180,'PCT GND-SIGNAL',['P1 ← GND chung','P2 → INA219 GND','P3 → PS2 GND','P4 → M1 đen','P5 → M2 đen','P6 → M3 đen'],'ground'),
+  box(520,150,430,180,'M1 · trước trái',['Vàng A → GPIO16','Xanh lá B → GPIO17','Đỏ/Trắng chỉ đi L298N #1 kênh A'],'motor'),
+  box(520,390,430,180,'M2 · trước phải',['Vàng A → GPIO4','Xanh lá B → GPIO5','Đỏ/Trắng chỉ đi L298N #1 kênh B'],'motor'),
+  box(520,630,430,180,'M3 · bánh sau',['Vàng A → GPIO9','Xanh lá B → GPIO10','Đỏ/Trắng chỉ đi L298N #2 kênh A'],'motor'),
+  box(1100,150,400,180,'ESP32 · encoder M1',['GPIO16 ← A vàng','GPIO17 ← B xanh lá','input pull-up theo firmware'],'signal'),
+  box(1100,390,400,180,'ESP32 · encoder M2',['GPIO4 ← A vàng','GPIO5 ← B xanh lá','input pull-up theo firmware'],'signal'),
+  box(1100,630,400,180,'ESP32 · encoder M3',['GPIO9 ← A vàng','GPIO10 ← B xanh lá','input pull-up theo firmware'],'signal'),
+  box(55,680,340,130,'Quy tắc chống nhiễu',['A/B xoắn nhẹ cùng GND','không bó sát OUT1–OUT4','tụ 100 nF đặt tại từng motor'],'warn')
+ ],
+ wires:[
+  wire('M950 205 H1100','yellow'),wire('M950 255 H1065 V255 H1100','green'),wire('M950 445 H1100','yellow'),wire('M950 495 H1065 V495 H1100','green'),wire('M950 685 H1100','yellow'),wire('M950 735 H1065 V735 H1100','green'),
+  wire('M395 220 H465 V190 H520','purple'),wire('M395 460 H455 V250 H520','black'),wire('M395 245 H445 V430 H520','purple'),wire('M395 485 H435 V490 H520','black'),wire('M395 270 H425 V670 H520','purple'),wire('M395 510 H415 V730 H520','black')
+ ],
+ legend:[['purple','3.3 V'],['black','GND'],['yellow','Encoder A'],['green','Encoder B']]
+},
+{
+ eyebrow:'TỔNG THỂ XE TAM GIÁC VÀ TRÌNH TỰ BẬT',
+ title:'Hai bánh trước, một bánh sau; dây công suất và tín hiệu đi hai hành lang',
+ sub:'Đây là bố trí thực tế mới. Mỗi hộp tham chiếu chi tiết ở sơ đồ 1–5.',
+ boxes:[
+  box(170,145,285,125,'M1 · TRƯỚC TRÁI',['L298N #1 kênh A','GPIO12/13/14 · A16/B17'],'motor',{center:true}),
+  box(1145,145,285,125,'M2 · TRƯỚC PHẢI',['L298N #1 kênh B','GPIO15/18/21 · A4/B5'],'motor',{center:true}),
+  box(655,805,290,125,'M3 · BÁNH SAU',['L298N #2 kênh A','GPIO6/7/8 · A9/B10'],'motor',{center:true}),
+  box(160,360,260,125,'PIN + BẢO VỆ',['LiPo → fuse → relay','E-stop 11–12'],'power',{center:true}),
+  box(500,340,270,165,'ĐO + PHÂN PHỐI',['Relay NO → INA219 IN+','IN− → MOTOR+','MOTOR+ → 2 L298N'],'signal',{center:true}),
+  box(835,340,270,165,'LOGIC + ĐIỀU KHIỂN',['Buck 5 V → USB-C UART/COM','Đế 44P chỉ mở rộng GPIO','ESP32 + PS2 + I²C'],'logic',{center:true}),
+  box(1180,360,260,125,'DRIVER',['L298N #1: M1 + M2','L298N #2: M3'],'signal',{center:true}),
+  box(160,595,330,145,'TRÌNH TỰ BẬT',['1. Kê cả 3 bánh','2. Nhả E-stop · SW1 OFF','3. Cắm nguồn logic 5 V','4. Kiểm tra PS2 + I²C'],'ground'),
+  box(555,595,330,145,'TEST CHẬM',['5. Gắn cầu chì/XT60','6. SW1 ON','7. PWM 20% từng bánh','8. Kiểm RPM và chiều quay'],'warn'),
+  box(950,595,490,145,'ĐẠT MỚI HẠ XE',['INA ≈ điện áp pin, dòng hợp lý','E-stop ngắt cả ba motor ngay','không dây/tụ/L298N quá nóng','sau đó mới tăng PWM và cân PID'],'ground')
+ ],
+ wires:[
+  wire('M312 270 V315 H630 V340','red'),wire('M1287 270 V315 H970 V340','red'),wire('M800 505 V805','red'),
+  wire('M420 422 H500','red'),wire('M770 422 H835','cyan'),wire('M1105 422 H1180','blue'),
+  wire('M240 330 V285 H1350 V330','black'),wire('M800 540 H910 V775 H800 V805','black'),
+  wire('M120 305 V760 H520','red','POWER 14–16 AWG',135,745),wire('M1480 305 V760 H1080','blue','GPIO/I²C/encoder',1290,745,true)
+ ],
+ extra:`<path d="M455 208 H1145" fill="none" stroke="#b8d6ee" stroke-width="3"/><text class="t" x="800" y="970" text-anchor="middle" font-size="12" fill="${C.muted}">MŨI XE ↑ · M1 trước trái · M2 trước phải · M3 sau</text>`,
+ legend:[['red','Power'],['blue','Signal'],['black','GND']]
+},
+{
+ eyebrow:'BẢNG PHÂN CỔNG PCT',
+ title:'Bốn PCT-213 nguồn và ba PCT-218 GND/3V3',
+ sub:'Đấu theo tên P1–P8 dưới đây; số thứ tự là nhãn quy ước, không phụ thuộc đặt khối bên trái hay bên phải.',
+ boxes:[],wires:[],legend:[],
+ extra:`
+ <circle cx="52" cy="132" r="7" fill="${C.red}"/><text class="t" x="70" y="138" font-size="16" font-weight="800">ĐƯỜNG NGUỒN VÀ VCC · 4 × PCT-213 BA CỔNG</text>
+ ${portCard(45,150,350,'PCT-213 · +12V-A','12 V',[
+  {text:'TỪ: đầu ra cầu chì 4 A',bold:true},{text:'TỚI: relay chân COM'},{text:'CẦU SANG: +12V-B · P1',bold:true}
+ ],'red')}
+ ${portCard(410,150,350,'PCT-213 · +12V-B','12 V phụ',[
+  {text:'TỪ: +12V-A · P3',bold:true},{text:'TỚI: relay DC+'},{text:'TỚI: buck IN+'}
+ ],'red')}
+ ${portCard(775,150,350,'PCT-213 · MOTOR+','12 V đã ngắt',[
+  {text:'TỪ: INA219 SEN0291 IN−',bold:true},{text:'TỚI: L298N #1 · VS/+12V'},{text:'TỚI: L298N #2 · VS/+12V'}
+ ],'red')}
+ ${portCard(1140,150,415,'PCT-213 · 5V-LOGIC','5 V',[
+  {text:'TỪ: buck USB #2 breakout +5V',bold:true},{text:'TỚI: L298N #1 · chân 5V'},{text:'TỚI: L298N #2 · chân 5V'}
+ ],'red')}
+ <rect x="45" y="365" width="1510" height="50" rx="12" fill="#f3f6f9"/><text class="t" x="800" y="386" text-anchor="middle" font-size="11.5" font-weight="700">LiPo+ → cầu chì → +12V-A P1/P2 → relay COM/NO → INA219 IN+/IN− → MOTOR+ P1 → hai L298N</text><text class="t" x="800" y="405" text-anchor="middle" font-size="11" fill="${C.purple}">Buck USB #1 → USB-C UART/COM · Buck USB #2 → breakout → 5V-LOGIC P1 · jack DC đế để trống</text>
+ <circle cx="52" cy="444" r="7" fill="${C.black}"/><text class="t" x="70" y="450" font-size="16" font-weight="800">ÂM/GND VÀ 3V3 TÍN HIỆU · 3 × PCT-218 TÁM CỔNG</text>
+ ${portCard(45,465,480,'PCT-218 · GND-POWER','GND công suất',[
+  {text:'TỪ: LiPo XT60 âm (−)',bold:true},{text:'TỚI: relay DC−'},{text:'TỚI: buck IN−'},{text:'TỚI: L298N #1 GND'},{text:'TỚI: L298N #2 GND'},{text:'TỚI: INA219 terminal GND giữa'},{text:'CẦU SANG: GND-SIGNAL · P1',bold:true},{text:'TỚI: USB #2 breakout GND'}
+ ],'black')}
+ ${portCard(560,465,480,'PCT-218 · GND-SIGNAL','GND cảm biến',[
+  {text:'TỪ: GND-POWER · P7',bold:true},{text:'TỚI: INA219 Gravity/I²C GND'},{text:'TỚI: đầu thu PS2 GND đen'},{text:'TỚI: encoder M1 GND đen'},{text:'TỚI: encoder M2 GND đen'},{text:'TỚI: encoder M3 GND đen'},{text:'Dự phòng',muted:true},{text:'Dự phòng',muted:true}
+ ],'black')}
+ ${portCard(1075,465,480,'PCT-218 · 3V3-SIGNAL','3.3 V VCC',[
+  {text:'TỪ: ESP32 chân 3V3',bold:true},{text:'TỚI: INA219 VCC'},{text:'TỚI: đầu thu PS2 VCC đỏ'},{text:'TỚI: encoder M1 VCC xanh dương'},{text:'TỚI: encoder M2 VCC xanh dương'},{text:'TỚI: encoder M3 VCC xanh dương'},{text:'Dự phòng',muted:true},{text:'Dự phòng',muted:true}
+ ],'purple')}
+ <rect x="45" y="925" width="1510" height="48" rx="10" fill="#fff4f4" stroke="#ed8588"/><text class="t" x="65" y="945" font-size="11" font-weight="700" fill="${C.red}">KIỂM TRA TRƯỚC KHI CẮM:</text><text class="t" x="245" y="945" font-size="11">3V3-SIGNAL = 3.3 V · 5V-LOGIC = 5.0 V · MOTOR+ chỉ có điện khi relay ON · mọi GND phải thông nhau.</text><text class="t" x="65" y="964" font-size="10" fill="${C.muted}">Terminal GND → GND-POWER P6; Gravity GND → GND-SIGNAL P2. Hai chân cùng net trên module; IN− không xuống GND.</text>`
+}
+];
+document.getElementById('app').innerHTML=pages.map(page).join('');
+const n=Math.min(pages.length,Math.max(1,Number(new URLSearchParams(location.search).get('sheet'))||1));
+document.querySelectorAll('.sheet').forEach((s,i)=>s.classList.toggle('active',i===n-1));
+</script></body></html>

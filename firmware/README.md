@@ -1,8 +1,49 @@
 # nexus-firmware
 
-The firmware runs on one GOOUUU Tech ESP32-S3-N16R8. It reads a confirmed INA226 module with an R100 (0.1 Ω) shunt, controls channel A on an L298N motor driver, clamps PWM locally, and emits the frozen telemetry v1 envelope over serial.
+The default firmware matches the current three-wheel robot: one ESP32-S3
+DevKitC-compatible N16R8 44-pin board, DFRobot Gravity INA219 SEN0291, two L298N modules, three
+JGB37-520 Hall-encoder motors and the 9-pin PS2 wireless receiver. It starts with every motor
+off, requires valid INA219 power plus valid PS2 packets, automatically arms only after centred
+joystick packets, and emits the telemetry v1 envelope plus three-wheel fields.
 
-## Current MVP state
+## Active three-wheel pin map
+
+| Function | GPIO / terminal |
+| --- | --- |
+| INA219 SEN0291 | SDA GPIO1, SCL GPIO2, address `0x40`; VCC 3V3; IN+ from relay NO; IN− to MOTOR+ |
+| Motor 1 / L298N #1 A | ENA 12, IN1 13, IN2 14, encoder A/B 16/17 |
+| Motor 2 / L298N #1 B | ENB 15, IN3 18, IN4 21, encoder A/B 4/5 |
+| Motor 3 / L298N #2 A | ENA 6, IN1 7, IN2 8, encoder A/B 9/10 |
+| PS2 receiver | DATA 38, CMD 39, ATTN 40, CLK 41, VCC 3V3, common GND |
+
+`ACK`, `NC` and `VIBR` on the PS2 receiver remain disconnected for the MVP. DATA needs a 10 kΩ
+pull-up to 3V3. Never feed a 5 V receiver output directly into an ESP32 GPIO. Press SELECT to
+latch emergency stop; START clears it only when power is safe and the sticks are centred. Normal
+startup automatically enables manual control after centred packets. A missing PS2 packet for
+350 ms stops all three motors.
+
+The movement mixer assumes three omni wheels mounted 120° apart. With ordinary non-omni wheels,
+the same triangular layout will scrub and the vector mixer is not mechanically valid. The
+`1320` encoder-count value is a starting value for a common 11-PPR encoder and 30:1 gearbox; it
+must be calibrated against one measured output-shaft revolution.
+
+The authoritative profile is
+[`nexus-profile-esp32-s3-devkitc-ina219-dual-l298n-3wheel-ps2-v2.json`](../nexus-hardware/profiles/nexus-profile-esp32-s3-devkitc-ina219-dual-l298n-3wheel-ps2-v2.json),
+and the seven-page matching diagram is
+[`nexus-wiring-schematic-v9.html`](../docs/wiring-schematic-v9/nexus-wiring-schematic-v9.html).
+
+Power the ESP32 through its USB-C UART/COM connector with one regulated 5 V source: either the buck output while the car is
+standalone or the PC while uploading/logging. Do not use both simultaneously. The 44-pin
+expansion base is a GPIO breakout in this design; its DC jack remains unused and must never
+receive the 3S LiPo/12 V rail.
+
+## Legacy one-motor firmware
+
+The older PlatformIO environments remain available for U05/N03/N05 evidence and command tests.
+They compile `src/main.cpp`; the default three-wheel environment compiles
+`src/main_three_wheel_ps2.cpp`.
+
+## Legacy one-motor MVP state
 
 Available now:
 
@@ -43,11 +84,11 @@ Do not power the motor from the ESP32 3.3 V or 5 V pin. Connect all grounds corr
 | INA226 VBUS | INA226 VIN− | Required bus-voltage reference; bridge the module's VBUS jumper or wire it to the load side |
 | ESP32-S3 GPIO12 | L298N ENA | Channel A PWM speed control; remove the ENA jumper for GPIO PWM |
 | ESP32-S3 GPIO13 | L298N IN1 | Direction input; HIGH while running in the current firmware |
-| ESP32-S3 GPIO14 | L298N IN2 | Direction input; held LOW in the current firmware |
+| ESP32-S3 GPIO11 (row S) | L298N #1 IN2 | Motor 1 direction input; GPIO14 is not used because the expansion board does not expose its S row |
 | L298N OUT1 | Motor M+, red wire | Motor channel A output |
 | L298N OUT2 | Motor M−, white wire | Motor channel A output |
-| ESP32-S3 GPIO16 | Motor encoder A, yellow wire | Reserved for encoder pulse input |
-| ESP32-S3 GPIO17 | Motor encoder B, green wire | Reserved for encoder pulse input |
+| ESP32-S3 GPIO16 | Motor encoder C1/A, green wire | Reserved for encoder pulse input |
+| ESP32-S3 GPIO17 | Motor encoder C2/B, yellow wire | Reserved for encoder pulse input |
 | ESP32-S3 3V3 | Encoder VCC, blue wire | 3.3 V encoder supply |
 | ESP32-S3 GND | INA226 GND, L298N GND and encoder GND, black wire | Common signal reference |
 
@@ -74,7 +115,10 @@ The older contract fixture remains an API example rather than the build source o
 
 ## Install PlatformIO
 
-On Windows, double-click `nexus-upload-firmware.cmd` to upload through built-in USB-JTAG. Then close every Serial Monitor and double-click `nexus-start-app.cmd`; the backend owns the COM port, saves `logs/hardware-live-*.ndjson`, and sends the same firmware log to the Hardware Graph UI. Use `nexus-run-firmware.cmd` only for isolated CLI debugging while the app is stopped; its monitor saves `logs/device-monitor-*.log`.
+On Windows, double-click `nexus-upload-firmware.cmd` to upload through the board's USB-to-UART
+COM connector. Then close every Serial Monitor and double-click `nexus-start-app.cmd`; the
+backend owns the COM port, saves `logs/hardware-live-*.ndjson`, and streams the same firmware
+log to the Hardware Graph UI. Use `nexus-run-firmware.cmd` only while the app is stopped.
 
 Python 3.11 is recommended.
 
@@ -93,7 +137,9 @@ Connect the board with a USB data cable, then run:
 pio device list
 ```
 
-The detected `USB VID:PID=303A:1001` port is the ESP32-S3 native USB port and is supported by the checked-in USB CDC build flag. On the dual-USB GOOUUU board, the connector printed `ESP32` is native USB and the connector printed `CH343` is the USB-to-UART alternative. The CH343 connector is normally the easiest first-upload path because its reset circuit can enter the ROM bootloader automatically. Typical values:
+Use the board connector that creates a COM port (usually labelled `UART` or connected to the
+USB-to-UART bridge). The second connector is native USB/OTG and uses the optional
+`nexus-esp32-s3-devkitc-3wheel-ps2-native-usb` environment. Typical port names are:
 
 - Windows: `COM4`
 - Linux: `/dev/ttyUSB0` or `/dev/ttyACM0`
@@ -109,14 +155,18 @@ Run from the repository root:
 pio run --project-dir firmware
 ```
 
-The default PlatformIO environment is `nexus-goouuu-esp32-s3-n16r8`. It uses the repository's dedicated `boards/nexus-goouuu-esp32-s3-n16r8.json` definition for the GOOUUU Tech board: ESP32-S3, 16 MB QIO flash, 8 MB OPI PSRAM, native USB Serial/JTAG, and the optional onboard CH343 USB-to-UART bridge. It does not select a DevKit board profile.
+The default PlatformIO environment is `nexus-esp32-s3-devkitc-3wheel-ps2`. It uses PlatformIO's
+standard `esp32-s3-devkitc-1` board baseline, which is compatible with the pictured 44-pin
+DevKitC layout and does not depend on optional PSRAM. This is sufficient for the NeXus MVP even
+when the fitted module has more flash/PSRAM.
 
 ## Upload and monitor on Windows
 
-For the GOOUUU connector printed `ESP32` (`VID:PID=303A:1001`), upload through the ESP32-S3 built-in USB-JTAG interface. This path does not require a COM-port argument. Stop any open monitor with `Ctrl+C` before uploading:
+For the USB-to-UART connector, stop any open monitor with `Ctrl+C`, then upload to the detected
+COM port (the click launcher and PlatformIO normally auto-detect it):
 
 ```powershell
-pio run --project-dir firmware --target upload
+pio run --project-dir firmware --environment nexus-esp32-s3-devkitc-3wheel-ps2 --target upload --upload-port COM8
 pio device monitor --port COM8 --baud 115200
 ```
 
@@ -148,9 +198,9 @@ The current generated values are:
 | Flag | Default | Meaning |
 | --- | --- | --- |
 | runtime `device_id` | `nexus-{board_id}-{12-hex-chip-id}` | Stable identity derived from the ESP32 eFuse MAC at boot |
-| `NEXUS_HARDWARE_MODEL_ID` | `nexus-s3-ina226-l298n-motor-rig-v1` | Frozen ESP32-S3/INA226/L298N hardware model identity |
+| `NEXUS_HARDWARE_MODEL_ID` | `nexus-s3-devkitc-ina219-dual-l298n-3wheel-ps2-v2` | Frozen DevKitC/INA219/dual-L298N hardware identity |
 | `NEXUS_MAX_PWM_PERCENT` | `80` | Absolute firmware PWM ceiling |
-| `NEXUS_MAX_CURRENT_MA` | `1500` | Motion is stopped/rejected above this measured current |
+| `NEXUS_MAX_CURRENT_MA` | `3500` | Total three-motor current limit below the physical 4 A fuse |
 | `NEXUS_MIN_BUS_VOLTAGE_MV` | `9500` | Minimum measured motor bus for motion |
 | `NEXUS_MAX_BUS_VOLTAGE_MV` | `13000` | Maximum verified MVP motor bus for motion |
 
@@ -165,9 +215,9 @@ At 115200 baud, the device emits one compact JSON object per line:
 ```json
 {
   "schema_version": "1.0.0",
-  "device_id": "nexus-goouuu-esp32-s3-n16r8-30eda027da00",
-  "hardware_model_id": "nexus-s3-ina226-l298n-motor-rig-v1",
-  "sample_id": "nexus-goouuu-esp32-s3-n16r8-30eda027da00-42",
+  "device_id": "nexus-esp32-s3-devkitc-1-44pin-30eda027da00",
+  "hardware_model_id": "nexus-s3-devkitc-ina219-dual-l298n-3wheel-ps2-v2",
+  "sample_id": "nexus-esp32-s3-devkitc-1-44pin-30eda027da00-42",
   "recorded_at": null,
   "sequence": 42,
   "measurements": {
@@ -198,17 +248,17 @@ the UI immediately:
 | --- | --- | --- |
 | `I2C_SDA_STUCK_LOW` | SDA/GPIO1 is electrically held LOW while the bus should be idle | Power off; inspect SDA and pull-up |
 | `I2C_SCL_STUCK_LOW` | SCL/GPIO2 is electrically held LOW while the bus should be idle | Power off; inspect SCL and pull-up |
-| `INA226_I2C_NO_ACK` | Lines are idle-high but address `0x40` does not answer | Check sensor 3V3, GND, SDA/SCL order and address straps |
-| `INA226_ID_MISMATCH` | A device answered, but it is not the expected INA226 | Check the module/IC and address |
+| `INA219_I2C_NO_ACK` | Lines are idle-high but address `0x40` does not answer | Check SEN0291 3V3, GND, SDA/SCL order and A0/A1 switches |
+| `INA219_CONFIGURATION_MISMATCH` | A device answered but its config/calibration did not persist | Confirm SEN0291 and reset the board |
 | `HARDWARE_PROFILE` | Firmware declares its compiled BOM fingerprint every 10 seconds | Backend compares it with the locked MVP BOM before trusting the profile |
-| `INA226_I2C_READ_FAILED` | A register transaction failed after detection | Reseat SDA/SCL and shorten/noise-proof the leads |
-| `INA226_SIGNAL_INCONSISTENT` | Current register disagrees with `shunt_mV / 0.1 Ω` | Check SDA/SCL noise, R100 marking and calibration |
-| `ENCODER_CHANNEL_A_MISSING` | B has edges during motion but A/GPIO16 does not | Check the yellow A wire |
-| `ENCODER_CHANNEL_B_MISSING` | A has edges during motion but B/GPIO17 does not | Check the green B wire |
+| `INA219_I2C_FAILURE` | A register transaction failed after detection | Reseat SDA/SCL and shorten/noise-proof the leads |
+| `INA219_SIGNAL_INVALID` | Current register disagrees with `shunt_mV / 0.1 Ω` | Check SDA/SCL noise, the CJMCU-226 R100 shunt and calibration |
+| `ENCODER_CHANNEL_A_MISSING` | B has edges during motion but A/GPIO16 does not | Check the green C1/A wire |
+| `ENCODER_CHANNEL_B_MISSING` | A has edges during motion but B/GPIO17 does not | Check the yellow C2/B wire |
 | `ENCODER_SIGNAL_MISSING` | Neither channel has edges while the driver is on | Check encoder 3V3/GND/A/B and whether the motor turns |
 | `ENCODER_SIGNAL_INVALID` | Too many impossible simultaneous A/B transitions | Check swapped/loose leads and motor-noise routing |
 
-The firmware retries INA226 every five seconds. `[NEXUS][INFO][ENCODER_SIGNAL_OK]` clears an
+The firmware retries INA219 every five seconds. `[NEXUS][INFO][ENCODER_SIGNAL_OK]` clears an
 encoder fault after a later supervised run produces valid A/B edges.
 
 ## Supervised U05 baseline mode

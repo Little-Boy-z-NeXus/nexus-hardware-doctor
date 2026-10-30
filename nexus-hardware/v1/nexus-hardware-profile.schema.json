@@ -89,6 +89,7 @@
         "power_monitor": { "$ref": "#/$defs/componentId" },
         "motor_driver": { "$ref": "#/$defs/componentId" },
         "actuator": { "$ref": "#/$defs/componentId" },
+        "imu": { "$ref": "#/$defs/componentId" },
         "power": { "$ref": "#/$defs/componentId" }
       }
     },
@@ -183,6 +184,37 @@
                 "die_id_mask": { "$ref": "#/$defs/hex16" }
               }
             }
+          }
+        },
+        "imu": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["i2c_address"],
+          "properties": {
+            "i2c_address": { "$ref": "#/$defs/hex8" }
+          }
+        },
+        "control": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "drive_mode",
+            "encoder_counts_per_output_revolution",
+            "ps2_poll_interval_ms",
+            "ps2_failsafe_timeout_ms",
+            "joystick_deadzone"
+          ],
+          "properties": {
+            "drive_mode": { "type": "string", "enum": ["triangle_assist"] },
+            "encoder_counts_per_output_revolution": { "type": "number", "exclusiveMinimum": 0 },
+            "ps2_poll_interval_ms": { "type": "integer", "minimum": 5, "maximum": 100 },
+            "ps2_failsafe_timeout_ms": { "type": "integer", "minimum": 100, "maximum": 2000 },
+            "joystick_deadzone": { "type": "integer", "minimum": 0, "maximum": 64 },
+            "arm_centered_packets": { "type": "integer", "minimum": 3, "maximum": 100 },
+            "balance_pid_kp": { "type": "number", "minimum": 0, "maximum": 5 },
+            "balance_pid_ki": { "type": "number", "minimum": 0, "maximum": 5 },
+            "balance_pid_kd": { "type": "number", "minimum": 0, "maximum": 5 },
+            "balance_pid_max_correction_percent": { "type": "integer", "minimum": 0, "maximum": 40 }
           }
         }
       }

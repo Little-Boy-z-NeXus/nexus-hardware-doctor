@@ -1,0 +1,172 @@
+schema_version: "1.0.0"
+design_id: nexus-three-wheel-devkitc-ina219-expansion-v3
+status: wiring-and-firmware-ready
+vehicle_layout:
+  shape: triangle
+  front:
+    - motor_id: m1
+      position: front_left
+    - motor_id: m2
+      position: front_right
+  rear:
+    - motor_id: m3
+      position: rear
+
+controller:
+  model: ESP32-S3 DevKitC-compatible N16R8 44-pin
+  expansion_board:
+    product: ESP32/ESP32-S3 GPIO Extension Board
+    socket_count: 44
+    controller_pin_count: 44
+    installation: insert_all_22_pins_per_side_and_match_3v3_gnd_gpio_labels
+    compatibility_status: compatible_with_standard_44_pin_devkitc_layout
+    power_input: esp32_usb_c_from_regulated_buck_5v
+    intended_supply_v: 5.0
+    warnings:
+      - verify_signal_v_rail_is_3v3
+      - do_not_feed_lipo_3s_or_12v_into_esp32_or_expansion_board
+      - use_only_one_usb_power_source_at_a_time
+      - expansion_board_dc_jack_is_not_used_in_this_design
+
+power:
+  battery: Ovonics LiPo 3S 11.1V 2200mAh 75C XT60
+  fuse_a: 4
+  high_current_wire_awg: 14_to_16
+  path:
+    - battery_positive
+    - fuse_4a
+    - relay_com
+    - relay_no
+    - ina219_vin_plus
+    - ina219_vin_minus
+    - pct_motor_plus
+    - l298n_1_vs_and_l298n_2_vs
+  common_ground:
+    - battery_negative
+    - relay_dc_minus
+    - buck_in_minus
+    - ina219_gnd
+    - l298n_1_gnd
+    - l298n_2_gnd
+    - esp32_expansion_ground
+    - signal_ground_distribution
+
+current_sensor:
+  product: DFRobot Gravity I2C Digital Wattmeter
+  sku: SEN0291
+  chip_family: INA219
+  current_range_a: [-8, 8]
+  bus_voltage_range_v: [0, 26]
+  i2c_address: "0x40"
+  logic:
+    vcc: ESP32_3V3
+    gnd: common_ground
+    sda: GPIO1
+    scl: GPIO2
+  power_terminals:
+    vin_plus: relay_NO
+    vin_minus: PCT_MOTOR_PLUS
+    gnd: common_ground
+  forbidden:
+    - vin_minus_to_ground
+    - legacy_ina226_vbs_or_vbus_jumper
+
+motor_drivers:
+  l298n_1:
+    supply: PCT_MOTOR_PLUS
+    logic_5v: PCT_LOGIC_5V
+    ground: common_ground
+    channel_a:
+      motor: m1_front_left
+      ena: GPIO12
+      in1: GPIO13
+      in2: GPIO11
+    channel_b:
+      motor: m2_front_right
+      enb: GPIO15
+      in3: GPIO18
+      in4: GPIO21
+  l298n_2:
+    supply: PCT_MOTOR_PLUS
+    logic_5v: PCT_LOGIC_5V
+    ground: common_ground
+    channel_a:
+      motor: m3_rear
+      ena: GPIO6
+      in1: GPIO7
+      in2: GPIO8
+    channel_b:
+      state: disabled_low
+
+encoders:
+  wire_order_from_cable_side: [red_motor_plus, black_encoder_gnd, yellow_a, green_b, blue_vcc_3v3, white_motor_minus]
+  m1_front_left: {a: GPIO16, b: GPIO17}
+  m2_front_right: {a: GPIO4, b: GPIO5}
+  m3_rear: {a: GPIO9, b: GPIO10}
+
+ps2_receiver:
+  vcc: ESP32_3V3
+  gnd: common_ground
+  data: GPIO38
+  cmd: GPIO39
+  attn: GPIO40
+  clk: GPIO41
+  data_pullup: 10k_to_3v3
+  unused: [ack, nc, vibr]
+
+filtering:
+  l298n_bulk_capacitor_each: 1000uF_25V_between_vs_and_gnd
+  motor_ceramic_capacitor_each: 100nF_between_motor_plus_and_motor_minus
+
+distribution_blocks:
+  pct_213_12v_a:
+    P1: fuse_4a_output
+    P2: relay_com
+    P3: pct_213_12v_b_P1
+  pct_213_12v_b:
+    P1: pct_213_12v_a_P3
+    P2: relay_dc_plus
+    P3: buck_in_plus
+  pct_213_motor_plus:
+    P1: ina219_vin_minus
+    P2: l298n_1_vs
+    P3: l298n_2_vs
+  pct_213_logic_5v:
+    P1: buck_usb_2_breakout_5v
+    P2: l298n_1_logic_5v
+    P3: l298n_2_logic_5v
+  pct_218_gnd_power:
+    P1: battery_negative
+    P2: relay_dc_minus
+    P3: buck_in_minus
+    P4: l298n_1_gnd
+    P5: l298n_2_gnd
+    P6: ina219_terminal_gnd
+    P7: pct_218_gnd_signal_P1
+    P8: buck_usb_2_breakout_gnd
+  pct_218_gnd_signal:
+    P1: pct_218_gnd_power_P7
+    P2: ina219_gravity_i2c_gnd
+    P3: ps2_receiver_gnd
+    P4: motor_1_encoder_gnd
+    P5: motor_2_encoder_gnd
+    P6: motor_3_encoder_gnd
+    P7: spare
+    P8: spare
+  pct_218_3v3_signal:
+    P1: esp32_3v3
+    P2: ina219_vcc
+    P3: ps2_receiver_vcc
+    P4: motor_1_encoder_vcc_blue
+    P5: motor_2_encoder_vcc_blue
+    P6: motor_3_encoder_vcc_blue
+    P7: spare
+    P8: spare
+
+firmware:
+  platformio_environment: nexus-esp32-s3-devkitc-3wheel-ps2
+  platformio_board: nexus-esp32-s3-devkitc-n16r8
+  profile: nexus-hardware/profiles/nexus-profile-esp32-s3-devkitc-ina219-dual-l298n-3wheel-ps2-v2.json
+  upload_port: use_the_com_port_of_the_uart_usb_c_connector
+
+source_diagrams: docs/wiring-schematic-v9/nexus-wiring-schematic-v9.html

@@ -17,7 +17,7 @@ if /i "%~1"=="--no-pause" (
   set "NEXUS_PROFILE=%~1"
 )
 if /i "%~2"=="--no-pause" set "NEXUS_NO_PAUSE=1"
-if "%NEXUS_PROFILE%"=="" set "NEXUS_PROFILE=nexus-hardware\profiles\nexus-profile-goouuu-esp32-s3-ina226-l298n-jgb37-v1.json"
+if "%NEXUS_PROFILE%"=="" set "NEXUS_PROFILE=nexus-hardware\profiles\nexus-profile-esp32-s3-devkitc-ina219-dual-l298n-3wheel-ps2-v2.json"
 
 echo [NeXus] Validating %NEXUS_PROFILE%
 "backend\.venv\Scripts\python.exe" -m nexus_backend.hardware_profile "%NEXUS_PROFILE%" --json

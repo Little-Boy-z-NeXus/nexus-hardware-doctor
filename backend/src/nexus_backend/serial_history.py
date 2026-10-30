@@ -55,10 +55,9 @@ class SerialHistory:
                 hardware_model = profile_to_hardware_model(
                     self.hardware_profile, sample["device_id"]
                 )
-                self.store.register_device(
+                self.store.register_profile_verified_device(
                     hardware_model,
                     self.hardware_profile["name"],
-                    "device",
                 )
                 self.device_id = sample["device_id"]
             provenance = record["provenance"]

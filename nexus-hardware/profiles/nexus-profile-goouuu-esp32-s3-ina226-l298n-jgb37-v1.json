@@ -3,8 +3,8 @@
   "profile_id": "nexus-profile-goouuu-esp32-s3-ina226-l298n-jgb37-v1",
   "hardware_model_id": "nexus-s3-ina226-l298n-motor-rig-v1",
   "name": "NeXus ESP32-S3 INA226 motor rig",
-  "updated_at": "2026-09-13T02:15:00+07:00",
-  "description": "Certified MVP profile for the GOOUUU ESP32-S3-N16R8, INA226 R100, L298N and JGB37-520 Hall encoder rig.",
+  "updated_at": "2026-10-29T20:00:00+07:00",
+  "description": "Certified MVP profile for the GOOUUU ESP32-S3-N16R8, CJMCU-226 INA226 R100, L298N and JGB37-520 Hall encoder rig.",
   "controller": {
     "family": "esp32",
     "model": "GOOUUU Tech ESP32-S3-N16R8",
@@ -57,10 +57,10 @@
     {
       "component_id": "ina226",
       "component_type": "sensor",
-      "model": "INA226 with R100 0.1 ohm shunt",
+      "model": "CJMCU-226 INA226 with R100 0.1 ohm shunt",
       "driver": "nexus-driver-ina226",
       "bus": "i2c",
-      "address": "0x40",
+      "address": "0x44",
       "identity": {
         "manufacturer_id": "0x5449",
         "die_id": "0x2260",
@@ -106,8 +106,8 @@
         { "pin_id": "motor_minus", "label": "Motor- white", "mode": "power", "logic_voltage_v": 12.0, "max_voltage_v": 12.0 },
         { "pin_id": "encoder_vcc", "label": "Encoder VCC blue", "mode": "power", "logic_voltage_v": 3.3, "max_voltage_v": 5.0 },
         { "pin_id": "encoder_gnd", "label": "Encoder GND black", "mode": "ground", "logic_voltage_v": null },
-        { "pin_id": "encoder_a", "label": "Encoder A yellow", "mode": "output", "logic_voltage_v": 3.3, "max_voltage_v": 3.3 },
-        { "pin_id": "encoder_b", "label": "Encoder B green", "mode": "output", "logic_voltage_v": 3.3, "max_voltage_v": 3.3 }
+        { "pin_id": "encoder_a", "label": "Encoder A (C1) green", "mode": "output", "logic_voltage_v": 3.3, "max_voltage_v": 3.3 },
+        { "pin_id": "encoder_b", "label": "Encoder B (C2) yellow", "mode": "output", "logic_voltage_v": 3.3, "max_voltage_v": 3.3 }
       ]
     },
     {
@@ -131,8 +131,8 @@
     { "connection_id": "motor_pwm", "signal_type": "pwm", "wire_color": "configured", "from": { "component_id": "esp32", "pin_id": "gpio_12" }, "to": { "component_id": "l298n", "pin_id": "ena" } },
     { "connection_id": "motor_in1", "signal_type": "digital", "wire_color": "configured", "from": { "component_id": "esp32", "pin_id": "gpio_13" }, "to": { "component_id": "l298n", "pin_id": "in1" } },
     { "connection_id": "motor_in2", "signal_type": "digital", "wire_color": "configured", "from": { "component_id": "esp32", "pin_id": "gpio_14" }, "to": { "component_id": "l298n", "pin_id": "in2" } },
-    { "connection_id": "encoder_a", "signal_type": "digital", "wire_color": "yellow", "from": { "component_id": "motor", "pin_id": "encoder_a" }, "to": { "component_id": "esp32", "pin_id": "gpio_16" } },
-    { "connection_id": "encoder_b", "signal_type": "digital", "wire_color": "green", "from": { "component_id": "motor", "pin_id": "encoder_b" }, "to": { "component_id": "esp32", "pin_id": "gpio_17" } },
+    { "connection_id": "encoder_a", "signal_type": "digital", "wire_color": "green", "from": { "component_id": "motor", "pin_id": "encoder_a" }, "to": { "component_id": "esp32", "pin_id": "gpio_16" } },
+    { "connection_id": "encoder_b", "signal_type": "digital", "wire_color": "yellow", "from": { "component_id": "motor", "pin_id": "encoder_b" }, "to": { "component_id": "esp32", "pin_id": "gpio_17" } },
     { "connection_id": "supply_to_monitor", "signal_type": "power", "wire_color": "red", "from": { "component_id": "power", "pin_id": "positive" }, "to": { "component_id": "ina226", "pin_id": "vin_plus" } },
     { "connection_id": "monitor_to_driver", "signal_type": "power", "wire_color": "red", "from": { "component_id": "ina226", "pin_id": "vin_minus" }, "to": { "component_id": "l298n", "pin_id": "vs" } },
     { "connection_id": "vbus_reference", "signal_type": "analog", "wire_color": "jumper", "from": { "component_id": "ina226", "pin_id": "vin_minus" }, "to": { "component_id": "ina226", "pin_id": "vbus" } },
@@ -176,7 +176,7 @@
     "profile_version": "1.0.0",
     "sensor_profile": "ina226-r100",
     "driver_profile": "l298n",
-    "default_motor_test_pwm_percent": 20,
+    "default_motor_test_pwm_percent": 50,
     "pins": {
       "i2c_sda": 1,
       "i2c_scl": 2,
@@ -187,7 +187,7 @@
       "encoder_b": 17
     },
     "sensor": {
-      "i2c_address": "0x40",
+      "i2c_address": "0x44",
       "shunt_ohms": 0.1,
       "current_lsb_ma": 0.1,
       "identity": {

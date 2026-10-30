@@ -8,11 +8,16 @@ from copy import deepcopy
 
 import pytest
 from fastapi.testclient import TestClient
-from test_serial_reads import FIXTURES, responses, sample
+from test_serial_reads import responses
+from test_serial_reads import sample as contract_sample
 
 from nexus_backend.app import create_app
 from nexus_backend.context import build_context
-from nexus_backend.hardware_profile import load_hardware_profile, profile_fingerprint
+from nexus_backend.hardware_profile import (
+    load_hardware_profile,
+    profile_fingerprint,
+    profile_to_hardware_model,
+)
 from nexus_backend.policy import PolicyDecision, SafetyPolicy
 from nexus_backend.serial_bridge import SerialBridge
 from nexus_backend.serial_history import SerialHistory
@@ -21,7 +26,13 @@ from nexus_backend.tool_adapter import SerialToolAdapter, ToolExecutionError
 
 
 def model():
-    return json.loads((FIXTURES / "hardware-model.example.json").read_text())
+    return profile_to_hardware_model(load_hardware_profile(), "nexus-demo-esp32")
+
+
+def sample(sequence=10):
+    value = contract_sample(sequence)
+    value["hardware_model_id"] = load_hardware_profile()["hardware_model_id"]
+    return value
 
 
 def registered_database(path, source="device"):
@@ -291,6 +302,30 @@ def test_fresh_read_gate_accepts_a_discovered_profile_verified_device(
         })
         assert response.status_code == 200, response.text
         assert response.json()["result"]["observations"][0]["source"] == "device"
+
+
+def test_discovery_refreshes_an_existing_device_from_the_verified_profile(tmp_path):
+    from nexus_backend.serial_reads import SerialReadChannel
+
+    profile = load_hardware_profile()
+    current_model = model()
+    stale_model = deepcopy(current_model)
+    stale_model["components"][0]["model"] = "Legacy controller label"
+    store = SQLiteStore(tmp_path / "nexus.sqlite3")
+    store.register_device(stale_model, "Legacy rig", "device")
+    history = SerialHistory(store, hardware_profile=profile)
+
+    reads = SerialReadChannel()
+    reads.connect()
+    record = reads.observe(sample())
+    assert record is not None
+    history.ingest(record)
+
+    assert history.status == "receiving"
+    assert history.device_id == current_model["device_id"]
+    assert store.get_device(current_model["device_id"])["display_name"] == profile["name"]
+    assert store.get_hardware_model(current_model["device_id"]) == current_model
+    store.close()
 
 
 def test_history_failure_is_not_a_successful_tool_measurement(tmp_path):

@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from starlette.websockets import WebSocketDisconnect
 
 from nexus_backend.app import create_app
+from nexus_backend.hardware_profile import load_hardware_profile
 from nexus_backend.serial_bridge import SerialBridge
 
 FIXTURES = Path(__file__).resolve().parents[2] / "nexus-contracts/v1/fixtures"
@@ -16,6 +17,13 @@ FIXTURES = Path(__file__).resolve().parents[2] / "nexus-contracts/v1/fixtures"
 
 def fixture(name):
     return json.loads((FIXTURES / f"{name}.example.json").read_text())
+
+
+def active_device_telemetry():
+    """Keep contract fixtures generic while exercising the active physical profile."""
+    sample = fixture("telemetry")
+    sample["hardware_model_id"] = load_hardware_profile()["hardware_model_id"]
+    return sample
 
 
 class TrackingBridge(SerialBridge):
@@ -60,7 +68,7 @@ def test_single_app_serves_both_api_families_and_retains_device_data(tmp_path):
         assert client.post(path + "/telemetry", json=sample).status_code == 201
         assert client.post(path + "/sessions", json={"symptom": "Check current"}).status_code == 201
         assert client.get("/api/v1/telemetry").status_code == 404
-        bridge.ingest_line(json.dumps(fixture("telemetry")))
+        bridge.ingest_line(json.dumps(active_device_telemetry()))
         assert client.get("/api/v1/live").json()["telemetry"]["quality"]["source"] == "device"
         assert client.get(path + "/telemetry").json()["quality"]["source"] == "simulator"
         assert client.get("/monitor").status_code == 200
@@ -102,7 +110,7 @@ def test_apps_do_not_share_bridge_snapshots_or_websocket_hubs(tmp_path):
     assert one.state.live_hub is not two.state.live_hub
     assert one.state.serial_bridge is not two.state.serial_bridge
     with TestClient(one) as first, TestClient(two) as second:
-        one.state.serial_bridge.ingest_line(json.dumps(fixture("telemetry")))
+        one.state.serial_bridge.ingest_line(json.dumps(active_device_telemetry()))
         assert first.get("/api/v1/telemetry").status_code == 200
         assert second.get("/api/v1/telemetry").status_code == 404
         assert second.get("/api/v1/logs").json() == []
@@ -130,7 +138,7 @@ def test_live_websocket_streams_then_releases_idle_subscriber_on_disconnect(tmp_
     with TestClient(app) as client:
         with client.websocket_connect("/api/v1/live/ws") as socket:
             assert socket.receive_json()["data"]["telemetry"] is None
-            sample = fixture("telemetry")
+            sample = active_device_telemetry()
             bridge.ingest_line(json.dumps(sample))
             assert socket.receive_json()["data"]["telemetry"] == sample
             assert len(app.state.live_hub._subscribers) == 1
@@ -157,9 +165,9 @@ def test_live_log_bounds_and_diagnostic_filters_preserved(tmp_path):
     bridge = TrackingBridge()
     app = create_app(tmp_path / "live.sqlite3", bridge=bridge)
     with TestClient(app) as client:
-        bridge.ingest_line("INA226_I2C_NO_ACK")
+        bridge.ingest_line("INA219_I2C_NO_ACK")
         assert client.get("/api/v1/diagnostics").json()[0]["active"] is True
-        bridge.ingest_line(json.dumps(fixture("telemetry")))
+        bridge.ingest_line(json.dumps(active_device_telemetry()))
         assert client.get("/api/v1/diagnostics").json() == []
         assert client.get("/api/v1/diagnostics?active_only=false").json()[0]["active"] is False
         assert len(client.get("/api/v1/logs?limit=1").json()) == 1

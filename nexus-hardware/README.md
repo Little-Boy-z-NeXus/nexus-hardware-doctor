@@ -5,12 +5,13 @@ image is useful to a person, but it is not authoritative because software and ag
 reliably validate its pins, limits or identities. The canonical MVP definition is JSON:
 
 - schema: [`v1/nexus-hardware-profile.schema.json`](v1/nexus-hardware-profile.schema.json)
-- active profile: [`profiles/nexus-profile-goouuu-esp32-s3-ina226-l298n-jgb37-v1.json`](profiles/nexus-profile-goouuu-esp32-s3-ina226-l298n-jgb37-v1.json)
-- dual-motor design draft: [`designs/nexus-dual-motor-pid-robot-v1.yaml`](designs/nexus-dual-motor-pid-robot-v1.yaml)
+- active profile: [`profiles/nexus-profile-esp32-s3-devkitc-ina219-dual-l298n-3wheel-ps2-v2.json`](profiles/nexus-profile-esp32-s3-devkitc-ina219-dual-l298n-3wheel-ps2-v2.json)
+- previous GOOUUU/INA226 profile: [`profiles/nexus-profile-goouuu-esp32-s3-ina226-dual-l298n-3wheel-ps2-v1.json`](profiles/nexus-profile-goouuu-esp32-s3-ina226-dual-l298n-3wheel-ps2-v1.json)
+- legacy one-motor profile: [`profiles/nexus-profile-goouuu-esp32-s3-ina226-l298n-jgb37-v1.json`](profiles/nexus-profile-goouuu-esp32-s3-ina226-l298n-jgb37-v1.json)
 
-The dual-motor YAML is a planning manifest, not an executable v1 profile. It records the proposed
-second motor, encoder, BME680, BNO055, wiring colors and PID acceptance before the JSON schema,
-firmware and telemetry contract are migrated. The certified single-motor JSON remains active.
+The active executable profile declares the two L298N modules, three JGB37-520 Hall-encoder
+motors, DFRobot SEN0291/INA219, PS2 receiver, exact GPIO map, power topology and local failsafe limits. BME680
+and BNO055 are intentionally out of this build. The older YAML remains historical planning only.
 
 JSON is used instead of YAML for v1 so the same document has strict JSON Schema validation,
 unambiguous scalar types, deterministic generation and no additional firmware build dependency.
@@ -39,7 +40,7 @@ The selected profile declares:
 - the physical connection graph, including motor wire colors;
 - telemetry field-to-component/unit mappings;
 - voltage, current, PWM and test-duration safety limits;
-- firmware GPIOs, INA226 calibration and chip identity registers.
+- firmware GPIOs, INA219 calibration/configuration registers and sensor address.
 
 PlatformIO compiles these values into
 `firmware/include/nexus_hardware_profile.generated.h` before every build. The backend loads the

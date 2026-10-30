@@ -151,6 +151,50 @@ class SQLiteStore:
             )
             return self._device_dict(self._device_row(device_id))
 
+    def register_profile_verified_device(
+        self, hardware_model: dict, display_name: str
+    ) -> dict:
+        """Register or refresh a physical device after firmware-profile verification.
+
+        Serial discovery may see a device that was registered by an older revision of
+        the same Hardware-as-Code model. Refreshing that stored graph is safe only for
+        an existing physical device with the same hardware_model_id; simulator records
+        and model identity changes remain conflicts.
+        """
+        model_json = _json(hardware_model)
+        device_id = hardware_model["device_id"]
+        hardware_model_id = hardware_model["hardware_model_id"]
+        with self._lock, self._connection:
+            self._connection.execute("BEGIN IMMEDIATE")
+            existing = self._connection.execute(
+                "SELECT * FROM devices WHERE device_id = ?", (device_id,)
+            ).fetchone()
+            if existing is not None:
+                if (
+                    existing["source"] != "device"
+                    or existing["hardware_model_id"] != hardware_model_id
+                ):
+                    raise StoreConflict(
+                        "Profile-verified device conflicts with the registered identity"
+                    )
+                self._connection.execute(
+                    """UPDATE devices
+                       SET display_name = ?, hardware_model_json = ?
+                       WHERE device_id = ?""",
+                    (display_name, model_json, device_id),
+                )
+                return self._device_dict(self._device_row(device_id))
+            self._connection.execute(
+                """INSERT INTO devices
+                   (device_id, hardware_model_id, display_name, source,
+                    registered_at, hardware_model_json) VALUES (?, ?, ?, ?, ?, ?)""",
+                (
+                    device_id, hardware_model_id, display_name,
+                    "device", _timestamp(), model_json,
+                ),
+            )
+            return self._device_dict(self._device_row(device_id))
+
     def get_device(self, device_id: str) -> dict:
         with self._lock:
             return self._device_dict(self._device_row(device_id))

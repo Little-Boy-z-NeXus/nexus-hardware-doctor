@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>NeXus — Bộ sơ đồ đấu dây hoàn chỉnh v6</title>
+  <style>
+    :root{--ink:#102334;--muted:#64788a;--line:#d8e2ea;--bg:#eef3f7;--card:#fff;--red:#df2b2f;--black:#121923;--orange:#df6b00;--purple:#8147e8;--blue:#216ce7;--cyan:#00a3b8;--green:#11965b;--yellow:#e4ad00;--soft-red:#fff2f2;--soft-blue:#eff6ff;--soft-green:#effcf6;--soft-purple:#f6f1ff;--soft-orange:#fff6ec}
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI",Arial,sans-serif}
+    .sheet{display:none;width:1400px;min-height:900px;margin:0;background:var(--card);padding:28px 34px 30px;overflow:hidden}.sheet.active{display:block}
+    h1{margin:0;font-size:26px;line-height:1.15}h2{font-size:17px;margin:0}.subtitle{margin-top:7px;color:var(--muted);font-size:13px}.eyebrow{color:#087d70;font-size:12px;font-weight:800;letter-spacing:.12em;margin-bottom:8px}
+    .rule{height:1px;background:var(--line);margin:18px 0}.section{margin-top:17px}.section-title{display:flex;align-items:center;gap:10px;margin-bottom:10px;font-size:15px;font-weight:800}.num{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:#238bea;color:#fff;font-size:13px}
+    .flow{display:flex;align-items:center;gap:9px}.node{border:2px solid var(--line);border-radius:12px;padding:12px 13px;background:#fff;min-height:82px;display:flex;flex-direction:column;justify-content:center}.node b{font-size:14px}.node small{font-size:11px;color:var(--muted);margin-top:6px;line-height:1.35}.node.power{border-color:#f08b8e;background:var(--soft-red)}.node.control{border-color:#eea15e;background:var(--soft-orange)}.node.logic{border-color:#b996f5;background:var(--soft-purple)}.node.signal{border-color:#72b2ed;background:var(--soft-blue)}.node.ground{border-color:#6b7783;background:#f5f7f9}
+    .arrow{display:flex;align-items:center;min-width:45px;gap:0}.arrow:before{content:"";height:5px;flex:1;border-radius:3px;background:currentColor}.arrow:after{content:"›";font-size:25px;font-weight:800;margin-left:-2px}.arrow.red{color:var(--red)}.arrow.black{color:var(--black)}.arrow.orange{color:var(--orange)}.arrow.purple{color:var(--purple)}.arrow.blue{color:var(--blue)}
+    .lanes{display:grid;gap:8px}.lane{display:grid;grid-template-columns:245px 1fr 270px;align-items:center;gap:14px;min-height:42px;border-bottom:1px solid #edf1f4;padding:5px 0}.lane:last-child{border-bottom:0}.endpoint{font-size:13px;font-weight:700}.endpoint.right{text-align:left}.wire{height:5px;border-radius:4px;position:relative}.wire:after{content:"›";position:absolute;right:-2px;top:-13px;font-size:23px;font-weight:900;color:inherit}.wire.red{background:var(--red);color:var(--red)}.wire.black{background:var(--black);color:var(--black)}.wire.orange{background:var(--orange);color:var(--orange)}.wire.purple{background:var(--purple);color:var(--purple)}.wire.blue{background:var(--blue);color:var(--blue)}.wire.cyan{background:var(--cyan);color:var(--cyan)}.wire.green{background:var(--green);color:var(--green)}.wire.yellow{background:var(--yellow);color:var(--yellow)}.wire.gray{background:#7c8792;color:#7c8792}.wire.white{background:#fff;color:#667;border:1px solid #8492a0;height:6px}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}.grid3 .panel,.grid3 .motor{min-width:0}.grid3 .lane{grid-template-columns:132px minmax(40px,1fr) 130px;gap:8px}.grid3 .endpoint{font-size:11px;overflow-wrap:anywhere}.panel{border:1px solid var(--line);border-radius:14px;padding:14px;background:#fbfdff}.panel.power{border-color:#f2b0b2;background:#fffafa}.panel.control{border-color:#f0be8e;background:#fffaf5}.panel.logic{border-color:#c9b2f7;background:#fcfaff}.panel.signal{border-color:#abd0f1;background:#f8fbff}.panel h3{font-size:14px;margin:0 0 10px}.panel p{font-size:12px;line-height:1.45;margin:6px 0}.ports{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-top:10px}.port{border:1px solid var(--line);background:#fff;border-radius:8px;padding:7px;font-size:11px;min-height:48px}.port b{display:block;font-size:11px;margin-bottom:3px}.port.red{border-color:#f09a9d}.port.black{border-color:#7c8792}.port.purple{border-color:#b99aed}
+    .note{padding:10px 12px;border-left:5px solid #e9a500;background:#fff9df;border-radius:8px;font-size:12px;line-height:1.45}.danger{padding:10px 12px;border-left:5px solid var(--red);background:var(--soft-red);border-radius:8px;font-size:12px;line-height:1.45}.ok{padding:10px 12px;border-left:5px solid var(--green);background:var(--soft-green);border-radius:8px;font-size:12px;line-height:1.45}
+    table{width:100%;border-collapse:collapse;font-size:12px}th{text-align:left;background:#f1f5f8;padding:7px;border-bottom:1px solid var(--line)}td{padding:7px;border-bottom:1px solid #e8eef2;vertical-align:top}.mono{font-family:Consolas,monospace}.tag{display:inline-block;border-radius:12px;padding:3px 8px;font-size:10px;font-weight:800;background:#edf2f6}.tag.off{background:#f2f2f2}.tag.req{background:#e9fbf3;color:#08724c}
+    .motor{border:1px solid var(--line);border-radius:14px;padding:13px;background:#fbfdff}.motor h3{font-size:14px;margin:0 0 8px}.connector{display:flex;align-items:center;gap:6px;margin:10px 0}.pin-dot{width:28px;height:28px;border-radius:7px;border:2px solid #fff;box-shadow:0 0 0 1px #ccd7df}.dot-red{background:#df2b2f}.dot-black{background:#121923}.dot-yellow{background:#f5c400}.dot-green{background:#15964f}.dot-blue{background:#266cdf}.dot-white{background:#fff}.order{font-size:11px;color:var(--muted)}
+    .layout{position:relative;height:450px;border:1px solid var(--line);border-radius:16px;background:linear-gradient(#f8fbfd,#fff)}.wheel{position:absolute;width:150px;height:78px;border-radius:18px;background:#1f4f7a;color:#fff;display:grid;place-items:center;font-weight:800}.wheel.m1{left:80px;top:70px}.wheel.m2{right:80px;top:70px}.wheel.m3{left:50%;transform:translateX(-50%);bottom:35px}.core{position:absolute;left:50%;top:180px;transform:translateX(-50%);display:grid;grid-template-columns:repeat(3,150px);gap:10px}.core .node{min-height:70px;padding:9px;text-align:center}.route-power{position:absolute;left:180px;right:180px;top:150px;height:5px;background:var(--red);border-radius:5px}.route-signal{position:absolute;left:260px;right:260px;top:165px;height:4px;background:var(--blue);border-radius:5px}
+    .checklist{display:grid;gap:9px}.check{display:grid;grid-template-columns:125px 1fr 270px;gap:12px;align-items:start;border-bottom:1px solid #e8eef2;padding:8px 0}.check b{font-size:13px}.check div{font-size:12px;line-height:1.45}.pass{color:#08724c;font-weight:700}.footer{margin-top:12px;color:var(--muted);font-size:11px;display:flex;justify-content:space-between}
+  </style>
+</head>
+<body>
+
+<section class="sheet active" data-sheet="1">
+  <div class="eyebrow">SƠ ĐỒ 1/6 · NGUỒN VÀ AN TOÀN</div>
+  <h1>LiPo → cầu chì → relay → INA226 → hai L298N</h1>
+  <div class="subtitle">Cấu hình cuối: 3 motor, 2 L298N, INA226 cũ, PS2; không dùng BNO055, BME680 hoặc còi.</div>
+  <div class="section">
+    <div class="section-title"><span class="num">1</span> Đường dương công suất — dây đỏ 14–16 AWG</div>
+    <div class="flow">
+      <div class="node power" style="width:135px"><b>LiPo 3S</b><small>XT60+ · 11.1–12.6 V</small></div><div class="arrow red"></div>
+      <div class="node power" style="width:115px"><b>Cầu chì 4 A</b><small>test kê bánh</small></div><div class="arrow red"></div>
+      <div class="node power" style="width:145px"><b>PCT +12V‑A</b><small>P1 vào · P2 COM · P3 nối B</small></div><div class="arrow red"></div>
+      <div class="node power" style="width:140px"><b>Relay</b><small>COM → NO · NC trống</small></div><div class="arrow red"></div>
+      <div class="node power" style="width:160px"><b>INA226 R100</b><small>VIN+ → VIN−<br>VBS nối VIN−</small></div><div class="arrow red"></div>
+      <div class="node power" style="width:145px"><b>PCT MOTOR+</b><small>P2 → VS #1<br>P3 → VS #2</small></div><div class="arrow red"></div>
+      <div class="node power" style="width:130px"><b>2 × L298N</b><small>chân +12V / VS</small></div>
+    </div>
+  </div>
+  <div class="grid2 section">
+    <div class="panel power">
+      <h3>PCT‑213 +12V‑A và +12V‑B</h3>
+      <div class="ports"><div class="port red"><b>A1</b>Từ cầu chì</div><div class="port red"><b>A2</b>Relay COM</div><div class="port red"><b>A3</b>Sang B1</div><div class="port red"><b>B1</b>Từ A3</div><div class="port red"><b>B2</b>Relay DC+</div><div class="port red"><b>B3</b>Buck IN+</div></div>
+    </div>
+    <div class="panel control">
+      <h3>Chuỗi kích relay mức LOW</h3>
+      <div class="flow"><div class="node control" style="width:120px"><b>Relay IN</b></div><div class="arrow orange"></div><div class="node control" style="width:130px"><b>SW1 A → B</b><small>một cặp thông mạch</small></div><div class="arrow orange"></div><div class="node control" style="width:145px"><b>E‑stop 11 → 12</b><small>NC · 23/24 trống</small></div><div class="arrow black"></div><div class="node ground" style="width:100px"><b>GND</b></div></div>
+      <p><b>Relay:</b> DC+ từ B2, DC− về GND; jumper chọn <b>LOW</b>. SW1 OFF hoặc nhấn E‑stop phải làm relay nhả.</p>
+    </div>
+  </div>
+  <div class="grid2 section">
+    <div class="panel">
+      <h3>PCT‑218 GND‑POWER</h3>
+      <div class="ports"><div class="port black"><b>1</b>LiPo−</div><div class="port black"><b>2</b>Relay DC−</div><div class="port black"><b>3</b>Buck IN−</div><div class="port black"><b>4</b>L298N #1 GND</div><div class="port black"><b>5</b>L298N #2 GND</div><div class="port black"><b>6</b>ESP32 GND</div><div class="port black"><b>7</b>Cầu sang GND‑SIGNAL</div><div class="port black"><b>8</b>Dự phòng</div></div>
+    </div>
+    <div class="panel logic">
+      <h3>Buck 5 V và PCT‑213 LOGIC‑5V</h3>
+      <div class="lanes"><div class="lane"><div class="endpoint">Buck USB đỏ +5 V</div><div class="wire purple"></div><div class="endpoint right">LOGIC‑5V P1</div></div><div class="lane"><div class="endpoint">LOGIC‑5V P2</div><div class="wire purple"></div><div class="endpoint right">L298N #1 chân 5V</div></div><div class="lane"><div class="endpoint">LOGIC‑5V P3</div><div class="wire purple"></div><div class="endpoint right">L298N #2 chân 5V</div></div><div class="lane"><div class="endpoint">Buck USB đen</div><div class="wire black"></div><div class="endpoint right">GND‑SIGNAL</div></div></div>
+    </div>
+  </div>
+  <div class="danger section"><b>Quan trọng:</b> tháo jumper <b>5V‑EN</b> trên cả hai L298N trước khi đưa 5 V từ buck vào chân 5V. Không đo dòng bằng cách chập que đo giữa +12 V và GND.</div>
+  <div class="footer"><span>NeXus wiring final v6</span><span>Trang 1 · nguồn/an toàn</span></div>
+</section>
+
+<section class="sheet" data-sheet="2">
+  <div class="eyebrow">SƠ ĐỒ 2/6 · ESP32, INA226 VÀ TAY CẦM PS2</div>
+  <h1>Nguồn 3.3 V, I²C và toàn bộ chân tín hiệu</h1>
+  <div class="subtitle">GOOUUU ESP32‑S3‑N16R8 · các tín hiệu đều 3.3 V · dây 22–24 AWG.</div>
+  <div class="grid2 section">
+    <div class="panel logic">
+      <h3>PCT‑218 3V3‑SIGNAL</h3>
+      <div class="ports"><div class="port purple"><b>1</b>Từ ESP32 3V3</div><div class="port purple"><b>2</b>INA226 VCC</div><div class="port purple"><b>3</b>PS2 VCC đỏ</div><div class="port purple"><b>4</b>M1 encoder xanh dương</div><div class="port purple"><b>5</b>M2 encoder xanh dương</div><div class="port purple"><b>6</b>M3 encoder xanh dương</div><div class="port purple"><b>7</b>Dự phòng</div><div class="port purple"><b>8</b>Dự phòng</div></div>
+    </div>
+    <div class="panel">
+      <h3>PCT‑218 GND‑SIGNAL</h3>
+      <div class="ports"><div class="port black"><b>1</b>Từ GND‑POWER P7</div><div class="port black"><b>2</b>INA226 GND</div><div class="port black"><b>3</b>PS2 GND đen</div><div class="port black"><b>4</b>M1 encoder đen</div><div class="port black"><b>5</b>M2 encoder đen</div><div class="port black"><b>6</b>M3 encoder đen</div><div class="port black"><b>7</b>Buck USB đen</div><div class="port black"><b>8</b>Dự phòng</div></div>
+    </div>
+  </div>
+  <div class="grid2 section">
+    <div class="panel signal">
+      <h3>INA226 R100 · địa chỉ 0x40</h3>
+      <div class="lanes"><div class="lane"><div class="endpoint">ESP GPIO1</div><div class="wire cyan"></div><div class="endpoint right">INA SDA</div></div><div class="lane"><div class="endpoint">ESP GPIO2</div><div class="wire blue"></div><div class="endpoint right">INA SCL</div></div><div class="lane"><div class="endpoint">3V3‑SIGNAL P2</div><div class="wire purple"></div><div class="endpoint right">INA VCC</div></div><div class="lane"><div class="endpoint">GND‑SIGNAL P2</div><div class="wire black"></div><div class="endpoint right">INA GND</div></div><div class="lane"><div class="endpoint">INA VBS / VBUS</div><div class="wire red"></div><div class="endpoint right">INA VIN−</div></div></div>
+      <p>Đường dòng lớn nằm riêng: relay NO → VIN+ → VIN− → PCT MOTOR+. Không đưa dòng motor qua chân VCC/GND của INA.</p>
+    </div>
+    <div class="panel signal">
+      <h3>Đầu thu tay cầm PS2 9 chân</h3>
+      <div class="lanes"><div class="lane"><div class="endpoint">PS2 CLK · xám</div><div class="wire gray"></div><div class="endpoint right">GPIO41</div></div><div class="lane"><div class="endpoint">PS2 ATTN · cam</div><div class="wire orange"></div><div class="endpoint right">GPIO40</div></div><div class="lane"><div class="endpoint">PS2 CMD · xanh lá</div><div class="wire green"></div><div class="endpoint right">GPIO39</div></div><div class="lane"><div class="endpoint">PS2 DATA · xanh dương</div><div class="wire blue"></div><div class="endpoint right">GPIO38</div></div><div class="lane"><div class="endpoint">PS2 VCC · đỏ</div><div class="wire purple"></div><div class="endpoint right">3V3‑SIGNAL P3</div></div><div class="lane"><div class="endpoint">PS2 GND · đen</div><div class="wire black"></div><div class="endpoint right">GND‑SIGNAL P3</div></div></div>
+      <p><b>ACK, NC, VIBR:</b> không nối, bọc cách điện riêng.</p>
+    </div>
+  </div>
+  <div class="grid2 section">
+    <div class="ok"><b>Chế độ chạy app:</b> ESP32 lấy nguồn và dữ liệu từ USB máy tính; nối ESP GND vào GND‑POWER P6. Buck chỉ cấp 5 V logic cho hai L298N.</div>
+    <div class="note"><b>Chế độ độc lập:</b> có thể cấp ESP32 qua USB 5 V của buck, nhưng phải rút USB máy tính. Không cấp đồng thời từ PC và buck nếu chưa xác nhận mạch chọn nguồn của board.</div>
+  </div>
+  <div class="danger section"><b>Không được:</b> cấp 5 V vào PS2, encoder hoặc chân GPIO; tất cả đều dùng 3.3 V. Nếu dùng PCT cho dây mảnh, phải bấm ferrule phù hợp và kéo thử từng dây.</div>
+  <div class="footer"><span>Source of truth: hardware profile 3wheel‑ps2‑v1</span><span>Trang 2 · ESP/INA/PS2</span></div>
+</section>
+
+<section class="sheet" data-sheet="3">
+  <div class="eyebrow">SƠ ĐỒ 3/6 · HAI DRIVER L298N</div>
+  <h1>Nguồn logic, nguồn motor, tụ lọc và GPIO điều khiển</h1>
+  <div class="subtitle">L298N #1 chạy Motor 1 + 2; L298N #2 chỉ dùng kênh A cho Motor 3.</div>
+  <div class="grid2 section">
+    <div class="panel power"><h3>Nguồn chung cho mỗi L298N</h3><table><tr><th>Chân L298N</th><th>Nối tới</th><th>Yêu cầu</th></tr><tr><td>+12V / VS</td><td>PCT MOTOR+ P2 hoặc P3</td><td>Dây đỏ 14–16 AWG</td></tr><tr><td>GND</td><td>PCT GND‑POWER P4 hoặc P5</td><td>Dây đen 14–16 AWG</td></tr><tr><td>5V logic</td><td>PCT LOGIC‑5V P2 hoặc P3</td><td>Tháo jumper 5V‑EN</td></tr><tr><td>Tụ 1000 µF / 25 V</td><td>(+) vào VS, (− sọc) vào GND</td><td>Mỗi driver một tụ</td></tr></table></div>
+    <div class="panel logic"><h3>Trạng thái jumper</h3><table><tr><th>Driver</th><th>Jumper cần tháo</th><th>Chân không dùng</th></tr><tr><td>L298N #1</td><td>5V‑EN, ENA, ENB</td><td>Không có</td></tr><tr><td>L298N #2</td><td>5V‑EN, ENA, ENB</td><td>ENB, IN3, IN4 giữ LOW; OUT3/4 trống</td></tr></table><p>Giữ LOW bằng nối GND chắc chắn (hoặc điện trở kéo xuống 10 kΩ); không để chân enable/direction của kênh B trôi nổi.</p></div>
+  </div>
+  <div class="grid3 section">
+    <div class="panel signal"><h3>L298N #1 · kênh A · Motor 1</h3><div class="lanes"><div class="lane"><div class="endpoint">GPIO12</div><div class="wire orange"></div><div class="endpoint right">ENA · PWM</div></div><div class="lane"><div class="endpoint">GPIO13</div><div class="wire orange"></div><div class="endpoint right">IN1</div></div><div class="lane"><div class="endpoint">GPIO14</div><div class="wire orange"></div><div class="endpoint right">IN2</div></div><div class="lane"><div class="endpoint">OUT1 / OUT2</div><div class="wire red"></div><div class="endpoint right">Motor 1</div></div></div></div>
+    <div class="panel signal"><h3>L298N #1 · kênh B · Motor 2</h3><div class="lanes"><div class="lane"><div class="endpoint">GPIO15</div><div class="wire orange"></div><div class="endpoint right">ENB · PWM</div></div><div class="lane"><div class="endpoint">GPIO18</div><div class="wire orange"></div><div class="endpoint right">IN3</div></div><div class="lane"><div class="endpoint">GPIO21</div><div class="wire orange"></div><div class="endpoint right">IN4</div></div><div class="lane"><div class="endpoint">OUT3 / OUT4</div><div class="wire red"></div><div class="endpoint right">Motor 2</div></div></div></div>
+    <div class="panel signal"><h3>L298N #2 · kênh A · Motor 3</h3><div class="lanes"><div class="lane"><div class="endpoint">GPIO6</div><div class="wire orange"></div><div class="endpoint right">ENA · PWM</div></div><div class="lane"><div class="endpoint">GPIO7</div><div class="wire orange"></div><div class="endpoint right">IN1</div></div><div class="lane"><div class="endpoint">GPIO8</div><div class="wire orange"></div><div class="endpoint right">IN2</div></div><div class="lane"><div class="endpoint">OUT1 / OUT2</div><div class="wire red"></div><div class="endpoint right">Motor 3</div></div></div></div>
+  </div>
+  <div class="section grid2"><div class="note"><b>GPIO là dây điều khiển:</b> dùng jumper 22–24 AWG. Tuyệt đối không cho nguồn 12 V đi qua breadboard hoặc dây Dupont.</div><div class="danger"><b>Lần thử đầu:</b> chưa nối motor; bật nguồn và kiểm tra tại mỗi driver: VS ≈ điện áp pin sau relay, 5V logic ≈ 5.0 V, GND chung.</div></div>
+  <div class="footer"><span>GPIO khớp firmware target nexus‑goouuu‑esp32‑s3‑3wheel‑ps2</span><span>Trang 3 · L298N</span></div>
+</section>
+
+<section class="sheet" data-sheet="4">
+  <div class="eyebrow">SƠ ĐỒ 4/6 · BA MOTOR VÀ ENCODER</div>
+  <h1>JGB37‑520: dây motor, Hall A/B và tụ chống nhiễu</h1>
+  <div class="subtitle">Thứ tự giắc nhìn từ phía dây: ĐỎ · ĐEN · VÀNG · XANH LÁ · XANH DƯƠNG · TRẮNG.</div>
+  <div class="connector"><span class="pin-dot dot-red"></span><span class="pin-dot dot-black"></span><span class="pin-dot dot-yellow"></span><span class="pin-dot dot-green"></span><span class="pin-dot dot-blue"></span><span class="pin-dot dot-white"></span><span class="order">M+ · encoder GND · A · B · encoder VCC 3.3V · M−</span></div>
+  <div class="grid3 section">
+    <div class="motor"><h3>Motor 1 · bánh trái</h3><div class="lanes"><div class="lane"><div class="endpoint">L298N #1 OUT1</div><div class="wire red"></div><div class="endpoint right">Đỏ · M+</div></div><div class="lane"><div class="endpoint">L298N #1 OUT2</div><div class="wire white"></div><div class="endpoint right">Trắng · M−</div></div><div class="lane"><div class="endpoint">3V3‑SIGNAL P4</div><div class="wire blue"></div><div class="endpoint right">Xanh dương · VCC</div></div><div class="lane"><div class="endpoint">GND‑SIGNAL P4</div><div class="wire black"></div><div class="endpoint right">Đen · GND</div></div><div class="lane"><div class="endpoint">GPIO16</div><div class="wire yellow"></div><div class="endpoint right">Vàng · A</div></div><div class="lane"><div class="endpoint">GPIO17</div><div class="wire green"></div><div class="endpoint right">Xanh lá · B</div></div></div><div class="note">Tụ gốm 100 nF đặt trực tiếp giữa dây đỏ và trắng tại motor.</div></div>
+    <div class="motor"><h3>Motor 2 · bánh phải</h3><div class="lanes"><div class="lane"><div class="endpoint">L298N #1 OUT3</div><div class="wire red"></div><div class="endpoint right">Đỏ · M+</div></div><div class="lane"><div class="endpoint">L298N #1 OUT4</div><div class="wire white"></div><div class="endpoint right">Trắng · M−</div></div><div class="lane"><div class="endpoint">3V3‑SIGNAL P5</div><div class="wire blue"></div><div class="endpoint right">Xanh dương · VCC</div></div><div class="lane"><div class="endpoint">GND‑SIGNAL P5</div><div class="wire black"></div><div class="endpoint right">Đen · GND</div></div><div class="lane"><div class="endpoint">GPIO4</div><div class="wire yellow"></div><div class="endpoint right">Vàng · A</div></div><div class="lane"><div class="endpoint">GPIO5</div><div class="wire green"></div><div class="endpoint right">Xanh lá · B</div></div></div><div class="note">Tụ gốm 100 nF đặt trực tiếp giữa dây đỏ và trắng tại motor.</div></div>
+    <div class="motor"><h3>Motor 3 · bánh sau</h3><div class="lanes"><div class="lane"><div class="endpoint">L298N #2 OUT1</div><div class="wire red"></div><div class="endpoint right">Đỏ · M+</div></div><div class="lane"><div class="endpoint">L298N #2 OUT2</div><div class="wire white"></div><div class="endpoint right">Trắng · M−</div></div><div class="lane"><div class="endpoint">3V3‑SIGNAL P6</div><div class="wire blue"></div><div class="endpoint right">Xanh dương · VCC</div></div><div class="lane"><div class="endpoint">GND‑SIGNAL P6</div><div class="wire black"></div><div class="endpoint right">Đen · GND</div></div><div class="lane"><div class="endpoint">GPIO9</div><div class="wire yellow"></div><div class="endpoint right">Vàng · A</div></div><div class="lane"><div class="endpoint">GPIO10</div><div class="wire green"></div><div class="endpoint right">Xanh lá · B</div></div></div><div class="note">Tụ gốm 100 nF đặt trực tiếp giữa dây đỏ và trắng tại motor.</div></div>
+  </div>
+  <div class="grid2 section"><div class="ok"><b>Dây motor:</b> dùng 14–16 AWG cho phần nối thêm, xoắn cặp M+/M− và tách khỏi dây encoder tối thiểu khoảng 3 cm.</div><div class="danger"><b>Không đổi A/B khi sửa chiều quay.</b> Nếu bánh quay ngược, trước hết ngắt nguồn rồi đổi cặp đỏ/trắng của đúng motor hoặc chỉnh cấu hình chiều trong firmware.</div></div>
+  <div class="footer"><span>Encoder dùng 3.3 V; không cấp từ 5 V L298N</span><span>Trang 4 · motor/encoder</span></div>
+</section>
+
+<section class="sheet" data-sheet="5">
+  <div class="eyebrow">SƠ ĐỒ 5/6 · BỐ TRÍ VẬT LÝ TRÊN XE</div>
+  <h1>Ba bánh hình tam giác và cách tách bó dây</h1>
+  <div class="subtitle">M1 trái trước · M2 phải trước · M3 sau; các module ở giữa để dây ngắn và dễ kiểm tra.</div>
+  <div class="layout section">
+    <div class="wheel m1">M1 · TRÁI<br><small>L298N #1A</small></div><div class="wheel m2">M2 · PHẢI<br><small>L298N #1B</small></div><div class="wheel m3">M3 · SAU<br><small>L298N #2A</small></div>
+    <div class="route-power"></div><div class="route-signal"></div>
+    <div class="core"><div class="node power"><b>Pin + cầu chì</b><small>đế cố định, dễ rút XT60</small></div><div class="node power"><b>Relay → INA → PCT</b><small>giữa xe, dây nguồn ngắn</small></div><div class="node logic"><b>Buck + ESP32 + PS2</b><small>xa motor và tản nhiệt</small></div><div class="node signal"><b>L298N #1</b><small>gần M1/M2</small></div><div class="node signal"><b>3V3/GND SIGNAL</b><small>hub cho encoder/PS2/INA</small></div><div class="node signal"><b>L298N #2</b><small>gần M3</small></div></div>
+  </div>
+  <div class="grid3 section"><div class="panel power"><h3>Bó dây công suất</h3><p>Đỏ/đen 14–16 AWG đi sát mép khung: pin, cầu chì, relay, INA, VS/GND driver và motor. Dán nhãn hai đầu.</p></div><div class="panel signal"><h3>Bó dây tín hiệu</h3><p>GPIO, SDA/SCL, PS2 và encoder đi ở giữa khung hoặc phía đối diện bó motor. Không bó chung với OUT1–OUT4.</p></div><div class="panel logic"><h3>Module nhạy nhiễu</h3><p>ESP32, PS2 receiver và INA226 cách motor/L298N; dây SDA/SCL ngắn. Giữ anten/receiver PS2 thoáng.</p></div></div>
+  <div class="note section"><b>Đánh nhãn bắt buộc:</b> PWR‑12, MOTOR+, GND‑PWR, 5V‑LOGIC, 3V3‑SIGNAL, GND‑SIGNAL, M1/M2/M3, ENA/IN1/IN2, A/B encoder. Mỗi dây phải đọc được ở cả hai đầu.</div>
+  <div class="footer"><span>Không có BNO055, BME680, buzzer trong cấu hình v6</span><span>Trang 5 · bố trí xe</span></div>
+</section>
+
+<section class="sheet" data-sheet="6">
+  <div class="eyebrow">SƠ ĐỒ 6/6 · TRÌNH TỰ CẤP NGUỒN VÀ KIỂM TRA</div>
+  <h1>Hoàn thiện từng lớp, không cắm toàn bộ rồi mới tìm lỗi</h1>
+  <div class="subtitle">Ba bánh luôn được kê khỏi mặt đất trong toàn bộ lần thử đầu.</div>
+  <div class="checklist section">
+    <div class="check"><b>0 · Không nguồn</b><div>Rút XT60, tháo cầu chì, rút USB. Kiểm tra tụ đúng cực; jumper 5V‑EN/ENA/ENB theo trang 3; continuity không chập +12 V với GND.</div><div class="pass">PASS: không có chập; dây kéo nhẹ không tuột.</div></div>
+    <div class="check"><b>1 · Relay + buck</b><div>Chưa nối L298N/motor. Lắp cầu chì 4 A, cắm pin; SW1 OFF, E‑stop nhấn. Đo buck OUT ≈ 5.0 V. Nhả E‑stop, bật SW1 rồi nghe relay đóng.</div><div class="pass">PASS: MOTOR+ = 0 V khi OFF và ≈ pin khi ON.</div></div>
+    <div class="check"><b>2 · ESP + cảm biến</b><div>Tắt 12 V. Cắm USB PC vào ESP32; nối INA và PS2. Mở monitor 115200. Tay cầm ở analog mode; joystick về tâm.</div><div class="pass">PASS: INA226_READY, PS2_INTERFACE_READY, SAFE_BOOT.</div></div>
+    <div class="check"><b>3 · Hai L298N</b><div>Motor vẫn chưa nối. Bật 12 V. Đo VS mỗi driver ≈ VIN−/MOTOR+; chân 5V logic ≈ 5.0 V; GND là chung.</div><div class="pass">PASS: không nóng, không mùi, không relay rung.</div></div>
+    <div class="check"><b>4 · Từng motor</b><div>Nối M1 và encoder, test ngắn; sau đó M2; cuối cùng M3. Mỗi lần chỉ thêm một motor, tụ 100 nF đã gắn, bánh kê cao.</div><div class="pass">PASS: A và B đều có xung; RPM xuất hiện; không ENCODER_ESTOP.</div></div>
+    <div class="check"><b>5 · Chạy đủ 3 bánh</b><div>Tay cầm analog, cần về tâm, nhấn START để arm. Tăng ga rất chậm. Nhấn SELECT hoặc E‑stop để xác nhận dừng.</div><div class="pass">PASS: PS2_DRIVE_ARMED; 3 RPM; E‑stop cắt motor tức thì.</div></div>
+    <div class="check"><b>6 · App realtime</b><div>Giữ USB PC, chạy backend/frontend batch. Kiểm tra voltage, current, rpm_left/right/rear, rpm_delta, trạng thái PS2 và log lỗi.</div><div class="pass">PASS: UI cập nhật realtime và lưu log phần cứng.</div></div>
+  </div>
+  <div class="grid2 section"><div class="danger"><b>Dừng ngay nếu:</b> dây/tụ nóng, có mùi, tia lửa, relay rung liên tục, 5 V vượt 5.25 V, INA báo sai ID hoặc dòng tăng bất thường.</div><div class="note"><b>Giới hạn firmware hiện tại:</b> quá dòng 1500 mA sẽ chốt dừng. Nếu chạy bình thường cũng vượt mức này, phải đo dòng thực và cập nhật giới hạn có kiểm chứng; không vô hiệu hóa bảo vệ tùy tiện.</div></div>
+  <div class="ok section"><b>Log mong đợi:</b> <span class="mono">INA226_READY → PS2_INTERFACE_READY → SAFE_BOOT → MOTOR_POWER_OK → PS2_DRIVE_ARMED</span>. Không cần log BNO055/BME680 trong cấu hình này.</div>
+  <div class="footer"><span>Luôn SW1 OFF trước khi nhả E‑stop</span><span>Trang 6 · kiểm tra cuối</span></div>
+</section>
+
+<script>
+  const requested = new URLSearchParams(location.search).get('sheet') || '1';
+  document.querySelectorAll('.sheet').forEach((sheet) => sheet.classList.toggle('active', sheet.dataset.sheet === requested));
+</script>
+</body>
+</html>

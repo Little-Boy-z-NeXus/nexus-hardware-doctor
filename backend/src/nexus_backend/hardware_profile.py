@@ -16,7 +16,7 @@ from typing import Any
 from jsonschema import Draft202012Validator, FormatChecker
 
 DEFAULT_PROFILE_FILENAME = (
-    "nexus-profile-goouuu-esp32-s3-ina226-l298n-jgb37-v1.json"
+    "nexus-profile-esp32-s3-devkitc-ina219-dual-l298n-3wheel-ps2-v2.json"
 )
 REPOSITORY_ROOT = Path(__file__).resolve().parents[3]
 

@@ -31,10 +31,12 @@ def test_live_snapshot_exposes_fixed_mvp_hardware() -> None:
 
     assert response.status_code == 200
     payload = response.json()
-    assert payload["hardware"]["hardware_model_id"] == "nexus-s3-ina226-l298n-motor-rig-v1"
-    assert payload["hardware"]["controller"] == "GOOUUU Tech ESP32-S3-N16R8"
-    assert payload["hardware"]["sensor"] == "INA226 with R100 0.1 ohm shunt"
-    assert payload["hardware"]["driver"] == "L298N dual H-bridge module"
+    assert payload["hardware"]["hardware_model_id"] == (
+        "nexus-s3-devkitc-ina219-dual-l298n-3wheel-ps2-v2"
+    )
+    assert payload["hardware"]["controller"] == "ESP32-S3 DevKitC-compatible N16R8 44-pin"
+    assert payload["hardware"]["sensor"] == "DFRobot Gravity INA219 SEN0291 8A"
+    assert payload["hardware"]["driver"] == "L298N dual H-bridge module 1"
 
 
 def test_active_hardware_profile_is_available_to_ui_and_agents() -> None:
@@ -43,7 +45,7 @@ def test_active_hardware_profile_is_available_to_ui_and_agents() -> None:
     assert response.status_code == 200
     profile = response.json()
     assert profile["profile_id"] == (
-        "nexus-profile-goouuu-esp32-s3-ina226-l298n-jgb37-v1"
+        "nexus-profile-esp32-s3-devkitc-ina219-dual-l298n-3wheel-ps2-v2"
     )
     assert profile["controller"]["family"] == "esp32"
     assert profile["firmware"]["pins"]["i2c_sda"] == 1

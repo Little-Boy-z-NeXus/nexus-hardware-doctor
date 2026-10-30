@@ -13,6 +13,7 @@ import {
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { useHardwareMonitor, type LiveLog } from "../realtime/HardwareMonitorContext";
+import { useI18n, type Language } from "../i18n/I18nContext";
 
 interface TelemetryLogPayload {
   sequence?: number;
@@ -27,10 +28,14 @@ interface TelemetryLogPayload {
     motor_rpm?: number | null;
     rpm_left?: number | null;
     rpm_right?: number | null;
+    rpm_rear?: number | null;
     rpm_delta?: number | null;
     pwm_left_percent?: number | null;
     pwm_right_percent?: number | null;
+    pwm_rear_percent?: number | null;
     pid_state?: string | null;
+    ps2_connected?: boolean;
+    ps2_failsafe_active?: boolean;
   };
 }
 
@@ -47,9 +52,9 @@ interface HardwareLiveLogProps {
   mode: "single" | "dual";
 }
 
-const timeLabel = (value: string | null) =>
+const timeLabel = (value: string | null, locale: string) =>
   value
-    ? new Intl.DateTimeFormat("vi-VN", {
+    ? new Intl.DateTimeFormat(locale, {
         hour: "2-digit",
         minute: "2-digit",
         second: "2-digit",
@@ -59,7 +64,8 @@ const timeLabel = (value: string | null) =>
 const valueOrDash = (value: number | null | undefined, digits = 2) =>
   typeof value === "number" && Number.isFinite(value) ? value.toFixed(digits) : "--";
 
-function logPresentation(item: LiveLog): LogPresentation {
+function logPresentation(item: LiveLog, language: Language): LogPresentation {
+  const text = (en: string, vi: string) => language === "vi" ? vi : en;
   const message = item.message.trim();
   if (message.startsWith("{")) {
     try {
@@ -67,7 +73,7 @@ function logPresentation(item: LiveLog): LogPresentation {
       if (payload.measurements && typeof payload.measurements === "object") {
         return {
           title: `Telemetry${payload.sequence == null ? "" : ` #${payload.sequence}`}`,
-          summary: payload.device_id ? `Thiết bị ${payload.device_id}` : "Gói đo mới từ thiết bị",
+          summary: payload.device_id ? text(`Device ${payload.device_id}`, `Thiết bị ${payload.device_id}`) : text("New measurement packet from device", "Gói đo mới từ thiết bị"),
           raw: JSON.stringify(payload, null, 2),
           telemetry: payload,
         };
@@ -80,8 +86,8 @@ function logPresentation(item: LiveLog): LogPresentation {
   if (message.includes("[HARDWARE_PROFILE]")) {
     const profileId = message.match(/profile_id=([^\s]+)/)?.[1];
     return {
-      title: "Cấu hình phần cứng đã xác nhận",
-      summary: profileId ? `Profile ${profileId}` : "Firmware đã gửi hardware fingerprint",
+      title: text("Hardware configuration verified", "Cấu hình phần cứng đã xác nhận"),
+      summary: profileId ? `Profile ${profileId}` : text("Firmware sent its hardware fingerprint", "Firmware đã gửi hardware fingerprint"),
       raw: message,
       telemetry: null,
     };
@@ -89,8 +95,8 @@ function logPresentation(item: LiveLog): LogPresentation {
 
   if (message.includes("[SIGNAL_MONITOR_READY]")) {
     return {
-      title: "Bộ giám sát dây tín hiệu đã sẵn sàng",
-      summary: "SDA/SCL được kiểm tra ở từng mẫu; encoder A/B được kiểm tra khi motor chạy.",
+      title: text("Signal wire monitor is ready", "Bộ giám sát dây tín hiệu đã sẵn sàng"),
+      summary: text("SDA/SCL are checked on every sample; encoder A/B are checked while the motor runs.", "SDA/SCL được kiểm tra ở từng mẫu; encoder A/B được kiểm tra khi motor chạy."),
       raw: message,
       telemetry: null,
     };
@@ -98,10 +104,10 @@ function logPresentation(item: LiveLog): LogPresentation {
 
   return {
     title: {
-      error: "Lỗi phần cứng",
-      warning: "Cảnh báo cần kiểm tra",
+      error: text("Hardware fault", "Lỗi phần cứng"),
+      warning: text("Warning to inspect", "Cảnh báo cần kiểm tra"),
       telemetry: "Telemetry",
-      info: "Thông tin hệ thống",
+      info: text("System information", "Thông tin hệ thống"),
     }[item.level],
     summary: message,
     raw: message,
@@ -122,10 +128,13 @@ function downloadLogFile(logs: LiveLog[], suffix: string) {
 }
 
 export function HardwareLiveLog({
-  title = "ESP32 Live Log",
-  ariaLabel = "Log realtime từ ESP32",
+  title,
+  ariaLabel,
   mode,
 }: HardwareLiveLogProps) {
+  const { language, locale, text } = useI18n();
+  const resolvedTitle = title ?? "ESP32 Live Log";
+  const resolvedAriaLabel = ariaLabel ?? text("Real-time ESP32 log", "Log realtime từ ESP32");
   const { snapshot } = useHardwareMonitor();
   const logs = useMemo(() => snapshot?.logs ?? [], [snapshot?.logs]);
   const [pausedLogs, setPausedLogs] = useState<LiveLog[] | null>(null);
@@ -148,7 +157,7 @@ export function HardwareLiveLog({
     return afterClear && levelMatches && queryMatches;
   });
   const latestVisibleLog = visibleLogs.at(-1);
-  const savedLogName = snapshot?.connection.log_file?.split(/[\\/]/).pop() ?? "đang chờ log";
+  const savedLogName = snapshot?.connection.log_file?.split(/[\\/]/).pop() ?? text("waiting for log", "đang chờ log");
 
   useEffect(() => {
     if (!isRecording || !recordingStartedAt) return;
@@ -211,14 +220,14 @@ export function HardwareLiveLog({
         <div className="terminal-card__title">
           <span className="terminal-card__icon"><TerminalSquare size={18} /></span>
           <span>
-            <strong>{title}</strong>
+            <strong>{resolvedTitle}</strong>
             <small className={pausedLogs ? "is-paused" : followLatest ? "is-following" : "is-browsing"}>
               <i aria-hidden="true" />
               {pausedLogs
-                ? "Đã tạm dừng"
+                ? text("Paused", "Đã tạm dừng")
                 : followLatest
-                  ? "Đang theo dõi log mới nhất"
-                  : "Bạn đang xem log cũ"}
+                  ? text("Following the latest log", "Đang theo dõi log mới nhất")
+                  : text("Viewing older logs", "Bạn đang xem log cũ")}
             </small>
           </span>
         </div>
@@ -230,58 +239,58 @@ export function HardwareLiveLog({
             aria-pressed={isRecording}
           >
             {isRecording ? <Square size={13} /> : <Circle size={13} />}
-            {isRecording ? "Dừng ghi" : "Bắt đầu ghi"}
+            {isRecording ? text("Stop recording", "Dừng ghi") : text("Start recording", "Bắt đầu ghi")}
           </button>
           <button type="button" onClick={togglePause}>
             {pausedLogs ? <Play size={14} /> : <Pause size={14} />}
-            {pausedLogs ? "Tiếp tục" : "Tạm dừng"}
+            {pausedLogs ? text("Resume", "Tiếp tục") : text("Pause", "Tạm dừng")}
           </button>
           <button type="button" onClick={() => {
             userLogScrollRef.current = false;
             setHiddenBefore(new Date().toISOString());
             setFollowLatest(true);
-          }}><Trash2 size={14} />Ẩn log cũ</button>
+          }}><Trash2 size={14} />{text("Hide old logs", "Ẩn log cũ")}</button>
           <button type="button" onClick={() => downloadLogFile(visibleLogs, `${mode}-live-log`)} disabled={!visibleLogs.length}>
-            <Download size={14} />Tải log
+            <Download size={14} />{text("Download log", "Tải log")}
           </button>
         </div>
       </div>
 
       <div className="terminal-recording" data-active={isRecording ? "true" : "false"} aria-live="polite">
-        <span><i aria-hidden="true" />{isRecording ? "Đang ghi phiên kiểm thử" : recordedLogs.length ? "Phiên ghi đã dừng" : "Chưa ghi phiên riêng"}</span>
-        <strong>{recordedLogs.length} bản ghi</strong>
-        {recordingStartedAt && <small>Bắt đầu {timeLabel(recordingStartedAt)}</small>}
+        <span><i aria-hidden="true" />{isRecording ? text("Recording test session", "Đang ghi phiên kiểm thử") : recordedLogs.length ? text("Recording stopped", "Phiên ghi đã dừng") : text("No separate recording", "Chưa ghi phiên riêng")}</span>
+        <strong>{recordedLogs.length} {text("records", "bản ghi")}</strong>
+        {recordingStartedAt && <small>{text("Started", "Bắt đầu")} {timeLabel(recordingStartedAt, locale)}</small>}
         <button type="button" onClick={() => downloadLogFile(recordedLogs, `${mode}-recording`)} disabled={!recordedLogs.length}>
-          <Download size={13} />Tải phiên ghi
+          <Download size={13} />{text("Download recording", "Tải phiên ghi")}
         </button>
       </div>
 
       <div className="terminal-toolbar">
         <label>
           <Search size={15} aria-hidden="true" />
-          <span className="sr-only">Tìm trong log</span>
-          <input value={logQuery} onChange={(event) => setLogQuery(event.target.value)} placeholder="Tìm mã lỗi hoặc giá trị…" />
+          <span className="sr-only">{text("Search logs", "Tìm trong log")}</span>
+          <input value={logQuery} onChange={(event) => setLogQuery(event.target.value)} placeholder={text("Search error code or value…", "Tìm mã lỗi hoặc giá trị…")} />
         </label>
-        <select value={logLevel} onChange={(event) => setLogLevel(event.target.value as typeof logLevel)} aria-label="Lọc log theo mức">
-          <option value="all">Tất cả mức</option>
-          <option value="error">Lỗi</option>
-          <option value="warning">Cảnh báo</option>
+        <select value={logLevel} onChange={(event) => setLogLevel(event.target.value as typeof logLevel)} aria-label={text("Filter logs by level", "Lọc log theo mức")}>
+          <option value="all">{text("All levels", "Tất cả mức")}</option>
+          <option value="error">{text("Error", "Lỗi")}</option>
+          <option value="warning">{text("Warning", "Cảnh báo")}</option>
           <option value="telemetry">Telemetry</option>
-          <option value="info">Thông tin</option>
+          <option value="info">{text("Information", "Thông tin")}</option>
         </select>
-        <span className="terminal-toolbar__count"><strong>{visibleLogs.length}</strong> bản ghi</span>
+        <span className="terminal-toolbar__count"><strong>{visibleLogs.length}</strong> {text("records", "bản ghi")}</span>
       </div>
 
       <div className="terminal-card__meta">
-        <span>Backend đang lưu <strong title={savedLogName}>{savedLogName}</strong></span>
-        {latestVisibleLog && <span>Mới nhất lúc <strong>{timeLabel(latestVisibleLog.occurred_at)}</strong></span>}
+        <span>{text("Backend is saving", "Backend đang lưu")} <strong title={savedLogName}>{savedLogName}</strong></span>
+        {latestVisibleLog && <span>{text("Latest at", "Mới nhất lúc")} <strong>{timeLabel(latestVisibleLog.occurred_at, locale)}</strong></span>}
       </div>
 
       <div
         className="terminal-feed"
         ref={terminalRef}
         role="log"
-        aria-label={ariaLabel}
+        aria-label={resolvedAriaLabel}
         aria-live="off"
         tabIndex={0}
         onScroll={handleLogScroll}
@@ -297,12 +306,12 @@ export function HardwareLiveLog({
         }}
       >
         {visibleLogs.length === 0 && (
-          <p className="terminal-empty">Log firmware sẽ hiện tại đây ngay khi ESP32 gửi dữ liệu.</p>
+          <p className="terminal-empty">{text("Firmware logs will appear here as soon as ESP32 sends data.", "Log firmware sẽ hiện tại đây ngay khi ESP32 gửi dữ liệu.")}</p>
         )}
         {visibleLogs.map((item, index) => {
-          const presentation = logPresentation(item);
+          const presentation = logPresentation(item, language);
           const metrics = presentation.telemetry?.measurements;
-          const hasDualMetrics = metrics?.rpm_left != null || metrics?.rpm_right != null;
+          const hasDualMetrics = metrics?.rpm_left != null || metrics?.rpm_right != null || metrics?.rpm_rear != null;
           return (
             <article
               className={`terminal-line terminal-line--${item.level}`}
@@ -310,8 +319,8 @@ export function HardwareLiveLog({
               key={item.id}
             >
               <div className="terminal-line__meta">
-                <time>{timeLabel(item.occurred_at)}</time>
-                <span>{item.level === "telemetry" ? "Telemetry" : item.level === "info" ? "Thông tin" : item.level === "warning" ? "Cảnh báo" : "Lỗi"}</span>
+                <time>{timeLabel(item.occurred_at, locale)}</time>
+                <span>{item.level === "telemetry" ? "Telemetry" : item.level === "info" ? text("Information", "Thông tin") : item.level === "warning" ? text("Warning", "Cảnh báo") : text("Error", "Lỗi")}</span>
               </div>
               <div className="terminal-line__content">
                 <div className="terminal-line__heading">
@@ -319,24 +328,26 @@ export function HardwareLiveLog({
                   <small>{item.source === "firmware" ? "Firmware" : "Backend"}</small>
                 </div>
                 {metrics ? (
-                  <div className={`terminal-metrics${hasDualMetrics ? " terminal-metrics--dual" : ""}`} aria-label={`Số đo ${presentation.title}`}>
-                    <span><small>Điện áp</small><strong>{valueOrDash(metrics.bus_voltage_v, 3)} V</strong></span>
-                    <span><small>Dòng tổng</small><strong>{valueOrDash(metrics.total_current_ma ?? metrics.current_ma, 1)} mA</strong></span>
+                  <div className={`terminal-metrics${hasDualMetrics ? " terminal-metrics--dual" : ""}`} aria-label={text(`${presentation.title} measurements`, `Số đo ${presentation.title}`)}>
+                    <span><small>{text("Voltage", "Điện áp")}</small><strong>{valueOrDash(metrics.bus_voltage_v, 3)} V</strong></span>
+                    <span><small>{text("Total current", "Dòng tổng")}</small><strong>{valueOrDash(metrics.total_current_ma ?? metrics.current_ma, 1)} mA</strong></span>
                     {hasDualMetrics ? <>
-                      <span><small>RPM trái</small><strong>{valueOrDash(metrics.rpm_left, 0)}</strong></span>
-                      <span><small>RPM phải</small><strong>{valueOrDash(metrics.rpm_right, 0)}</strong></span>
+                      <span><small>{text("Left RPM", "RPM trái")}</small><strong>{valueOrDash(metrics.rpm_left, 0)}</strong></span>
+                      <span><small>{text("Right RPM", "RPM phải")}</small><strong>{valueOrDash(metrics.rpm_right, 0)}</strong></span>
+                      <span><small>{text("Rear RPM", "RPM sau")}</small><strong>{valueOrDash(metrics.rpm_rear, 0)}</strong></span>
                       <span><small>Δ RPM</small><strong>{valueOrDash(metrics.rpm_delta, 0)}</strong></span>
-                      <span><small>PWM trái/phải</small><strong>{valueOrDash(metrics.pwm_left_percent, 0)} / {valueOrDash(metrics.pwm_right_percent, 0)}%</strong></span>
+                      <span><small>{text("Left/right/rear PWM", "PWM trái/phải/sau")}</small><strong>{valueOrDash(metrics.pwm_left_percent, 0)} / {valueOrDash(metrics.pwm_right_percent, 0)} / {valueOrDash(metrics.pwm_rear_percent, 0)}%</strong></span>
+                      <span><small>{text("PS2 controller", "Tay PS2")}</small><strong>{metrics.ps2_connected && !metrics.ps2_failsafe_active ? text("Connected", "Đã nối") : "Failsafe"}</strong></span>
                     </> : <>
-                      <span><small>Công suất</small><strong>{valueOrDash(metrics.power_mw, 1)} mW</strong></span>
-                      <span><small>Motor</small><strong>{metrics.driver_enabled ? `Bật · ${metrics.pwm_percent ?? 0}%` : "Tắt"}</strong></span>
+                      <span><small>{text("Power", "Công suất")}</small><strong>{valueOrDash(metrics.power_mw, 1)} mW</strong></span>
+                      <span><small>Motor</small><strong>{metrics.driver_enabled ? text(`On · ${metrics.pwm_percent ?? 0}%`, `Bật · ${metrics.pwm_percent ?? 0}%`) : text("Off", "Tắt")}</strong></span>
                     </>}
                   </div>
                 ) : (
                   <p>{presentation.summary}</p>
                 )}
                 <details className="terminal-raw">
-                  <summary><ChevronDown size={14} /> Xem dữ liệu gốc</summary>
+                  <summary><ChevronDown size={14} /> {text("View raw data", "Xem dữ liệu gốc")}</summary>
                   <pre>{presentation.raw}</pre>
                 </details>
               </div>
@@ -345,7 +356,7 @@ export function HardwareLiveLog({
         })}
         {!followLatest && visibleLogs.length > 0 && !pausedLogs && (
           <button className="terminal-jump" type="button" onClick={jumpToLatest}>
-            <ChevronsDown size={16} />Về log mới nhất
+            <ChevronsDown size={16} />{text("Go to latest log", "Về log mới nhất")}
           </button>
         )}
       </div>

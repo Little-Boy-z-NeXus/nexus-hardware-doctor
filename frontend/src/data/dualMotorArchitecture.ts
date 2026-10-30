@@ -1,4 +1,4 @@
-export type WiringScope = "all" | "power" | "i2c" | "left" | "right";
+export type WiringScope = "all" | "power" | "i2c" | "ps2" | "motor1" | "motor2" | "motor3";
 
 export interface PlannedWire {
   id: string;
@@ -7,104 +7,93 @@ export interface PlannedWire {
   fromPin: string;
   to: string;
   toPin: string;
-  color: "red" | "black" | "green" | "yellow" | "blue" | "orange" | "purple" | "white";
+  color: "red" | "black" | "green" | "yellow" | "blue" | "orange" | "purple" | "white" | "gray";
   note?: string;
 }
 
 const powerWires: PlannedWire[] = [
-  ["p01", "Pin LiPo 3S", "+", "Đế cầu chì 1,5 A", "IN", "red"],
-  ["p02", "Đế cầu chì 1,5 A", "OUT", "Công tắc nguồn", "IN", "red"],
-  ["p03", "Công tắc nguồn", "OUT", "Nút ngắt lỗi NC", "IN", "red"],
-  ["p04", "Nút ngắt lỗi NC", "OUT", "INA226", "VIN+", "red"],
-  ["p05", "INA226", "VIN−", "L298N", "+12V / VS", "red"],
-  ["p06", "INA226", "VIN−", "INA226", "VBS", "red", "Jumper đo điện áp bus"],
-  ["p07", "Pin LiPo 3S", "−", "Điểm GND sao", "GND", "black"],
-  ["p08", "Điểm GND sao", "GND", "L298N", "GND", "black"],
-  ["p09", "Điểm GND sao", "GND", "ESP32-S3", "GND", "black"],
-  ["p10", "Tụ 470–1000 µF", "+", "L298N", "+12V / VS", "red"],
-  ["p11", "Tụ 470–1000 µF", "−", "L298N", "GND", "black"],
-].map(([id, from, fromPin, to, toPin, color, note]) => ({
-  id, scope: "power", from, fromPin, to, toPin, color, note,
-} as PlannedWire));
-
-const i2cDevices = [
-  { id: "ina", name: "INA226", address: "0x40" },
-  { id: "bme", name: "BME680", address: "0x76 / 0x77" },
-  { id: "bno", name: "BNO055", address: "0x29 / 0x28" },
+  { id: "p01", scope: "power", from: "Pin LiPo 3S", fromPin: "+", to: "Đế cầu chì 4 A", toPin: "IN", color: "red" },
+  { id: "p02", scope: "power", from: "Đế cầu chì 4 A", fromPin: "OUT", to: "Relay 12 V", toPin: "COM", color: "red" },
+  { id: "p03", scope: "power", from: "Relay 12 V", fromPin: "NO", to: "INA219 SEN0291", toPin: "IN+", color: "red" },
+  { id: "p04", scope: "power", from: "INA219 SEN0291", fromPin: "IN−", to: "PCT MOTOR+", toPin: "P1", color: "red" },
+  { id: "p05", scope: "power", from: "PCT MOTOR+", fromPin: "P2", to: "L298N #1", toPin: "+12V / VS", color: "red" },
+  { id: "p06", scope: "power", from: "PCT MOTOR+", fromPin: "P3", to: "L298N #2", toPin: "+12V / VS", color: "red" },
+  { id: "p08", scope: "power", from: "Pin LiPo 3S", fromPin: "−", to: "Điểm GND chung", toPin: "GND", color: "black" },
+  { id: "p09", scope: "power", from: "Điểm GND chung", fromPin: "GND", to: "L298N #1", toPin: "GND", color: "black" },
+  { id: "p10", scope: "power", from: "Điểm GND chung", fromPin: "GND", to: "L298N #2", toPin: "GND", color: "black" },
+  { id: "p11", scope: "power", from: "Điểm GND chung", fromPin: "GND", to: "ESP32-S3", toPin: "GND", color: "black" },
 ];
 
-const i2cWires: PlannedWire[] = i2cDevices.flatMap((device) => [
-  {
-    id: `i2c-${device.id}-vcc`, scope: "i2c", from: "ESP32-S3", fromPin: "3V3",
-    to: device.name, toPin: "VCC", color: "red", note: `Địa chỉ ${device.address}`,
-  },
-  {
-    id: `i2c-${device.id}-gnd`, scope: "i2c", from: "Điểm GND sao", fromPin: "GND",
-    to: device.name, toPin: "GND", color: "black",
-  },
-  {
-    id: `i2c-${device.id}-sda`, scope: "i2c", from: "ESP32-S3", fromPin: "GPIO1 / SDA",
-    to: device.name, toPin: "SDA", color: "green",
-  },
-  {
-    id: `i2c-${device.id}-scl`, scope: "i2c", from: "ESP32-S3", fromPin: "GPIO2 / SCL",
-    to: device.name, toPin: "SCL", color: "yellow",
-  },
-]);
+const i2cWires: PlannedWire[] = [
+  { id: "i01", scope: "i2c", from: "ESP32-S3", fromPin: "3V3", to: "INA219 SEN0291", toPin: "VCC", color: "purple" },
+  { id: "i02", scope: "i2c", from: "Điểm GND chung", fromPin: "GND", to: "INA219 SEN0291", toPin: "GND", color: "black" },
+  { id: "i03", scope: "i2c", from: "ESP32-S3", fromPin: "GPIO1 / SDA", to: "INA219 SEN0291", toPin: "SDA", color: "green", note: "Địa chỉ 0x40; A0/A1 OFF" },
+  { id: "i04", scope: "i2c", from: "ESP32-S3", fromPin: "GPIO2 / SCL", to: "INA219 SEN0291", toPin: "SCL", color: "yellow", note: "Không đảo SDA/SCL" },
+];
+
+const ps2Wires: PlannedWire[] = [
+  { id: "ps01", scope: "ps2", from: "ESP32-S3", fromPin: "3V3", to: "Đầu thu PS2", toPin: "VCC / đỏ", color: "red", note: "Bắt đầu ở 3,3 V; không đưa tín hiệu 5 V vào GPIO" },
+  { id: "ps02", scope: "ps2", from: "Điểm GND chung", fromPin: "GND", to: "Đầu thu PS2", toPin: "GND / đen", color: "black" },
+  { id: "ps03", scope: "ps2", from: "Đầu thu PS2", fromPin: "DATA / xanh dương", to: "ESP32-S3", toPin: "GPIO38", color: "blue", note: "Kéo lên 3V3 bằng điện trở 10 kΩ" },
+  { id: "ps04", scope: "ps2", from: "ESP32-S3", fromPin: "GPIO39", to: "Đầu thu PS2", toPin: "CMD / xanh lá", color: "green" },
+  { id: "ps05", scope: "ps2", from: "ESP32-S3", fromPin: "GPIO40", to: "Đầu thu PS2", toPin: "ATTN / cam", color: "orange" },
+  { id: "ps06", scope: "ps2", from: "ESP32-S3", fromPin: "GPIO41", to: "Đầu thu PS2", toPin: "CLK / xám", color: "gray" },
+];
 
 const motorWires = (
-  side: "left" | "right",
+  scope: "motor1" | "motor2" | "motor3",
+  motor: string,
+  driver: string,
   pins: { pwm: number; in1: number; in2: number; encoderA: number; encoderB: number },
   channel: { enable: string; in1: string; in2: string; outPlus: string; outMinus: string },
-): PlannedWire[] => {
-  const label = side === "left" ? "Motor trái" : "Motor phải";
-  const prefix = side === "left" ? "l" : "r";
-  return [
-    { id: `${prefix}01`, scope: side, from: "ESP32-S3", fromPin: `GPIO${pins.pwm}`, to: "L298N", toPin: channel.enable, color: "blue", note: "PWM; tháo jumper EN" },
-    { id: `${prefix}02`, scope: side, from: "ESP32-S3", fromPin: `GPIO${pins.in1}`, to: "L298N", toPin: channel.in1, color: "orange" },
-    { id: `${prefix}03`, scope: side, from: "ESP32-S3", fromPin: `GPIO${pins.in2}`, to: "L298N", toPin: channel.in2, color: "purple" },
-    { id: `${prefix}04`, scope: side, from: "L298N", fromPin: channel.outPlus, to: label, toPin: "M+ / đỏ", color: "red" },
-    { id: `${prefix}05`, scope: side, from: "L298N", fromPin: channel.outMinus, to: label, toPin: "M− / trắng", color: "white" },
-    { id: `${prefix}06`, scope: side, from: "ESP32-S3", fromPin: "3V3", to: label, toPin: "Encoder VCC / xanh dương", color: "blue" },
-    { id: `${prefix}07`, scope: side, from: "Điểm GND sao", fromPin: "GND", to: label, toPin: "Encoder GND / đen", color: "black" },
-    { id: `${prefix}08`, scope: side, from: label, fromPin: "Encoder A / vàng", to: "ESP32-S3", toPin: `GPIO${pins.encoderA}`, color: "yellow" },
-    { id: `${prefix}09`, scope: side, from: label, fromPin: "Encoder B / xanh lá", to: "ESP32-S3", toPin: `GPIO${pins.encoderB}`, color: "green" },
-    { id: `${prefix}10`, scope: side, from: "Tụ ceramic 100 nF", fromPin: "Chân 1", to: label, toPin: "M+ ↔ M−", color: "white", note: "Hàn trực tiếp ngang hai cực motor" },
-  ];
-};
+): PlannedWire[] => [
+  { id: `${scope}-01`, scope, from: "ESP32-S3", fromPin: `GPIO${pins.pwm}`, to: driver, toPin: channel.enable, color: "blue", note: "PWM; tháo jumper EN" },
+  { id: `${scope}-02`, scope, from: "ESP32-S3", fromPin: `GPIO${pins.in1}`, to: driver, toPin: channel.in1, color: "orange" },
+  { id: `${scope}-03`, scope, from: "ESP32-S3", fromPin: `GPIO${pins.in2}`, to: driver, toPin: channel.in2, color: "purple" },
+  { id: `${scope}-04`, scope, from: driver, fromPin: channel.outPlus, to: motor, toPin: "M+ / đỏ", color: "red" },
+  { id: `${scope}-05`, scope, from: driver, fromPin: channel.outMinus, to: motor, toPin: "M− / trắng", color: "white" },
+  { id: `${scope}-06`, scope, from: "ESP32-S3", fromPin: "3V3", to: motor, toPin: "Encoder VCC / xanh dương", color: "blue" },
+  { id: `${scope}-07`, scope, from: "Điểm GND chung", fromPin: "GND", to: motor, toPin: "Encoder GND / đen", color: "black" },
+  { id: `${scope}-08`, scope, from: motor, fromPin: "Encoder A / vàng", to: "ESP32-S3", toPin: `GPIO${pins.encoderA}`, color: "yellow" },
+  { id: `${scope}-09`, scope, from: motor, fromPin: "Encoder B / xanh lá", to: "ESP32-S3", toPin: `GPIO${pins.encoderB}`, color: "green" },
+  { id: `${scope}-10`, scope, from: "Tụ ceramic 100 nF", fromPin: "Chân 1", to: motor, toPin: "M+ ↔ M−", color: "white", note: "Hàn ngang hai cực motor nếu có" },
+];
 
 export const DUAL_MOTOR_ARCHITECTURE = {
-  schemaVersion: "1.0.0-draft",
-  designId: "nexus-dual-motor-pid-robot-v1",
-  name: "NeXus dual-motor PID robot",
-  controller: "GOOUUU Tech ESP32-S3-N16R8",
-  powerMonitor: "INA226 R100 0.1 Ω",
-  driver: "L298N dual H-bridge",
-  motors: "2 × JGB37-520 12V Hall A/B",
+  schemaVersion: "1.0.0",
+  designId: "nexus-profile-esp32-s3-devkitc-ina219-dual-l298n-3wheel-ps2-v2",
+  name: "NeXus three-wheel PS2 robot",
+  controller: "ESP32-S3 DevKitC-compatible N16R8 44-pin",
+  powerMonitor: "DFRobot Gravity INA219 SEN0291 · R010",
+  driver: "2 × L298N dual H-bridge",
+  motors: "3 × JGB37-520 12V Hall A/B",
   power: "Pin LiPo 3S · 11,1–12,6 V",
   i2c: [
-    { name: "INA226", address: "0x40", purpose: "Điện áp, dòng và công suất tổng của hai motor", icon: "power" },
-    { name: "BME680", address: "0x76 / 0x77", purpose: "Nhiệt độ, độ ẩm, áp suất và chất lượng khí", icon: "environment" },
-    { name: "BNO055", address: "0x29 / 0x28", purpose: "Rung, nghiêng và tốc độ quay thân xe", icon: "motion" },
+    { name: "INA219 SEN0291", address: "0x40", purpose: "Điện áp, dòng và công suất tổng của ba motor", icon: "power" },
   ],
   expectedTelemetry: [
-    "rpm_left", "rpm_right", "rpm_delta", "pwm_left_percent", "pwm_right_percent",
-    "pid_state", "bus_voltage_v", "total_current_ma", "yaw_rate_dps",
+    "rpm_left", "rpm_right", "rpm_rear", "rpm_delta",
+    "pwm_left_percent", "pwm_right_percent", "pwm_rear_percent",
+    "ps2_connected", "ps2_failsafe_active", "bus_voltage_v", "total_current_ma",
   ],
   wires: [
     ...powerWires,
     ...i2cWires,
-    ...motorWires("left", { pwm: 12, in1: 13, in2: 14, encoderA: 16, encoderB: 17 }, { enable: "ENA", in1: "IN1", in2: "IN2", outPlus: "OUT1", outMinus: "OUT2" }),
-    ...motorWires("right", { pwm: 4, in1: 5, in2: 6, encoderA: 7, encoderB: 8 }, { enable: "ENB", in1: "IN3", in2: "IN4", outPlus: "OUT3", outMinus: "OUT4" }),
+    ...ps2Wires,
+    ...motorWires("motor1", "Motor 1 · trước trái", "L298N #1", { pwm: 12, in1: 13, in2: 14, encoderA: 16, encoderB: 17 }, { enable: "ENA", in1: "IN1", in2: "IN2", outPlus: "OUT1", outMinus: "OUT2" }),
+    ...motorWires("motor2", "Motor 2 · trước phải", "L298N #1", { pwm: 15, in1: 18, in2: 21, encoderA: 4, encoderB: 5 }, { enable: "ENB", in1: "IN3", in2: "IN4", outPlus: "OUT3", outMinus: "OUT4" }),
+    ...motorWires("motor3", "Motor 3 · bánh sau", "L298N #2", { pwm: 6, in1: 7, in2: 8, encoderA: 9, encoderB: 10 }, { enable: "ENA", in1: "IN1", in2: "IN2", outPlus: "OUT1", outMinus: "OUT2" }),
   ] satisfies PlannedWire[],
 } as const;
 
 export const WIRING_SCOPE_LABELS: Record<WiringScope, string> = {
   all: "Tất cả",
   power: "Nguồn & an toàn",
-  i2c: "Bus I²C",
-  left: "Motor trái",
-  right: "Motor phải",
+  i2c: "INA219 / I²C",
+  ps2: "Tay cầm PS2",
+  motor1: "Motor 1",
+  motor2: "Motor 2",
+  motor3: "Motor 3",
 };
 
 export const WIRE_COLOR_LABELS: Record<PlannedWire["color"], string> = {
@@ -116,4 +105,5 @@ export const WIRE_COLOR_LABELS: Record<PlannedWire["color"], string> = {
   orange: "Cam",
   purple: "Tím",
   white: "Trắng",
+  gray: "Xám",
 };

@@ -2,17 +2,17 @@
 
 NeXus is an AI doctor for physical hardware. The hackathon MVP turns one ESP32 motor rig into a software-readable system that can prevent unsafe configurations, diagnose failures from telemetry, and safely heal software-controllable faults.
 
-This repository targets the [Nebius x NVIDIA Global AI Hackathon](https://nebiusglobalaihackathon.devpost.com/). The first certified adapter is GOOUUU Tech ESP32-S3-N16R8 with INA226 R100, L298N, JGB37-520 encoder motor and a 12 V supply. That BOM is not duplicated in application code: the versioned JSON Hardware-as-Code profile is the source for firmware generation, backend validation and the UI graph.
+This repository targets the [Nebius x NVIDIA Global AI Hackathon](https://nebiusglobalaihackathon.devpost.com/). The active adapter is an ESP32-S3 DevKitC-compatible N16R8 44-pin board with DFRobot Gravity INA219 SEN0291, two L298N drivers, three JGB37-520 encoder motors, a PS2 receiver and a 3S LiPo supply. The versioned JSON Hardware-as-Code profile is the source for firmware generation, backend validation and the UI graph.
 
-The INA226 `VBUS` input must be bridged to `VIN−` (the load side of the R100 shunt) so the application can read the 12 V motor bus.
+The SEN0291 power path is `relay NO → IN+ → IN− → MOTOR+`; its separate terminal GND and Gravity/I²C GND both join common ground. There is no legacy INA226 VBUS/VBS jumper.
 
 ## Current build status
 
 | Area | What works now | Next integration |
 | --- | --- | --- |
-| Frontend | Realtime Dashboard/Hardware Graph, ESP32 live log, reconnect and human-readable fault cards | Connect AI Doctor to the same evidence stream |
+| Frontend | Realtime Dashboard/Hardware Graph, compact BOM/wiring explorer, three-wheel monitor, AI Doctor, diagnosis timeline, Manual/Auto Treatment UX, retry and evidence export | Capture final screenshots and the submission video on the physical rig |
 | Backend | Persistent sessions/telemetry, explicit serial-history binding, verified live Nebius client, read-only orchestration, policy/evaluation and U07 physical 3/3 | Keep motor writes behind the separate H05/H06 and N03/N06 safety gates |
-| Firmware | Safe PWM clamp, strict telemetry v1, calibrated INA226 logs, bounded device command protocol | Connect the physical adapter through H05 policy; add encoder calibration |
+| Firmware | Safe PWM clamp, strict telemetry v1, calibrated INA219 logs, PS2 failsafe and three-wheel PID balancing | Calibrate encoder counts and balance gains on the physical chassis |
 | Contracts | Four frozen JSON Schemas, fixtures and migration enforcement | Change only through a reviewed migration note or v2 |
 | Hardware as code | Validated JSON profile drives firmware constants, backend discovery, compatibility and UI metadata | Add board adapters only when another physical platform is selected |
 
@@ -51,7 +51,7 @@ No command typing is required after the prerequisite applications are installed.
 | `nexus-stop-app.cmd` | Stop only this repository's backend and frontend processes |
 | `nexus-start-backend.cmd` | Start only the API at `http://127.0.0.1:8000` |
 | `nexus-start-frontend.cmd` | Start only the UI at `http://127.0.0.1:5173` |
-| `nexus-upload-firmware.cmd` | Upload firmware through the GOOUUU ESP32-S3 built-in USB-JTAG interface |
+| `nexus-upload-firmware.cmd` | Upload the active DevKitC N16R8 44-pin + INA219 three-wheel firmware through its USB serial port |
 | `nexus-upload-command-firmware.cmd` | Upload the supervised N03 build that enables bounded motor commands |
 | `nexus-run-n03-hardware-acceptance.cmd` | Upload and run the full N03 real-board command matrix |
 | `nexus-run-n05-fault-acceptance.cmd` | Run N05 software faults, physical OUT2-open checks and restored baseline |
@@ -64,17 +64,18 @@ No command typing is required after the prerequisite applications are installed.
 | `nexus-run-h08-acceptance.cmd` | Build a clean backend image and verify startup, offline fallback and controlled model outage |
 | `nexus-start-replay-demo.cmd` | Start backend/frontend with sanitized realtime telemetry and no board/COM port |
 | `nexus-prepare-n08-recovery-kit.cmd` | Build checksummed default-safe firmware backup and wiring bundle |
-| `nexus-run-n08-recovery-drill.cmd` | Time a safe firmware/INA226 recovery and save local evidence |
+| `nexus-run-n08-recovery-drill.cmd` | Time the legacy one-motor INA226 recovery drill and save local evidence |
 | `nexus-monitor-firmware.cmd` | Standalone Serial Monitor; saves each session under `logs/device-monitor-*.log` |
 | `nexus-run-firmware.cmd` | Upload firmware, open standalone Serial Monitor, and save the session under `logs/` |
 | `nexus-validate-hardware-profile.cmd` | Validate the selected machine-readable BOM, wiring, capabilities and safety limits |
 | `nexus-check-project.cmd` | Run repository, backend, frontend, and firmware checks |
+| `nexus-run-submission-gate.cmd` | Run the complete code/contract/UI/firmware release gate before recording or submitting |
 
-For the first use, double-click `nexus-setup.cmd` once. Normal operation then requires only `nexus-start-app.cmd`: the backend automatically finds the GOOUUU ESP32-S3 COM port, writes `logs/hardware-live-*.ndjson`, and streams the same log to Hardware Graph in realtime. Do not open PlatformIO Serial Monitor at the same time because only one process can own the COM port. Close the two server windows or use `nexus-stop-app.cmd` to stop the application. Keep motor power disconnected while uploading firmware.
+For the first use, double-click `nexus-setup.cmd` once. Normal operation then requires only `nexus-start-app.cmd`: the backend automatically finds the ESP32-S3 DevKitC-compatible USB serial port, writes `logs/hardware-live-*.ndjson`, and streams the same log to Hardware Graph in realtime. Do not open PlatformIO Serial Monitor at the same time because only one process can own the COM port. Close the two server windows or use `nexus-stop-app.cmd` to stop the application. Keep motor power disconnected while uploading firmware.
 
-For the U05 physical acceptance only, double-click `nexus-run-hardware-baseline.cmd` and
-remain beside the rig for the complete 30-minute test. It validates the 12 V/INA226/current
-path, stops on unsafe readings, writes local evidence, and restores normal safe firmware.
+For the legacy U05 one-motor acceptance only, double-click `nexus-run-hardware-baseline.cmd` and
+remain beside the rig for the complete 30-minute test. It validates the historical 12 V/INA226
+path, stops on unsafe readings, writes local evidence, and restores the legacy safe firmware.
 Follow [`docs/hardware-baseline-u05.md`](docs/hardware-baseline-u05.md); never leave the motor
 running unattended.
 
@@ -98,7 +99,7 @@ cd nexus-hardware-doctor
 python scripts/validate_repo.py
 ```
 
-The repository is private during the build phase, so GitHub may ask you to authenticate. Do not place a token in the clone URL or commit it to a file.
+The repository is public for judging. Do not place a token in the clone URL or commit it to a file.
 
 ## Quick start: backend
 
@@ -147,6 +148,10 @@ The backend owns the serial port, rejects malformed/`nan` packets, persists time
 
 The [diagnosis lab](http://127.0.0.1:8000/doctor-lab) runs the H01/H04–H08 software. Simulation requires no model key. Live mode requires configured Nebius access and explicit enablement; its tools are read-only. Successful real NVIDIA calls and a read-only tool cycle are recorded in the [live acceptance evidence](docs/evidence/h01-h04-live-nebius.md); their inputs are synthetic, and physical acceptance remains separate. See the [H resource checklist](docs/h-resource-checklist.md), [model guide](docs/h01-h04.md), [orchestration/policy guide](docs/h05-h06.md), [evaluation guide](docs/h07-evaluation.md), and [Docker runbook](docs/h08-runbook.md).
 
+### NVIDIA model and Nebius Token Factory
+
+The live diagnosis adapter calls `nvidia/Nemotron-3-Ultra-550b-a55b` through the Nebius Token Factory OpenAI-compatible chat-completions API. Token Factory let the team test a hosted NVIDIA model without provisioning or operating a GPU instance. NeXus supplies the versioned hardware profile, validated telemetry, signal quality, evidence IDs and allowlisted tools in a bounded prompt. Nemotron returns ranked hypotheses and a proposed next read; local schema validation and deterministic default-deny policy decide what may run. The model cannot set electrical limits or command the motor directly. The [redacted live evaluation](docs/evidence/h01-h04-live-nebius.md) records 10/10 valid structured cases on an authored test set; this is not a production accuracy benchmark. The [physical vertical-slice record](docs/evidence/u07-final-acceptance.md) documents 3/3 earlier INA226 rig runs and does not certify the current INA219 three-wheel revision.
+
 With a local ignored `.env` configured, run `python -m nexus_backend.evaluation --live --env-file .env --output artifacts/h07-live.json` to score the real model, or `python scripts/check_live_model.py --live --env-file .env` to verify a model-selected telemetry read. Both commands incur bounded model usage and never actuate hardware. The default evaluation command below stays offline.
 
 Run all synthetic diagnosis checks with `python -m nexus_backend.evaluation --output artifacts/h07-evaluation.json`. This scores the deterministic mock planner, not Nemotron or real hardware. `docker compose up --build -d` provides an isolated backend with persistent data and no model access enabled by default.
@@ -178,6 +183,18 @@ Open <http://127.0.0.1:5173>. Available routes:
 - `/doctor`
 
 Dashboard and Hardware Graph use live API data and show `--` while no valid hardware packet exists; they do not invent presentation values. Open `/hardware` for the realtime terminal and fault-resolution guide.
+The AI Doctor has an explicit Live Nebius mode and a development-only safe simulator. The live
+mode requires fresh `source=device` telemetry and a configured Nebius key. The simulator is
+disabled automatically when `NEXUS_ENV=production`; it never sends a command to physical hardware.
+Both modes render the backend audit timeline and allow the session evidence to be exported as JSON.
+
+## Submission readiness
+
+The final English Devpost copy, video plan, captions, feedback template and human release checklist
+live in [`docs/submission`](docs/submission/README.md). Double-click
+`nexus-run-submission-gate.cmd` before recording. Automated checks do not replace the remaining
+human gates: Devpost team/account registration, public-repository visibility, one minute of real
+hardware footage, final Nebius-key rehearsal and the final Submit button.
 The Hardware Graph also shows a dedicated SDA/SCL/encoder wire-health panel. See the
 [signal-wire monitoring runbook](docs/signal-wire-monitoring.md) for what can be proven with the
 current BOM and the safe disconnect/recovery test procedure.
@@ -197,18 +214,21 @@ Connect the board with a USB data cable, identify its port, then upload and moni
 Windows example:
 
 ```powershell
-pio run --project-dir firmware --target upload
+pio run --project-dir firmware --environment nexus-esp32-s3-devkitc-3wheel-ps2 --target upload --upload-port COM8
 pio device monitor --port COM8 --baud 115200
 ```
 
 macOS/Linux example:
 
 ```bash
-pio run --project-dir firmware --target upload --upload-port /dev/ttyUSB0
+pio run --project-dir firmware --environment nexus-esp32-s3-devkitc-3wheel-ps2 --target upload --upload-port /dev/ttyUSB0
 pio device monitor --port /dev/ttyUSB0 --baud 115200
 ```
 
-The upload uses built-in USB-JTAG and does not need a COM-port argument. Replace the monitor port with the value returned by `pio device list`; the Windows click launcher detects it automatically. Read [firmware/README.md](firmware/README.md) before powering the motor circuit.
+Use the USB-C connector that creates the USB-to-UART/COM port. Replace the example port with the
+value returned by `pio device list`; the Windows click launcher detects it automatically. The
+native USB connector is supported by the optional `nexus-esp32-s3-devkitc-3wheel-ps2-native-usb`
+environment. Read [firmware/README.md](firmware/README.md) before powering the motor circuit.
 
 ## Run all software quality checks
 

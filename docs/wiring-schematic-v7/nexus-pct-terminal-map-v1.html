@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NeXus · Bản đồ toàn bộ cổng PCT</title>
+<style>
+  *{box-sizing:border-box}html,body{margin:0;background:#eef3f8;font-family:Inter,"Segoe UI",Arial,sans-serif;color:#10243a}
+  .sheet{width:1800px;height:1200px;margin:0 auto;background:#fff;padding:34px 44px;overflow:hidden}
+  h1{margin:0;font-size:34px;line-height:1.15}.sub{margin:8px 0 16px;color:#63788d;font-size:17px}
+  .rule{display:flex;gap:18px;align-items:center;padding:12px 18px;border:2px solid #f2b84b;background:#fff8e6;border-radius:14px;font-size:16px}
+  .rule strong{color:#8b5100}.rule span{color:#5c6d7e}
+  .section-title{display:flex;align-items:center;gap:10px;margin:20px 0 10px;font-size:18px;font-weight:800;letter-spacing:.04em;text-transform:uppercase}
+  .dot{width:15px;height:15px;border-radius:50%}.dot.red{background:#e52e37}.dot.black{background:#121d2c}
+  .row{display:grid;gap:18px}.positive{grid-template-columns:repeat(4,1fr)}.distribution{grid-template-columns:1.08fr 1fr 1fr}
+  .card{position:relative;border:2px solid #d7e1ea;border-radius:18px;background:#fbfdff;overflow:hidden;box-shadow:0 7px 18px rgba(16,36,58,.06)}
+  .card.red{border-color:#f09ba0;background:#fff8f8}.card.black{border-color:#8391a0}.card.purple{border-color:#a98aff;background:#fbf9ff}
+  .card-head{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid #dce5ed}
+  .card.red .card-head{background:#ffe8e9}.card.black .card-head{background:#edf1f5}.card.purple .card-head{background:#f0eaff}
+  .card-head b{font-size:19px}.badge{font-weight:800;font-size:13px;border-radius:999px;padding:5px 9px;background:#fff;border:1px solid currentColor}
+  .ports{display:grid;gap:7px;padding:12px}.port{display:grid;grid-template-columns:46px 1fr;align-items:center;min-height:36px;border-radius:9px;background:#fff;border:1px solid #dbe4ec;overflow:hidden}
+  .pin{height:100%;display:grid;place-items:center;color:#fff;font-weight:900}.red .pin{background:#e52e37}.black .pin{background:#121d2c}.purple .pin{background:#7c3aed}
+  .port span{padding:6px 9px;font-size:14px;line-height:1.2}.port strong{font-size:14px}.spare{opacity:.58}.bridge{outline:3px solid #f2b84b;outline-offset:-2px}
+  .flow{display:grid;grid-template-columns:1fr 40px 1fr 40px 1.2fr;align-items:center;gap:8px;margin:11px 0 0;padding:10px 14px;background:#f5f8fb;border-radius:13px;color:#425970;font-size:14px}
+  .flow b{text-align:center}.arrow{text-align:center;font-size:24px;color:#8296aa}
+  .legend{display:flex;gap:22px;align-items:center;margin-top:16px;padding:10px 14px;border-top:1px solid #dce5ed;color:#5d7287;font-size:14px}.line{display:inline-block;width:28px;height:5px;border-radius:4px;margin-right:6px;vertical-align:middle}
+  .buck-note{margin-top:14px;display:grid;grid-template-columns:1.2fr 1fr;gap:18px}
+  .note{border-radius:14px;padding:12px 16px;background:#eaf6ff;border:1px solid #88c7f4;color:#244b69;font-size:14px;line-height:1.4}.warn{background:#fff0f0;border-color:#f2a0a5;color:#7b252b}
+  .footer{margin-top:10px;text-align:right;color:#8294a6;font-size:12px}
+</style>
+</head>
+<body><main class="sheet">
+  <h1>NeXus · Bản đồ đầy đủ các cổng PCT</h1>
+  <p class="sub">LiPo 3S · relay LOW · INA226 · buck 5 V · 2 × L298N · 3 motor encoder · ESP32-S3 · tay PS2</p>
+  <div class="rule"><strong>QUY TẮC QUAN TRỌNG</strong><span>Tất cả cổng trên cùng một PCT nối điện chung với nhau. P1–P8 chỉ là số đánh nhãn để lắp và kiểm tra; không phải chân IN/OUT riêng biệt.</span></div>
+
+  <div class="section-title"><i class="dot red"></i>Dương nguồn và VCC — 4 × PCT-213 ba cổng</div>
+  <section class="row positive">
+    <article class="card red"><div class="card-head"><b>PCT-213 · +12V-A</b><span class="badge">12 V</span></div><div class="ports">
+      <div class="port"><i class="pin">P1</i><span><strong>TỪ:</strong> đầu ra cầu chì 4 A</span></div>
+      <div class="port"><i class="pin">P2</i><span><strong>TỚI:</strong> relay chân COM</span></div>
+      <div class="port bridge"><i class="pin">P3</i><span><strong>CẦU SANG:</strong> +12V-B · P1</span></div>
+    </div></article>
+    <article class="card red"><div class="card-head"><b>PCT-213 · +12V-B</b><span class="badge">12 V phụ</span></div><div class="ports">
+      <div class="port bridge"><i class="pin">P1</i><span><strong>TỪ:</strong> +12V-A · P3</span></div>
+      <div class="port"><i class="pin">P2</i><span><strong>TỚI:</strong> relay DC+</span></div>
+      <div class="port"><i class="pin">P3</i><span><strong>TỚI:</strong> buck IN+</span></div>
+    </div></article>
+    <article class="card red"><div class="card-head"><b>PCT-213 · MOTOR+</b><span class="badge">12 V đã ngắt</span></div><div class="ports">
+      <div class="port"><i class="pin">P1</i><span><strong>TỪ:</strong> INA226 VIN−</span></div>
+      <div class="port"><i class="pin">P2</i><span><strong>TỚI:</strong> L298N #1 · VS/+12V</span></div>
+      <div class="port"><i class="pin">P3</i><span><strong>TỚI:</strong> L298N #2 · VS/+12V</span></div>
+    </div></article>
+    <article class="card red"><div class="card-head"><b>PCT-213 · 5V-LOGIC</b><span class="badge">5 V</span></div><div class="ports">
+      <div class="port"><i class="pin">P1</i><span><strong>TỪ:</strong> buck OUT+ 5 V</span></div>
+      <div class="port"><i class="pin">P2</i><span><strong>TỚI:</strong> L298N #1 · chân 5V</span></div>
+      <div class="port"><i class="pin">P3</i><span><strong>TỚI:</strong> L298N #2 · chân 5V</span></div>
+    </div></article>
+  </section>
+  <div class="flow"><b>LiPo+ → cầu chì → +12V-A P1</b><span class="arrow">→</span><b>+12V-A P2 → relay COM/NO → INA226 VIN+/VIN−</b><span class="arrow">→</span><b>MOTOR+ P1 → hai L298N</b></div>
+
+  <div class="section-title"><i class="dot black"></i>Âm/GND và 3V3 tín hiệu — 3 × PCT-218 tám cổng</div>
+  <section class="row distribution">
+    <article class="card black"><div class="card-head"><b>PCT-218 · GND-POWER</b><span class="badge">GND công suất</span></div><div class="ports">
+      <div class="port"><i class="pin">P1</i><span><strong>TỪ:</strong> LiPo XT60 âm (−)</span></div>
+      <div class="port"><i class="pin">P2</i><span><strong>TỚI:</strong> relay DC−</span></div>
+      <div class="port"><i class="pin">P3</i><span><strong>TỚI:</strong> buck IN−</span></div>
+      <div class="port"><i class="pin">P4</i><span><strong>TỚI:</strong> L298N #1 GND</span></div>
+      <div class="port"><i class="pin">P5</i><span><strong>TỚI:</strong> L298N #2 GND</span></div>
+      <div class="port"><i class="pin">P6</i><span><strong>TỚI:</strong> ESP32 GND</span></div>
+      <div class="port bridge"><i class="pin">P7</i><span><strong>CẦU SANG:</strong> GND-SIGNAL · P1</span></div>
+      <div class="port"><i class="pin">P8</i><span><strong>TỚI:</strong> USB breakout GND/OUT− của buck</span></div>
+    </div></article>
+    <article class="card black"><div class="card-head"><b>PCT-218 · GND-SIGNAL</b><span class="badge">GND cảm biến</span></div><div class="ports">
+      <div class="port bridge"><i class="pin">P1</i><span><strong>TỪ:</strong> GND-POWER · P7</span></div>
+      <div class="port"><i class="pin">P2</i><span><strong>TỚI:</strong> INA226 GND</span></div>
+      <div class="port"><i class="pin">P3</i><span><strong>TỚI:</strong> đầu thu PS2 GND đen</span></div>
+      <div class="port"><i class="pin">P4</i><span><strong>TỚI:</strong> encoder M1 GND đen</span></div>
+      <div class="port"><i class="pin">P5</i><span><strong>TỚI:</strong> encoder M2 GND đen</span></div>
+      <div class="port"><i class="pin">P6</i><span><strong>TỚI:</strong> encoder M3 GND đen</span></div>
+      <div class="port spare"><i class="pin">P7</i><span>Dự phòng</span></div>
+      <div class="port spare"><i class="pin">P8</i><span>Dự phòng</span></div>
+    </div></article>
+    <article class="card purple"><div class="card-head"><b>PCT-218 · 3V3-SIGNAL</b><span class="badge">3,3 V VCC</span></div><div class="ports">
+      <div class="port"><i class="pin">P1</i><span><strong>TỪ:</strong> ESP32 chân 3V3</span></div>
+      <div class="port"><i class="pin">P2</i><span><strong>TỚI:</strong> INA226 VCC</span></div>
+      <div class="port"><i class="pin">P3</i><span><strong>TỚI:</strong> đầu thu PS2 VCC đỏ</span></div>
+      <div class="port"><i class="pin">P4</i><span><strong>TỚI:</strong> encoder M1 VCC xanh dương</span></div>
+      <div class="port"><i class="pin">P5</i><span><strong>TỚI:</strong> encoder M2 VCC xanh dương</span></div>
+      <div class="port"><i class="pin">P6</i><span><strong>TỚI:</strong> encoder M3 VCC xanh dương</span></div>
+      <div class="port spare"><i class="pin">P7</i><span>Dự phòng</span></div>
+      <div class="port spare"><i class="pin">P8</i><span>Dự phòng</span></div>
+    </div></article>
+  </section>
+
+  <section class="buck-note">
+    <div class="note"><b>Buck không bắt buộc phải có USB.</b> Nếu buck có OUT+/OUT−: OUT+ → 5V-LOGIC P1 và OUT− → GND-POWER. Nếu chỉ có USB-A, dùng breakout/cáp cắt: đỏ = +5 V, đen = GND; bọc kín trắng/xanh.</div>
+    <div class="note warn"><b>Trước khi cấp nguồn:</b> tháo jumper 5V-EN trên cả hai L298N; đo buck ≈ 5,0 V; không cấp đồng thời buck 5 V và USB máy tính vào ESP32.</div>
+  </section>
+  <div class="legend"><span><i class="line" style="background:#e52e37"></i>12 V / 5 V dương</span><span><i class="line" style="background:#121d2c"></i>GND</span><span><i class="line" style="background:#7c3aed"></i>3,3 V tín hiệu</span><span><i class="line" style="background:#f2b84b"></i>Cổng nối cầu</span></div>
+  <div class="footer">NeXus PCT terminal map v1 · 4 × PCT-213 + 3 × PCT-218</div>
+</main></body></html>

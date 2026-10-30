@@ -85,7 +85,7 @@ const TEST_HARDWARE_PROFILE = {
     profile_version: "1.0.0",
     sensor_profile: "test-sensor",
     driver_profile: "test-driver",
-    default_motor_test_pwm_percent: 20,
+    default_motor_test_pwm_percent: 50,
     pins: { i2c_sda: 1, i2c_scl: 2, motor_enable: 12, motor_in1: 13, motor_in2: 14, encoder_a: 16, encoder_b: 17 },
     sensor: { i2c_address: "0x40" },
   },
@@ -183,6 +183,7 @@ const TEST_LIVE_SNAPSHOT = {
 };
 
 beforeEach(() => {
+  window.localStorage.setItem("nexus.language", "vi");
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL) => {
@@ -201,6 +202,7 @@ beforeEach(() => {
       }
       if (url.endsWith("/api/diagnosis/capabilities")) {
         return new Response(JSON.stringify({
+          mock_available: true,
           live_enabled: true,
           live_configured: true,
           physical_commands_enabled: false,
@@ -208,12 +210,22 @@ beforeEach(() => {
           serial_device_id: "nexus-live-from-board",
         }), { status: 200, headers: { "Content-Type": "application/json" } });
       }
+      if (url.endsWith("/api/devices")) {
+        return new Response(JSON.stringify([{
+          device_id: "nexus-live-from-board",
+          hardware_model_id: "nexus-test-runtime-model",
+          display_name: "Test ESP32-S3",
+          source: "device",
+          registered_at: "2026-09-13T00:00:00Z",
+        }]), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
       if (url.endsWith("/api/devices/nexus-live-from-board/diagnoses")) {
         return new Response(JSON.stringify({
           session_id: "runtime-session-id",
           result: {
             status: "diagnosed",
             summary: "Runtime diagnosis complete",
+            mode: "live",
             plan: {
               confidence: 0.91,
               user_message: "Nemotron đã đọc mẫu #42 từ thiết bị thật.",
@@ -226,6 +238,19 @@ beforeEach(() => {
               }],
             },
             observations: [{ evidence_id: "observation-42", tool_name: "get_telemetry", status: "succeeded" }],
+            events: [{
+              schema_version: "1.0.0",
+              event_id: "event-42",
+              trace_id: "trace-42",
+              device_id: "nexus-live-from-board",
+              event_type: "diagnosis.proposed",
+              occurred_at: "2026-09-13T00:00:03Z",
+              source: "nemotron",
+              severity: "info",
+              summary: "Nemotron proposed an evidence-backed diagnosis.",
+              payload: {},
+              related_tool_call_id: null,
+            }],
             model_runtime: { provider: "nebius", calls: [{ response_model: "test-nemotron" }] },
             physical_commands_enabled: false,
           },
@@ -241,6 +266,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  window.localStorage.clear();
   vi.unstubAllGlobals();
 });
 
@@ -257,6 +283,21 @@ async function switchToLiveHardwareRig() {
 }
 
 describe("NeXus application routes", () => {
+  it("uses English by default and persists a switch to Vietnamese", async () => {
+    window.localStorage.clear();
+    const user = userEvent.setup();
+    renderAt("/dashboard");
+
+    expect(await screen.findByRole("heading", { level: 1, name: "System is stable" })).toBeInTheDocument();
+    expect(document.documentElement.lang).toBe("en");
+    expect(screen.getByRole("link", { name: "Overview" })).toHaveClass("nav-link--active");
+
+    await user.click(screen.getByRole("button", { name: "VI" }));
+    expect(await screen.findByRole("heading", { level: 1, name: "Hệ thống đang ổn định" })).toBeInTheDocument();
+    expect(document.documentElement.lang).toBe("vi");
+    expect(window.localStorage.getItem("nexus.language")).toBe("vi");
+  });
+
   it.each([
     ["/dashboard", "Hệ thống đang ổn định", "Tổng quan"],
     ["/hardware", "Sơ đồ phần cứng", "Sơ đồ phần cứng"],
@@ -299,6 +340,8 @@ describe("NeXus application routes", () => {
     expect(screen.getByText("Motor có an toàn không?")).toBeInTheDocument();
     expect(await screen.findAllByText("Nemotron đã đọc mẫu #42 từ thiết bị thật.")).toHaveLength(2);
     expect(screen.getByText(/nebius\/test-nemotron/)).toBeInTheDocument();
+    expect(screen.getByText("AI đưa ra giả thuyết")).toBeInTheDocument();
+    expect(screen.getByText("Nemotron proposed an evidence-backed diagnosis.")).toBeInTheDocument();
   });
 
   it("updates route SEO metadata without another network request", async () => {
@@ -413,18 +456,19 @@ describe("NeXus application routes", () => {
     expect(screen.getByText("Đang theo dõi log mới nhất")).toBeInTheDocument();
   });
 
-  it("opens the dual-motor monitor with realtime log controls without inventing values", async () => {
+  it("opens the three-wheel PS2 monitor with realtime log controls without inventing values", async () => {
     const user = userEvent.setup();
     renderAt("/hardware");
 
     const architecture = await screen.findByTestId("dual-motor-architecture");
-    expect(within(architecture).getByRole("heading", { name: "Xe hai motor tự cân bằng tốc độ bằng PID" })).toBeInTheDocument();
-    expect(within(architecture).getAllByText("Chờ firmware dual-motor")).toHaveLength(1);
-    expect(within(architecture).getByRole("heading", { name: "Monitor xe hai motor" })).toBeInTheDocument();
+    expect(within(architecture).getByRole("heading", { name: "Xe ba bánh tam giác điều khiển bằng tay PS2" })).toBeInTheDocument();
+    expect(within(architecture).getAllByText("Chờ firmware 3-wheel-ps2")).toHaveLength(1);
+    expect(within(architecture).getByRole("heading", { name: "Monitor xe ba bánh" })).toBeInTheDocument();
     expect(within(architecture).getAllByText("--").length).toBeGreaterThan(1);
     expect(within(architecture).getByText("rpm_left")).toBeInTheDocument();
     expect(within(architecture).getByText("rpm_right")).toBeInTheDocument();
-    expect(within(architecture).getByRole("log", { name: "Log realtime xe hai motor" })).toBeInTheDocument();
+    expect(within(architecture).getByText("rpm_rear")).toBeInTheDocument();
+    expect(within(architecture).getByRole("log", { name: "Log realtime xe ba bánh" })).toBeInTheDocument();
     expect(within(architecture).getByText("Backend đang lưu")).toBeInTheDocument();
 
     const recordButton = within(architecture).getByRole("button", { name: "Bắt đầu ghi" });
@@ -433,21 +477,22 @@ describe("NeXus application routes", () => {
     expect(within(architecture).getByText("Đang ghi phiên kiểm thử")).toBeInTheDocument();
   });
 
-  it("filters exact right-motor wiring and opens the reference diagram", async () => {
+  it("filters exact motor-2 wiring and opens the reference diagram", async () => {
     const user = userEvent.setup();
     renderAt("/hardware");
 
     const architecture = await screen.findByTestId("dual-motor-architecture");
-    await user.click(within(architecture).getByRole("button", { name: "Motor phải 10" }));
-    expect(architecture.querySelector(".architecture-wiring__summary")).toHaveTextContent("Đang xem 10 đường · Motor phải");
+    await user.click(within(architecture).getByRole("button", { name: "Motor 2 10" }));
+    expect(architecture.querySelector(".architecture-wiring__summary")).toHaveTextContent("Đang xem 10 đường · Motor 2");
     expect(within(architecture).getByText("GPIO4")).toBeInTheDocument();
-    expect(within(architecture).getByText("GPIO7")).toBeInTheDocument();
-    expect(within(architecture).getByText("GPIO8")).toBeInTheDocument();
+    expect(within(architecture).getByText("GPIO15")).toBeInTheDocument();
+    expect(within(architecture).getByText("GPIO18")).toBeInTheDocument();
+    expect(within(architecture).getByText("GPIO21")).toBeInTheDocument();
 
     await user.click(within(architecture).getByRole("button", { name: "Xem ảnh tổng" }));
-    expect(within(architecture).getByRole("img", { name: /Sơ đồ đấu dây dạng khối/ })).toHaveAttribute(
+    expect(within(architecture).getByRole("img", { name: /Bố trí xe tam giác/ })).toHaveAttribute(
       "src",
-      "/nexus-dual-motor-complete-wiring-simple-v6.png",
+      "/nexus-three-wheel-layout-v9.png",
     );
   });
 });
